@@ -1,0 +1,280 @@
+import { useEffect, useState } from 'react';
+import { C, MONO, SEVERITY_COLORS, TONE, severityTone } from '../theme.js';
+import {
+  AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, HOURLY_VOLUME, SHIFT,
+  SLA_TREND, TACTIC_COVERAGE, TOP_ENTITIES, formatCount, funnelTotals,
+} from '../data/estate.js';
+import { caseStatus, slaState } from '../engine/case.js';
+import { isResolvedCorrectly } from '../engine/scoring.js';
+import { Badge, Card, SectionLabel } from '../ui/primitives.jsx';
+import { formatDuration } from '../ui/helpers.js';
+import { Donut, Funnel, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
+
+const SLA_TARGET = 90;
+
+function Tile({ label, value, sub, tone }) {
+  return (
+    <div style={{
+      background: C.surface, border: `1px solid ${tone ? tone.border : C.border}`, borderRadius: 8,
+      padding: '12px 14px', boxShadow: C.shadow,
+    }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 4, lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Panel({ title, hint, children, style }) {
+  return (
+    <Card style={{ padding: 16, ...style }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+        <SectionLabel style={{ marginBottom: 10 }}>{title}</SectionLabel>
+        {hint && <span style={{ fontSize: 11, color: C.textMuted }}>{hint}</span>}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function Legend({ items }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+      {items.map((item) => (
+        <span key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: C.textSecondary }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color, display: 'inline-block' }} />
+          {item.label}{item.value != null && ` · ${item.value}`}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
+  const [feedTick, setFeedTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setFeedTick((t) => t + 1), 4000);
+    return () => clearInterval(id);
+  }, []);
+
+  const closed = scenarios.filter((s) => cases[s.id]?.result);
+  const inProgress = scenarios.filter((s) => caseStatus(cases[s.id]) === 'in_progress');
+  const open = scenarios.filter((s) => !cases[s.id]?.result);
+  const breaches = scenarios.filter((s) => slaState(s, cases[s.id], now).breached);
+  const resolvedWell = closed.filter((s) => isResolvedCorrectly(cases[s.id].result.score));
+
+  const avgScore = closed.length
+    ? Math.round(closed.reduce((sum, s) => sum + cases[s.id].result.score.overallScore, 0) / closed.length)
+    : null;
+  const mttr = closed.length
+    ? closed.reduce((sum, s) => sum + (cases[s.id].result.score.elapsedMs || 0), 0) / closed.length
+    : null;
+
+  const severityCounts = open.reduce((acc, s) => {
+    const key = s.alert.reportedSeverity.toLowerCase();
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const donutSegments = ['critical', 'high', 'medium', 'low', 'informational']
+    .filter((key) => severityCounts[key])
+    .map((key) => ({ label: key.toUpperCase(), value: severityCounts[key], color: SEVERITY_COLORS[key] }));
+
+  const dayTotal = HOURLY_VOLUME.reduce((sum, h) => sum + h.critical + h.high + h.medium + h.low, 0);
+  const maxSource = Math.max(...DETECTION_SOURCES.map((s) => s.alerts));
+  const currentSla = SLA_TREND[SLA_TREND.length - 1].pct;
+
+  const feed = Array.from({ length: 6 }, (_, i) => ESTATE_FEED[(feedTick + i) % ESTATE_FEED.length]);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 14 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Shift overview</h1>
+        <span style={{ fontSize: 12.5, color: C.textSecondary }}>{SHIFT.label} · {SHIFT.window}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>{SHIFT.onCall}</span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+        <Tile label="Open alerts" value={open.length} sub={`${inProgress.length} being worked`} tone={open.length ? TONE.primary : undefined} />
+        <Tile label="Closed" value={closed.length} sub={`${resolvedWell.length} resolved correctly`} />
+        <Tile label="SLA breaches" value={breaches.length} sub={`target ${SLA_TARGET}% within SLA`} tone={breaches.length ? TONE.concerned : TONE.positive} />
+        <Tile label="Avg case score" value={avgScore ?? '—'} sub={avgScore == null ? 'no cases closed yet' : 'this shift'} tone={avgScore == null ? undefined : avgScore >= 70 ? TONE.positive : TONE.coaching} />
+        <Tile label="MTTR" value={mttr == null ? '—' : formatDuration(mttr)} sub="mean time to resolve" />
+        <Tile label="Alerts today" value={formatCount(dayTotal)} sub="estate-wide, all severities" />
+      </div>
+
+      <div className="sim-dash-grid">
+        <Panel title="Alert volume — last 24 hours" hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
+          <StackedBars data={HOURLY_VOLUME} keys={['low', 'medium', 'high', 'critical']} height={150} />
+          <Legend items={[
+            { label: 'Critical', color: SEVERITY_COLORS.critical, value: HOURLY_VOLUME.reduce((s, h) => s + h.critical, 0) },
+            { label: 'High', color: SEVERITY_COLORS.high, value: HOURLY_VOLUME.reduce((s, h) => s + h.high, 0) },
+            { label: 'Medium', color: SEVERITY_COLORS.medium, value: HOURLY_VOLUME.reduce((s, h) => s + h.medium, 0) },
+            { label: 'Low', color: SEVERITY_COLORS.low, value: HOURLY_VOLUME.reduce((s, h) => s + h.low, 0) },
+          ]} />
+        </Panel>
+
+                <Panel title="Open alerts requiring action" hint="click to work one" style={{ gridColumn: 'span 2' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <thead>
+                <tr>
+                  {['Alert', 'Severity', 'Rule', 'Source', 'SLA', 'Status'].map((h) => (
+                    <th key={h} style={{
+                      textAlign: 'left', padding: '6px 10px', color: C.textSecondary, fontWeight: 700, fontSize: 10.5,
+                      textTransform: 'uppercase', letterSpacing: 0.4, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {scenarios.map((scenario, index) => {
+                  const caseFile = cases[scenario.id];
+                  const status = caseStatus(caseFile);
+                  const sla = slaState(scenario, caseFile, now);
+                  const result = caseFile?.result;
+                  return (
+                    <tr
+                      key={scenario.id}
+                      onClick={() => onOpenAlert(index)}
+                      style={{ cursor: 'pointer' }}
+                      title="Open this alert"
+                    >
+                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, fontFamily: MONO, fontSize: 11.5, color: C.primaryStrong, whiteSpace: 'nowrap' }}>
+                        {scenario.alert.ref}
+                      </td>
+                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}` }}>
+                        <Badge label={scenario.alert.reportedSeverity} tone={severityTone(scenario.alert.reportedSeverity)} />
+                      </td>
+                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, color: C.text, minWidth: 220 }}>{scenario.alert.rule}</td>
+                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, color: C.textSecondary, whiteSpace: 'nowrap' }}>{scenario.source}</td>
+                      <td style={{
+                        padding: '7px 10px', borderBottom: `1px solid ${C.border}`, fontFamily: MONO, whiteSpace: 'nowrap',
+                        color: status === 'closed' ? C.textMuted : sla.breached ? C.danger : C.textSecondary,
+                      }}>
+                        {status === 'closed' ? '—' : `${Math.floor(sla.remaining / 60000)}m left`}
+                      </td>
+                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>
+                        {result
+                          ? <Badge label={isResolvedCorrectly(result.score) ? 'Resolved' : 'Review'} tone={isResolvedCorrectly(result.score) ? TONE.positive : TONE.coaching} />
+                          : <Badge label={status === 'in_progress' ? 'In progress' : 'New'} tone={status === 'in_progress' ? TONE.coaching : TONE.primary} />}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+
+<Panel title="Your queue by severity" hint="as reported by the tool">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <Donut segments={donutSegments} centerLabel={open.length} centerSub="open" />
+            <div style={{ flex: '1 1 120px' }}>
+              {donutSegments.map((segment) => (
+                <div key={segment.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textSecondary, marginBottom: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: segment.color }} />
+                  {segment.label}<span style={{ marginLeft: 'auto', color: C.text, fontFamily: MONO }}>{segment.value}</span>
+                </div>
+              ))}
+              {!donutSegments.length && <div style={{ fontSize: 12.5, color: C.textMuted }}>Queue clear.</div>}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Alert pipeline — today" hint="before a human sees anything">
+          <Funnel stages={funnelTotals(scenarios.length)} format={formatCount} />
+          <div style={{ fontSize: 11.5, color: C.textMuted, lineHeight: 1.55, marginTop: 6 }}>
+            {formatCount(AUTOMATION_FUNNEL[0].value)} events became {AUTOMATION_FUNNEL[1].value} alerts, of which
+            {' '}{Math.round((AUTOMATION_FUNNEL[2].value / AUTOMATION_FUNNEL[1].value) * 100)}% were closed by automation
+            before anyone read them. Your queue is what survived that.
+          </div>
+        </Panel>
+
+        <Panel title="Detection sources" hint="alerts · auto-closed">
+          {DETECTION_SOURCES.map((source) => (
+            <MeterRow
+              key={source.source}
+              label={source.source}
+              value={source.alerts}
+              max={maxSource}
+              caption={`${source.alerts} · ${Math.round((source.autoClosed / source.alerts) * 100)}% auto`}
+              color={source.autoClosed / source.alerts > 0.9 ? C.textMuted : C.primary}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="SLA compliance — 7 days" hint={`${currentSla}% today`}>
+          <Sparkline points={SLA_TREND} threshold={SLA_TARGET} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, fontFamily: MONO, marginTop: 4 }}>
+            {SLA_TREND.map((point) => <span key={point.day}>{point.day}</span>)}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 8, lineHeight: 1.55 }}>
+            Dashed line is the {SLA_TARGET}% target. Tuesday dipped below it — that is the shape of a day when a noisy
+            rule went untuned.
+          </div>
+        </Panel>
+
+        <Panel title="Top entities by alert count" hint="last 24h">
+          {TOP_ENTITIES.map((entity) => (
+            <div key={entity.entity} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{entity.entity}</span>
+              <span style={{ fontSize: 11, color: C.textMuted }}>{entity.type}</span>
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Badge label={entity.risk} tone={severityTone(entity.risk)} />
+                <span style={{ fontFamily: MONO, fontSize: 12, color: C.textSecondary }}>{entity.alerts}</span>
+              </span>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel title="ATT&CK detection coverage" hint="by tactic">
+          {TACTIC_COVERAGE.map((row) => (
+            <MeterRow
+              key={row.tactic}
+              label={row.tactic}
+              value={row.pct}
+              max={100}
+              caption={`${row.pct}%`}
+              color={row.pct >= 75 ? C.success : row.pct >= 60 ? C.warning : C.danger}
+            />
+          ))}
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6, lineHeight: 1.55 }}>
+            This is why case tools insist on a technique per incident: mapped incidents are what turn into this chart,
+            and this chart is what buys the next detection engineer.
+          </div>
+        </Panel>
+
+        <Panel title="Estate activity" hint="live tail" style={{ gridColumn: 'span 2' }}>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {feed.map((entry, i) => (
+              <div key={`${feedTick}-${i}`} style={{
+                display: 'flex', gap: 10, alignItems: 'center', fontSize: 12,
+                opacity: 1 - i * 0.11, padding: '5px 8px', borderRadius: 4,
+                background: i === 0 ? C.surfaceAlt : 'transparent',
+                border: `1px solid ${i === 0 ? C.border : 'transparent'}`,
+              }}>
+                <span style={{
+                  fontFamily: MONO, fontSize: 11, color: C.textMuted, whiteSpace: 'nowrap',
+                }}>
+                  {new Date(now - i * 41_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+                <span style={{ fontSize: 11, color: C.textSecondary, minWidth: 92 }}>{entry.source}</span>
+                <span style={{ color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.text}</span>
+                <span style={{ marginLeft: 'auto' }}>
+                  <Badge label={entry.level} tone={entry.level === 'medium' ? TONE.coaching : TONE.neutral} />
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 10, lineHeight: 1.55 }}>
+            None of these are in your queue. They are the auto-triaged remainder — worth glancing at, because the one
+            that matters usually looks exactly like the ones that do not.
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
