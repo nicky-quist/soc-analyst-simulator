@@ -1,13 +1,14 @@
 import { C, FONT, MONO, TONE, severityTone } from '../theme.js';
 import { initials } from './helpers.js';
 
-export function Card({ children, style, tone }) {
+export function Card({ children, style, tone, accent }) {
   return (
     <div style={{
       background: tone ? tone.bg : C.surface,
       border: `1px solid ${tone ? tone.border : C.border}`,
       borderRadius: 8,
       boxShadow: C.shadow,
+      ...(accent ? { borderTop: `2px solid ${accent}` } : {}),
       ...style,
     }}>
       {children}
@@ -44,7 +45,7 @@ export function SeverityBadge({ severity }) {
   return <Badge label={severity} tone={severityTone(severity)} />;
 }
 
-export function Button({ children, onClick, variant = 'secondary', disabled, style, type = 'button', ...rest }) {
+export function Button({ children, onClick, variant = 'secondary', disabled, style, type = 'button', className, ...rest }) {
   const palette = {
     primary: { bg: C.primary, fg: C.onPrimary, border: C.primary },
     secondary: { bg: C.surfaceRaised, fg: C.text, border: C.borderStrong },
@@ -57,11 +58,13 @@ export function Button({ children, onClick, variant = 'secondary', disabled, sty
       type={type}
       onClick={onClick}
       disabled={disabled}
+      className={`sim-btn sim-btn-${variant}${className ? ` ${className}` : ''}`}
       {...rest}
       style={{
         background: palette.bg, color: palette.fg, border: `1px solid ${palette.border}`,
         padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, fontFamily: FONT,
         cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+        transition: 'background 0.15s, box-shadow 0.15s, opacity 0.15s',
         ...style,
       }}
     >
@@ -84,7 +87,7 @@ export function Field({ label, htmlFor, children, hint }) {
 
 export function Tabs({ tabs, active, onSelect }) {
   return (
-    <div role="tablist" style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${C.border}`, overflowX: 'auto' }}>
+    <div role="tablist" style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}`, overflowX: 'auto', padding: '0 2px' }}>
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
@@ -95,16 +98,24 @@ export function Tabs({ tabs, active, onSelect }) {
             aria-selected={isActive}
             onClick={() => onSelect(tab.id)}
             style={{
-              background: 'transparent', border: 'none', borderBottom: `2px solid ${isActive ? C.primary : 'transparent'}`,
-              color: isActive ? C.text : C.textSecondary, padding: '10px 14px', fontSize: 13,
+              background: isActive ? C.primarySoft : 'transparent',
+              border: isActive ? `1px solid ${C.primary}` : '1px solid transparent',
+              borderBottom: isActive ? `1px solid ${C.primarySoft}` : '1px solid transparent',
+              borderRadius: '6px 6px 0 0',
+              color: isActive ? C.primaryStrong : C.textSecondary,
+              padding: '9px 14px', fontSize: 13,
               fontWeight: isActive ? 700 : 500, cursor: 'pointer', fontFamily: FONT, whiteSpace: 'nowrap',
+              marginBottom: -1, transition: 'color 0.15s, background 0.15s',
             }}
           >
             {tab.label}
             {tab.count != null && (
               <span style={{
-                marginLeft: 7, fontSize: 11, fontWeight: 700, color: C.textMuted,
-                background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 999, padding: '1px 6px',
+                marginLeft: 7, fontSize: 11, fontWeight: 700,
+                color: isActive ? C.primaryStrong : C.textMuted,
+                background: isActive ? C.primarySoft : C.surfaceAlt,
+                border: `1px solid ${isActive ? C.primary : C.border}`,
+                borderRadius: 999, padding: '1px 6px',
               }}>
                 {tab.count}
               </span>

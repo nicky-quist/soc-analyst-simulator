@@ -294,11 +294,18 @@ export default function SOCAnalystSim() {
         ${THEME_CSS}
         * { box-sizing: border-box; }
         body { background: var(--bg); margin: 0; }
-        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--surface-alt); }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
         select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px var(--primary-soft); }
         button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .sim-btn:hover:not(:disabled) { filter: brightness(1.12); }
+        .sim-btn-primary:hover:not(:disabled) { box-shadow: 0 0 0 3px rgba(59,130,246,0.25); }
+        .sim-tile { transition: transform 0.15s, box-shadow 0.15s; }
+        .sim-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg) !important; }
+        table tbody tr:hover { background: var(--surface-hover) !important; }
+        .sim-alert-row { transition: background 0.1s; }
         .sim-body { display: grid; grid-template-columns: 272px minmax(0, 1fr) 300px; align-items: start; }
         .sim-queue { background: var(--surface); border-right: 1px solid var(--border); position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
         .sim-main { padding: 20px 24px 60px; min-width: 0; }
@@ -322,55 +329,70 @@ export default function SOCAnalystSim() {
         }
       `}</style>
 
-      <header style={{
-        borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center',
-        gap: 14, background: C.surface, flexWrap: 'wrap',
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 7, background: C.primary, color: C.onPrimary,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14,
-        }}>
-          {initials(COMPANY.name).slice(0, 2)}
-        </div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{COMPANY.soc} — Analyst Console</div>
-          <div style={{ fontSize: 11.5, color: C.textSecondary }}>
-            {COMPANY.analyst.title} · {COMPANY.analyst.shift}
+      <header style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+        {/* accent bar */}
+        <div style={{ height: 3, background: `linear-gradient(90deg, ${C.primary} 0%, ${C.info} 60%, transparent 100%)` }} />
+        <div style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 8,
+            background: `linear-gradient(135deg, ${C.primary} 0%, #1d4ed8 100%)`,
+            color: C.onPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 900, fontSize: 13, letterSpacing: 0.5, flexShrink: 0,
+            boxShadow: `0 0 0 1px ${C.primaryStrong}30, 0 2px 8px rgba(59,130,246,0.3)`,
+          }}>
+            {initials(COMPANY.name).slice(0, 2)}
           </div>
-        </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: 0.1 }}>{COMPANY.soc}</div>
+            <div style={{ fontSize: 11, color: C.textMuted, fontFamily: MONO, letterSpacing: 0.3 }}>
+              {COMPANY.analyst.title} · {COMPANY.analyst.shift}
+            </div>
+          </div>
 
-        <nav aria-label="Console sections" style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
-          {[{ id: 'dashboard', label: 'Dashboard' }, { id: 'queue', label: 'Alert queue' }].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setView(item.id)}
-              aria-current={shift.view === item.id ? 'page' : undefined}
-              style={{
-                background: shift.view === item.id ? C.primarySoft : 'transparent',
-                color: shift.view === item.id ? C.primaryStrong : C.textSecondary,
-                border: `1px solid ${shift.view === item.id ? C.primary : 'transparent'}`,
-                padding: '6px 12px', fontSize: 12.5, fontWeight: 600, borderRadius: 6,
-                cursor: 'pointer', fontFamily: FONT,
-              }}
-            >
-              {item.label}
-              {item.id === 'queue' && ` · ${SCENARIOS.length - closedCases.length}`}
-            </button>
-          ))}
-        </nav>
+          <div style={{ width: 1, height: 28, background: C.border, margin: '0 4px' }} />
 
-        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Badge label={`${SCENARIOS.length - closedCases.length} open`} tone={TONE.primary} />
-          <Badge label={`${closedCases.length} closed`} tone={TONE.neutral} />
-          {avgScore !== null && (
-            <Badge label={`Avg ${avgScore}`} tone={avgScore >= 70 ? TONE.positive : TONE.coaching} />
-          )}
-          <Badge label={`${slaBreaches} SLA breach${slaBreaches === 1 ? '' : 'es'}`} tone={slaBreaches ? TONE.concerned : TONE.neutral} />
-          <Button variant="ghost" onClick={toggleTheme} aria-label="Toggle colour theme">
-            {shift.theme === 'dark' ? '☀' : '☾'}
-          </Button>
-          {closedCases.length > 0 && <Button variant="ghost" onClick={handleReset}>Reset</Button>}
+          <nav aria-label="Console sections" style={{ display: 'flex', gap: 4 }}>
+            {[{ id: 'dashboard', label: 'Dashboard' }, { id: 'queue', label: 'Alert Queue' }].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setView(item.id)}
+                aria-current={shift.view === item.id ? 'page' : undefined}
+                className="sim-btn"
+                style={{
+                  background: shift.view === item.id ? C.primarySoft : 'transparent',
+                  color: shift.view === item.id ? C.primaryStrong : C.textSecondary,
+                  border: `1px solid ${shift.view === item.id ? C.primary : 'transparent'}`,
+                  padding: '6px 13px', fontSize: 12.5, fontWeight: 600, borderRadius: 6,
+                  cursor: 'pointer', fontFamily: FONT, transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                }}
+              >
+                {item.label}
+                {item.id === 'queue' && (
+                  <span style={{
+                    marginLeft: 7, fontSize: 11, fontWeight: 700, padding: '1px 6px',
+                    borderRadius: 999, background: C.primarySoft, color: C.primaryStrong,
+                    border: `1px solid ${C.primary}`,
+                  }}>
+                    {SCENARIOS.length - closedCases.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Badge label={`${SCENARIOS.length - closedCases.length} open`} tone={TONE.primary} />
+            <Badge label={`${closedCases.length} closed`} tone={TONE.neutral} />
+            {avgScore !== null && (
+              <Badge label={`Avg ${avgScore}`} tone={avgScore >= 70 ? TONE.positive : TONE.coaching} />
+            )}
+            <Badge label={`${slaBreaches} SLA breach${slaBreaches === 1 ? '' : 'es'}`} tone={slaBreaches ? TONE.concerned : TONE.neutral} />
+            <Button variant="ghost" onClick={toggleTheme} aria-label="Toggle colour theme" style={{ fontSize: 16 }}>
+              {shift.theme === 'dark' ? '☀' : '☾'}
+            </Button>
+            {closedCases.length > 0 && <Button variant="ghost" onClick={handleReset}>Reset</Button>}
+          </div>
         </div>
       </header>
 
