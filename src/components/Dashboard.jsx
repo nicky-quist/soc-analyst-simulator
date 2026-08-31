@@ -14,25 +14,29 @@ const SLA_TARGET = 90;
 
 function Tile({ label, value, sub, tone }) {
   return (
-    <div style={{
-      background: C.surface, border: `1px solid ${tone ? tone.border : C.border}`, borderRadius: 8,
-      padding: '12px 14px', boxShadow: C.shadow,
+    <div className="sim-tile" style={{
+      background: C.surface,
+      border: `1px solid ${tone ? tone.border : C.border}`,
+      borderTop: `2px solid ${tone ? tone.fg : C.borderStrong}`,
+      borderRadius: 8,
+      padding: '14px 16px',
+      boxShadow: C.shadow,
     }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
         {label}
       </div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 4, lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>{sub}</div>}
+      <div style={{ fontSize: 28, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 6, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 5, lineHeight: 1.4 }}>{sub}</div>}
     </div>
   );
 }
 
 function Panel({ title, hint, children, style }) {
   return (
-    <Card style={{ padding: 16, ...style }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-        <SectionLabel style={{ marginBottom: 10 }}>{title}</SectionLabel>
-        {hint && <span style={{ fontSize: 11, color: C.textMuted }}>{hint}</span>}
+    <Card accent={C.primary} style={{ padding: 16, ...style }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
+        <SectionLabel style={{ marginBottom: 0 }}>{title}</SectionLabel>
+        {hint && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: MONO }}>{hint}</span>}
       </div>
       {children}
     </Card>
