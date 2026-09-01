@@ -11,9 +11,9 @@ const STATUS = {
 
 
 function shortSla(ms) {
-  const minutes = Math.floor(Math.abs(ms) / 60_000);
-  const seconds = Math.floor((Math.abs(ms) % 60_000) / 1000);
-  return `${ms < 0 ? '-' : ''}${minutes}:${String(seconds).padStart(2, '0')}`;
+  const minutes = Math.floor(ms / 60_000);
+  const seconds = Math.floor((ms % 60_000) / 1000);
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 export default function AlertQueue({ scenarios, currentId, cases, now, onSelect }) {
@@ -64,7 +64,7 @@ export default function AlertQueue({ scenarios, currentId, cases, now, onSelect 
               <Badge label={scenario.alert.reportedSeverity} tone={severityTone(scenario.alert.reportedSeverity)} />
               {status !== 'closed' && (
                 <Badge
-                  label={`SLA ${shortSla(sla.remaining)}`}
+                  label={sla.breached ? 'SLA breached' : `SLA ${shortSla(sla.remaining)}`}
                   tone={sla.breached ? TONE.concerned : sla.remaining < 5 * 60_000 ? TONE.coaching : TONE.neutral}
                   title={`Response target ${sla.total} minutes`}
                 />

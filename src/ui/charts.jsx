@@ -105,6 +105,58 @@ export function Sparkline({ points, height = 60, threshold }) {
   );
 }
 
+function polarPoint(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+// Sweeping from 180deg (left) down to 0deg (right) traces the top half of the
+// circle clockwise on screen, so sweep-flag is always 1 here.
+function arcPath(cx, cy, r, startAngle, endAngle) {
+  const start = polarPoint(cx, cy, r, startAngle);
+  const end = polarPoint(cx, cy, r, endAngle);
+  const largeArc = Math.abs(startAngle - endAngle) > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+// A speedometer-style gauge — the shape every SIEM vendor dashboard (XSIAM,
+// Sentinel, Splunk ES) reaches for when a KPI has a "good end" and a "bad end".
+// Bands default to a red/orange/yellow/green split, same four colours the rest
+// of the console already uses for severity, so a glance at the needle reads
+// the same way a glance at a severity badge does.
+export function Gauge({ value, max = 100, unit = '', bands, size = 148, label }) {
+  const W = 200, H = 150, cx = W / 2, cy = 100, r = 74, strokeWidth = 15;
+  const clamped = Math.max(0, Math.min(max, value));
+  const useBands = bands || [
+    { upTo: max * 0.5, color: SEVERITY_COLORS.critical },
+    { upTo: max * 0.75, color: SEVERITY_COLORS.high },
+    { upTo: max * 0.9, color: SEVERITY_COLORS.medium },
+    { upTo: max, color: SEVERITY_COLORS.low },
+  ];
+
+  const segments = useBands.reduce((acc, b) => {
+    const prevUpTo = acc.length ? acc[acc.length - 1].upTo : 0;
+    acc.push({ upTo: b.upTo, color: b.color, startAngle: 180 - (prevUpTo / max) * 180, endAngle: 180 - (b.upTo / max) * 180 });
+    return acc;
+  }, []);
+
+  const activeColor = (useBands.find((b) => clamped <= b.upTo) || useBands[useBands.length - 1]).color;
+  const needle = polarPoint(cx, cy, r - 8, 180 - (clamped / max) * 180);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={size} height={(size * H) / W} role="img" aria-label={label}>
+      {segments.map((s, i) => (
+        <path key={i} d={arcPath(cx, cy, r, s.startAngle, s.endAngle)} fill="none" stroke={s.color} strokeWidth={strokeWidth} />
+      ))}
+      <line x1={cx} y1={cy} x2={needle.x} y2={needle.y} stroke={C.text} strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="5" fill={C.text} />
+      <text x={cx} y={cy + 30} textAnchor="middle" fontSize="26" fontWeight="800" fill={activeColor}>
+        {Math.round(clamped)}{unit}
+      </text>
+    </svg>
+  );
+}
+
 export function MeterRow({ label, value, max, caption, color = C.primary, width = '100%' }) {
   const pct = Math.max(0, Math.min(100, (value / (max || 1)) * 100));
   return (

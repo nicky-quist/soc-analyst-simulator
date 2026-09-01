@@ -3,6 +3,7 @@ import { isResolvedCorrectly } from '../engine/scoring.js';
 import { generateCisoResponse, generateCeoResponse } from '../engine/personas.js';
 import { Badge, Button, Callout, Card, Metric, PersonaMessage, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
+import { IconAlertOctagon, IconCheck, IconCircleSlash, IconRotate, IconX } from '../ui/icons.jsx';
 
 function coverageTone(coverage) {
   if (coverage === 1) return TONE.positive;
@@ -22,8 +23,9 @@ export default function DebriefTab({ scenario, result, onRetry }) {
     <div>
       <Card tone={tone} style={{ padding: '16px 20px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: tone.fg }}>
-            {resolved ? '✓ Resolved correctly' : '⚠ Needs improvement'}
+          <div style={{ fontSize: 15, fontWeight: 800, color: tone.fg, display: 'flex', alignItems: 'center', gap: 7 }}>
+            {resolved ? <IconCheck size={16} /> : <IconAlertOctagon size={16} />}
+            {resolved ? 'Resolved correctly' : 'Needs improvement'}
           </div>
           <div>
             <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textSecondary, textAlign: 'right', letterSpacing: 0.5 }}>CASE SCORE</div>
@@ -33,15 +35,21 @@ export default function DebriefTab({ scenario, result, onRetry }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Badge label={`Classification ${score.classificationCorrect ? '✓' : '✗'}`} tone={score.classificationCorrect ? TONE.positive : TONE.concerned} />
-          <Badge label={`Escalation ${score.escalationCorrect ? '✓' : '✗'}`} tone={score.escalationCorrect ? TONE.positive : TONE.concerned} />
           <Badge
-            label={score.severityCorrect ? 'Severity ✓' : `Severity ✗ (${scenario.truth.severity})`}
+            label={<>Classification {score.classificationCorrect ? <IconCheck size={10} /> : <IconX size={10} />}</>}
+            tone={score.classificationCorrect ? TONE.positive : TONE.concerned}
+          />
+          <Badge
+            label={<>Escalation {score.escalationCorrect ? <IconCheck size={10} /> : <IconX size={10} />}</>}
+            tone={score.escalationCorrect ? TONE.positive : TONE.concerned}
+          />
+          <Badge
+            label={<>Severity {score.severityCorrect ? <IconCheck size={10} /> : <>{`(${scenario.truth.severity})`} <IconX size={10} /></>}</>}
             tone={score.severityCorrect ? TONE.positive : score.severityCredit > 0 ? TONE.coaching : TONE.concerned}
             title={score.severityCredit === 0.5 ? 'One step off — half credit' : undefined}
           />
           <Badge
-            label={`ATT&CK ${score.mitreCorrect ? '✓' : '✗'}`}
+            label={<>ATT&amp;CK {score.mitreCorrect ? <IconCheck size={10} /> : <IconX size={10} />}</>}
             tone={score.mitreCorrect ? TONE.positive : TONE.concerned}
             title={score.mitreCorrect ? undefined : `Expected ${scenario.truth.mitreTechnique}`}
           />
@@ -96,7 +104,9 @@ export default function DebriefTab({ scenario, result, onRetry }) {
         <SectionLabel>Report checklist — {score.matchedCount}/{score.scorableCount} covered</SectionLabel>
         {score.rubricResults.map((r, i) => (
           <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, color: r.matched ? C.text : C.textSecondary, marginBottom: 8, lineHeight: 1.55 }}>
-            <span style={{ color: r.matched ? C.success : C.textMuted, flexShrink: 0 }}>{r.matched ? '✓' : '○'}</span>
+            <span style={{ color: r.matched ? C.success : C.textMuted, flexShrink: 0, display: 'flex', marginTop: 2 }}>
+              {r.matched ? <IconCheck size={13} /> : <IconCircleSlash size={13} />}
+            </span>
             <span>
               {r.point}
               {r.kind === 'avoid' && <span style={{ color: C.textMuted, fontSize: 12 }}> &nbsp;(what you avoided writing)</span>}
@@ -110,7 +120,9 @@ export default function DebriefTab({ scenario, result, onRetry }) {
         <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.75 }}>{scenario.debrief}</div>
       </Card>
 
-      <Button onClick={onRetry} style={{ width: '100%' }}>↺ &nbsp;Reopen this alert and work it again</Button>
+      <Button onClick={onRetry} style={{ width: '100%', justifyContent: 'center' }}>
+        <IconRotate size={14} /> Reopen this alert and work it again
+      </Button>
     </div>
   );
 }

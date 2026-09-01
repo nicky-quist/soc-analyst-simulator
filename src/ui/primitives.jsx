@@ -15,12 +15,13 @@ export function Card({ children, style, tone }) {
   );
 }
 
-export function SectionLabel({ children, style }) {
+export function SectionLabel({ children, icon, style }) {
   return (
     <div style={{
       fontSize: 11, fontWeight: 700, color: C.textSecondary, letterSpacing: 0.6,
-      textTransform: 'uppercase', marginBottom: 12, ...style,
+      textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7, ...style,
     }}>
+      {icon && <span style={{ color: C.textMuted, display: 'flex' }}>{icon}</span>}
       {children}
     </div>
   );
@@ -30,7 +31,7 @@ export function Badge({ label, tone, title, style }) {
   const t = tone || TONE.neutral;
   return (
     <span title={title} style={{
-      display: 'inline-block', fontSize: 11, fontWeight: 700, padding: '2px 9px',
+      display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '2px 9px',
       borderRadius: 999, background: t.bg, color: t.fg, border: `1px solid ${t.border}`,
       letterSpacing: 0.3, whiteSpace: 'nowrap', ...style,
     }}>
@@ -62,6 +63,7 @@ export function Button({ children, onClick, variant = 'secondary', disabled, sty
         background: palette.bg, color: palette.fg, border: `1px solid ${palette.border}`,
         padding: '8px 14px', fontSize: 13, fontWeight: 600, borderRadius: 6, fontFamily: FONT,
         cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+        display: 'inline-flex', alignItems: 'center', gap: 7,
         ...style,
       }}
     >
@@ -197,6 +199,31 @@ export function Metric({ label, value, hint, tone }) {
       <div style={{ fontSize: 16, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 3 }}>{value}</div>
       {hint && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 3, lineHeight: 1.45 }}>{hint}</div>}
     </div>
+  );
+}
+
+// A bare square icon button — the header/rail chrome (theme toggle, reset,
+// nav rail entries) uses this instead of Button so icons sit centred with no
+// label padding thrown off by a wrapping flex.
+export function IconButton({ icon, active, tone, title, onClick, style, ...rest }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      {...rest}
+      style={{
+        width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 7, cursor: 'pointer', fontFamily: FONT,
+        background: active ? (tone ? tone.bg : C.primarySoft) : 'transparent',
+        color: active ? (tone ? tone.fg : C.primaryStrong) : C.textSecondary,
+        border: `1px solid ${active ? (tone ? tone.border : C.primary) : 'transparent'}`,
+        ...style,
+      }}
+    >
+      {icon}
+    </button>
   );
 }
 

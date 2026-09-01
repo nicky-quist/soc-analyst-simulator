@@ -8,36 +8,73 @@ import { caseStatus, slaState } from '../engine/case.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
 import { Badge, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
-import { Donut, Funnel, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
+import { Donut, Funnel, Gauge, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
+import {
+  IconActivity, IconClock, IconFilter, IconInbox, IconListChecks, IconPieChart,
+  IconRadio, IconServer, IconTarget, IconTrendingUp, IconUsers,
+} from '../ui/icons.jsx';
 
 const SLA_TARGET = 90;
 
-function Tile({ label, value, sub, tone }) {
+function Tile({ label, value, sub, tone, icon }) {
   return (
     <div style={{
-      background: C.surface, border: `1px solid ${tone ? tone.border : C.border}`, borderRadius: 8,
-      padding: '12px 14px', boxShadow: C.shadow,
+      background: C.surface, border: `1px solid ${C.border}`,
+      borderLeft: `3px solid ${tone ? tone.border : C.borderStrong}`,
+      borderRadius: 8, padding: '12px 14px', boxShadow: C.shadow,
+      display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start',
     }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-        {label}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 4, lineHeight: 1.1 }}>{value}</div>
+        {sub && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>{sub}</div>}
       </div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 4, lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>{sub}</div>}
+      {icon && (
+        <div style={{ color: tone ? tone.fg : C.textMuted, opacity: 0.75, flexShrink: 0 }}>
+          {icon}
+        </div>
+      )}
     </div>
   );
 }
 
-function Panel({ title, hint, children, style }) {
+function Panel({ title, icon, hint, children, style }) {
   return (
     <Card style={{ padding: 16, ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-        <SectionLabel style={{ marginBottom: 10 }}>{title}</SectionLabel>
+        <SectionLabel icon={icon} style={{ marginBottom: 10 }}>{title}</SectionLabel>
         {hint && <span style={{ fontSize: 11, color: C.textMuted }}>{hint}</span>}
       </div>
       {children}
     </Card>
   );
 }
+
+function GaugeCard({ label, value, hint, bands, unit = '%' }) {
+  return (
+    <div style={{ flex: '1 1 150px', textAlign: 'center', minWidth: 140 }}>
+      <Gauge value={value} unit={unit} bands={bands} label={label} />
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginTop: -8 }}>{label}</div>
+      {hint && <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 2 }}>{hint}</div>}
+    </div>
+  );
+}
+
+const SCORE_BANDS = [
+  { upTo: 50, color: SEVERITY_COLORS.critical },
+  { upTo: 70, color: SEVERITY_COLORS.high },
+  { upTo: 85, color: SEVERITY_COLORS.medium },
+  { upTo: 100, color: SEVERITY_COLORS.low },
+];
+
+const SLA_BANDS = [
+  { upTo: 70, color: SEVERITY_COLORS.critical },
+  { upTo: 80, color: SEVERITY_COLORS.high },
+  { upTo: SLA_TARGET, color: SEVERITY_COLORS.medium },
+  { upTo: 100, color: SEVERITY_COLORS.low },
+];
 
 function Legend({ items }) {
   return (
@@ -97,16 +134,34 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
-        <Tile label="Open alerts" value={open.length} sub={`${inProgress.length} being worked`} tone={open.length ? TONE.primary : undefined} />
-        <Tile label="Closed" value={closed.length} sub={`${resolvedWell.length} resolved correctly`} />
-        <Tile label="SLA breaches" value={breaches.length} sub={`target ${SLA_TARGET}% within SLA`} tone={breaches.length ? TONE.concerned : TONE.positive} />
-        <Tile label="Avg case score" value={avgScore ?? '—'} sub={avgScore == null ? 'no cases closed yet' : 'this shift'} tone={avgScore == null ? undefined : avgScore >= 70 ? TONE.positive : TONE.coaching} />
-        <Tile label="MTTR" value={mttr == null ? '—' : formatDuration(mttr)} sub="mean time to resolve" />
-        <Tile label="Alerts today" value={formatCount(dayTotal)} sub="estate-wide, all severities" />
+        <Tile label="Open alerts" value={open.length} sub={`${inProgress.length} being worked`} tone={open.length ? TONE.primary : undefined} icon={<IconInbox size={18} />} />
+        <Tile label="Closed" value={closed.length} sub={`${resolvedWell.length} resolved correctly`} icon={<IconListChecks size={18} />} />
+        <Tile label="SLA breaches" value={breaches.length} sub={`target ${SLA_TARGET}% within SLA`} tone={breaches.length ? TONE.concerned : TONE.positive} icon={<IconClock size={18} />} />
+        <Tile label="Avg case score" value={avgScore ?? '—'} sub={avgScore == null ? 'no cases closed yet' : 'this shift'} tone={avgScore == null ? undefined : avgScore >= 70 ? TONE.positive : TONE.coaching} icon={<IconTarget size={18} />} />
+        <Tile label="MTTR" value={mttr == null ? '—' : formatDuration(mttr)} sub="mean time to resolve" icon={<IconClock size={18} />} />
+        <Tile label="Alerts today" value={formatCount(dayTotal)} sub="estate-wide, all severities" icon={<IconActivity size={18} />} />
       </div>
 
       <div className="sim-dash-grid">
-        <Panel title="Alert volume — last 24 hours" hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
+        <Panel title="Shift performance" icon={<IconTrendingUp size={13} />} hint="green is good, red needs attention" style={{ gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around', gap: 12 }}>
+            <GaugeCard label="SLA compliance" value={currentSla} hint={`target ${SLA_TARGET}%`} bands={SLA_BANDS} />
+            <GaugeCard
+              label="Avg case score"
+              value={avgScore ?? 0}
+              hint={avgScore == null ? 'no cases closed yet' : 'this shift'}
+              bands={SCORE_BANDS}
+            />
+            <GaugeCard
+              label="Resolved correctly"
+              value={closed.length ? Math.round((resolvedWell.length / closed.length) * 100) : 0}
+              hint={closed.length ? `${resolvedWell.length}/${closed.length} closed cases` : 'no cases closed yet'}
+              bands={SCORE_BANDS}
+            />
+          </div>
+        </Panel>
+
+        <Panel title="Alert volume — last 24 hours" icon={<IconActivity size={13} />} hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
           <StackedBars data={HOURLY_VOLUME} keys={['low', 'medium', 'high', 'critical']} height={150} />
           <Legend items={[
             { label: 'Critical', color: SEVERITY_COLORS.critical, value: HOURLY_VOLUME.reduce((s, h) => s + h.critical, 0) },
@@ -116,7 +171,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           ]} />
         </Panel>
 
-                <Panel title="Open alerts requiring action" hint="click to work one" style={{ gridColumn: 'span 2' }}>
+        <Panel title="Open alerts requiring action" icon={<IconListChecks size={13} />} hint="click to work one" style={{ gridColumn: 'span 2' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
               <thead>
@@ -154,7 +209,11 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
                         padding: '7px 10px', borderBottom: `1px solid ${C.border}`, fontFamily: MONO, whiteSpace: 'nowrap',
                         color: status === 'closed' ? C.textMuted : sla.breached ? C.danger : C.textSecondary,
                       }}>
-                        {status === 'closed' ? '—' : `${Math.floor(sla.remaining / 60000)}m left`}
+                        {status === 'closed'
+                          ? '—'
+                          : sla.breached
+                            ? <Badge label="Breached" tone={TONE.concerned} />
+                            : `${Math.floor(sla.remaining / 60000)}m left`}
                       </td>
                       <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>
                         {result
@@ -169,7 +228,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-<Panel title="Your queue by severity" hint="as reported by the tool">
+        <Panel title="Your queue by severity" icon={<IconPieChart size={13} />} hint="as reported by the tool">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <Donut segments={donutSegments} centerLabel={open.length} centerSub="open" />
             <div style={{ flex: '1 1 120px' }}>
@@ -184,7 +243,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-        <Panel title="Alert pipeline — today" hint="before a human sees anything">
+        <Panel title="Alert pipeline — today" icon={<IconFilter size={13} />} hint="before a human sees anything">
           <Funnel stages={funnelTotals(scenarios.length)} format={formatCount} />
           <div style={{ fontSize: 11.5, color: C.textMuted, lineHeight: 1.55, marginTop: 6 }}>
             {formatCount(AUTOMATION_FUNNEL[0].value)} events became {AUTOMATION_FUNNEL[1].value} alerts, of which
@@ -193,7 +252,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-        <Panel title="Detection sources" hint="alerts · auto-closed">
+        <Panel title="Detection sources" icon={<IconServer size={13} />} hint="alerts · auto-closed">
           {DETECTION_SOURCES.map((source) => (
             <MeterRow
               key={source.source}
@@ -206,7 +265,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           ))}
         </Panel>
 
-        <Panel title="SLA compliance — 7 days" hint={`${currentSla}% today`}>
+        <Panel title="SLA compliance — 7 days" icon={<IconTrendingUp size={13} />} hint={`${currentSla}% today`}>
           <Sparkline points={SLA_TREND} threshold={SLA_TARGET} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, fontFamily: MONO, marginTop: 4 }}>
             {SLA_TREND.map((point) => <span key={point.day}>{point.day}</span>)}
@@ -217,7 +276,9 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-        <Panel title="Top entities by alert count" hint="last 24h">
+        
+
+        <Panel title="Top entities by alert count" icon={<IconUsers size={13} />} hint="last 24h">
           {TOP_ENTITIES.map((entity) => (
             <div key={entity.entity} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
               <span style={{ fontFamily: MONO, fontSize: 12, color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{entity.entity}</span>
@@ -230,7 +291,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           ))}
         </Panel>
 
-        <Panel title="ATT&CK detection coverage" hint="by tactic">
+        <Panel title="ATT&CK detection coverage" icon={<IconTarget size={13} />} hint="by tactic">
           {TACTIC_COVERAGE.map((row) => (
             <MeterRow
               key={row.tactic}
@@ -247,7 +308,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-        <Panel title="Estate activity" hint="live tail" style={{ gridColumn: 'span 2' }}>
+        <Panel title="Estate activity" icon={<IconRadio size={13} />} hint="live tail" style={{ gridColumn: 'span 2' }}>
           <div style={{ display: 'grid', gap: 6 }}>
             {feed.map((entry, i) => (
               <div key={`${feedTick}-${i}`} style={{

@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SCENARIOS, COMPANY } from './data/scenarios/index.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
 import { generateShiftSummary } from './engine/personas.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
-import { Badge, Button, Card, SectionLabel, Tabs } from './ui/primitives.jsx';
-import { formatDuration, initials } from './ui/helpers.js';
+import { Badge, Button, Card, IconButton, SectionLabel, Tabs } from './ui/primitives.jsx';
+import { formatDuration } from './ui/helpers.js';
+import {
+  IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconUser,
+} from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
 import { decodeBase64 } from './engine/decode.js';
@@ -47,13 +50,22 @@ const EMPTY_CASE = {
   noiseSearches: 0,
 };
 
-const EMPTY_SHIFT = { theme: 'dark', view: 'dashboard', cases: {} };
+const EMPTY_SHIFT = { theme: 'dark', view: 'dashboard', cases: {}, shiftStartedAt: null };
+
+// A shift board that just keeps counting is not what a SOC dashboard is for —
+// after this long the queue, SLA clocks, and estate feed should look like a
+// new shift walked in, not a stale tab someone forgot to close.
+const SHIFT_RESET_MS = 12 * 60 * 60 * 1000;
 
 function loadShift() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_SHIFT;
     const parsed = JSON.parse(raw);
+    const theme = parsed.theme === 'light' ? 'light' : 'dark';
+    const stale = !parsed.shiftStartedAt || Date.now() - parsed.shiftStartedAt > SHIFT_RESET_MS;
+    if (stale) return { ...EMPTY_SHIFT, theme };
+
     const valid = new Set(SCENARIOS.map((s) => s.id));
     const cases = Object.fromEntries(
       Object.entries(parsed.cases || {})
@@ -61,9 +73,10 @@ function loadShift() {
         .map(([id, value]) => [id, { ...EMPTY_CASE, ...value }])
     );
     return {
-      theme: parsed.theme === 'light' ? 'light' : 'dark',
+      theme,
       view: parsed.view === 'queue' ? 'queue' : 'dashboard',
       cases,
+      shiftStartedAt: parsed.shiftStartedAt,
     };
   } catch {
     return EMPTY_SHIFT;
@@ -82,8 +95,9 @@ function saveShift(shift) {
 // path that makes one current: first render, queue click, or reopen.
 function startClock(shift, scenarioId) {
   const existing = shift.cases[scenarioId] || EMPTY_CASE;
-  if (existing.startedAt || existing.result) return shift;
-  return { ...shift, cases: { ...shift.cases, [scenarioId]: { ...existing, startedAt: Date.now() } } };
+  const withShiftStamp = shift.shiftStartedAt ? shift : { ...shift, shiftStartedAt: Date.now() };
+  if (existing.startedAt || existing.result) return withShiftStamp;
+  return { ...withShiftStamp, cases: { ...withShiftStamp.cases, [scenarioId]: { ...existing, startedAt: Date.now() } } };
 }
 
 export default function SOCAnalystSim() {
@@ -98,8 +112,22 @@ export default function SOCAnalystSim() {
   const result = caseFile.result;
   const closed = !!result;
 
+  // Also the stale-tab watchdog for the shift auto-reset: a tab left open past
+  // SHIFT_RESET_MS gets its board wiped on the next tick, the same way loadShift()
+  // would treat it on a fresh load. Folded into the existing ticker (rather than
+  // its own effect calling setState directly) so the reset only ever happens
+  // from inside a timer callback, never synchronously during an effect body.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => {
+      const nowTs = Date.now();
+      setNow(nowTs);
+      setShift((prev) => {
+        if (!prev.shiftStartedAt || nowTs - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
+        const fresh = { ...startClock(EMPTY_SHIFT, SCENARIOS[0].id), theme: prev.theme };
+        saveShift(fresh);
+        return fresh;
+      });
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -247,14 +275,14 @@ export default function SOCAnalystSim() {
     if (opening && !closed) updateCase((current) => ({ ...current, assisted: true }));
   }
 
-  function handleReset() {
+  const handleReset = useCallback(() => {
     const fresh = startClock(EMPTY_SHIFT, SCENARIOS[0].id);
     saveShift({ ...fresh, theme: shift.theme });
     setShift({ ...fresh, theme: shift.theme });
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }
+  }, [shift.theme]);
 
   function setView(view) {
     update((prev) => ({ ...prev, view }));
@@ -299,6 +327,27 @@ export default function SOCAnalystSim() {
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
         select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px var(--primary-soft); }
         button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .app-shell { display: flex; align-items: stretch; min-height: 100vh; }
+        .app-rail {
+          width: 60px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
+          display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 12px;
+          position: sticky; top: 0; height: 100vh;
+        }
+        .app-content { flex: 1; min-width: 0; }
+        .rail-nav-btn {
+          position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+          border-radius: 9px; cursor: pointer; font-family: inherit; border: 1px solid transparent; background: transparent;
+          color: var(--text-secondary);
+        }
+        .rail-nav-btn[data-active="true"] { background: var(--primary-soft); color: var(--primary-strong); border-color: var(--primary); }
+        .rail-nav-btn:hover:not([data-active="true"]) { background: var(--surface-alt); color: var(--text); }
+        .rail-count {
+          position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px;
+          background: var(--primary); color: var(--on-primary); font-size: 9.5px; font-weight: 800; line-height: 15px;
+          text-align: center; border: 1.5px solid var(--surface);
+        }
+        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; animation: live-pulse 2s ease-in-out infinite; }
+        @keyframes live-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,211,153,0.5); } 50% { opacity: 0.55; box-shadow: 0 0 0 3px rgba(52,211,153,0); } }
         .sim-body { display: grid; grid-template-columns: 272px minmax(0, 1fr) 300px; align-items: start; }
         .sim-queue { background: var(--surface); border-right: 1px solid var(--border); position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
         .sim-main { padding: 20px 24px 60px; min-width: 0; }
@@ -320,45 +369,74 @@ export default function SOCAnalystSim() {
           .sim-main { padding: 16px 14px 48px; }
           .sim-form-grid { grid-template-columns: 1fr; }
         }
+        @media (max-width: 480px) {
+          .app-rail { width: 48px; }
+          .rail-nav-btn { width: 34px; height: 34px; }
+        }
       `}</style>
 
+      <div className="app-shell">
+        <aside className="app-rail" aria-label="Primary navigation">
+          <div style={{
+            width: 34, height: 34, borderRadius: 9, background: C.primary, color: C.onPrimary,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10,
+          }}>
+            <IconShield size={18} strokeWidth={2} />
+          </div>
+
+          <nav aria-label="Console sections" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <button
+              type="button"
+              className="rail-nav-btn"
+              data-active={shift.view === 'dashboard'}
+              onClick={() => setView('dashboard')}
+              aria-current={shift.view === 'dashboard' ? 'page' : undefined}
+              title="Dashboard"
+            >
+              <IconDashboard size={18} />
+            </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
+              data-active={shift.view === 'queue'}
+              onClick={() => setView('queue')}
+              aria-current={shift.view === 'queue' ? 'page' : undefined}
+              title="Alert queue"
+            >
+              <IconInbox size={18} />
+              {SCENARIOS.length - closedCases.length > 0 && (
+                <span className="rail-count">{SCENARIOS.length - closedCases.length}</span>
+              )}
+            </button>
+          </nav>
+
+          <div style={{ flex: 1 }} />
+
+          <IconButton
+            icon={shift.theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
+            title="Toggle colour theme"
+            onClick={toggleTheme}
+          />
+          {closedCases.length > 0 && (
+            <IconButton icon={<IconRotate size={16} />} title="Reset shift (also auto-resets every 12h)" onClick={handleReset} />
+          )}
+        </aside>
+
+        <div className="app-content">
       <header style={{
         borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center',
         gap: 14, background: C.surface, flexWrap: 'wrap',
       }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 7, background: C.primary, color: C.onPrimary,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14,
-        }}>
-          {initials(COMPANY.name).slice(0, 2)}
-        </div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{COMPANY.soc} — Analyst Console</div>
-          <div style={{ fontSize: 11.5, color: C.textSecondary }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>{COMPANY.soc} — Analyst Console</span>
+            <span className="live-dot" title="Live" />
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.success, letterSpacing: 0.5 }}>LIVE</span>
+          </div>
+          <div style={{ fontSize: 11.5, color: C.textSecondary, marginTop: 1 }}>
             {COMPANY.analyst.title} · {COMPANY.analyst.shift}
           </div>
         </div>
-
-        <nav aria-label="Console sections" style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
-          {[{ id: 'dashboard', label: 'Dashboard' }, { id: 'queue', label: 'Alert queue' }].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setView(item.id)}
-              aria-current={shift.view === item.id ? 'page' : undefined}
-              style={{
-                background: shift.view === item.id ? C.primarySoft : 'transparent',
-                color: shift.view === item.id ? C.primaryStrong : C.textSecondary,
-                border: `1px solid ${shift.view === item.id ? C.primary : 'transparent'}`,
-                padding: '6px 12px', fontSize: 12.5, fontWeight: 600, borderRadius: 6,
-                cursor: 'pointer', fontFamily: FONT,
-              }}
-            >
-              {item.label}
-              {item.id === 'queue' && ` · ${SCENARIOS.length - closedCases.length}`}
-            </button>
-          ))}
-        </nav>
 
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
           <Badge label={`${SCENARIOS.length - closedCases.length} open`} tone={TONE.primary} />
@@ -367,10 +445,21 @@ export default function SOCAnalystSim() {
             <Badge label={`Avg ${avgScore}`} tone={avgScore >= 70 ? TONE.positive : TONE.coaching} />
           )}
           <Badge label={`${slaBreaches} SLA breach${slaBreaches === 1 ? '' : 'es'}`} tone={slaBreaches ? TONE.concerned : TONE.neutral} />
-          <Button variant="ghost" onClick={toggleTheme} aria-label="Toggle colour theme">
-            {shift.theme === 'dark' ? '☀' : '☾'}
-          </Button>
-          {closedCases.length > 0 && <Button variant="ghost" onClick={handleReset}>Reset</Button>}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 7, marginLeft: 6, paddingLeft: 12,
+            borderLeft: `1px solid ${C.border}`,
+          }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%', background: C.surfaceAlt, border: `1px solid ${C.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textSecondary,
+            }}>
+              <IconUser size={14} />
+            </div>
+            <div style={{ lineHeight: 1.25 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{COMPANY.analyst.name}</div>
+              <div style={{ fontSize: 10.5, color: C.textMuted }}>{COMPANY.analyst.title}</div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -420,7 +509,7 @@ export default function SOCAnalystSim() {
               aria-expanded={walkthrough}
               style={{ flexShrink: 0 }}
             >
-              {walkthrough ? 'Hide walkthrough' : '📖 Learn mode'}
+              {walkthrough ? <><IconGraduationCap size={14} /> Hide walkthrough</> : <><IconGraduationCap size={14} /> Learn mode</>}
             </Button>
           </div>
 
@@ -470,6 +559,8 @@ export default function SOCAnalystSim() {
         </aside>
       </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }
