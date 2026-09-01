@@ -50,7 +50,7 @@ const EMPTY_CASE = {
   noiseSearches: 0,
 };
 
-const EMPTY_SHIFT = { theme: 'dark', view: 'dashboard', cases: {}, shiftStartedAt: null };
+const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null };
 
 // A shift board that just keeps counting is not what a SOC dashboard is for —
 // after this long the queue, SLA clocks, and estate feed should look like a
@@ -62,7 +62,7 @@ function loadShift() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_SHIFT;
     const parsed = JSON.parse(raw);
-    const theme = parsed.theme === 'light' ? 'light' : 'dark';
+    const theme = parsed.theme === 'dark' ? 'dark' : 'light';
     const stale = !parsed.shiftStartedAt || Date.now() - parsed.shiftStartedAt > SHIFT_RESET_MS;
     if (stale) return { ...EMPTY_SHIFT, theme };
 
@@ -353,11 +353,15 @@ export default function SOCAnalystSim() {
         .sim-main { padding: 20px 24px 60px; min-width: 0; }
         .sim-rail { border-left: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 16px; }
         .sim-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .sim-dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+        .sim-dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+        .sim-dash-grid > * { display: flex; flex-direction: column; }
+        .sim-tile-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+        @media (max-width: 1240px) { .sim-tile-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         @media (max-width: 1000px) {
           .sim-dash-grid { grid-template-columns: minmax(0, 1fr); }
           .sim-dash-grid > * { grid-column: span 1 !important; }
         }
+        @media (max-width: 620px) { .sim-tile-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         table tbody tr:hover { background: var(--surface-alt); }
         @media (max-width: 1200px) {
           .sim-body { grid-template-columns: 250px minmax(0, 1fr); }

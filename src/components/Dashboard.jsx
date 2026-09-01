@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { C, MONO, SEVERITY_COLORS, TONE, severityTone } from '../theme.js';
+import { BAND_COLORS, C, CHART_COLORS, MONO, TONE, severityTone } from '../theme.js';
 import {
   AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, HOURLY_VOLUME, SHIFT,
   SLA_TREND, TACTIC_COVERAGE, TOP_ENTITIES, formatCount, funnelTotals,
@@ -29,7 +29,7 @@ function Tile({ label, value, sub, tone, icon }) {
           {label}
         </div>
         <div style={{ fontSize: 24, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 4, lineHeight: 1.1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>{sub}</div>}
+        <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3, minHeight: 15 }}>{sub || ' '}</div>
       </div>
       {icon && (
         <div style={{ color: tone ? tone.fg : C.textMuted, opacity: 0.75, flexShrink: 0 }}>
@@ -43,9 +43,9 @@ function Tile({ label, value, sub, tone, icon }) {
 function Panel({ title, icon, hint, children, style }) {
   return (
     <Card style={{ padding: 16, ...style }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-        <SectionLabel icon={icon} style={{ marginBottom: 10 }}>{title}</SectionLabel>
-        {hint && <span style={{ fontSize: 11, color: C.textMuted }}>{hint}</span>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <SectionLabel icon={icon} style={{ marginBottom: 0 }}>{title}</SectionLabel>
+        {hint && <span style={{ fontSize: 11, color: C.textMuted, lineHeight: 1 }}>{hint}</span>}
       </div>
       {children}
     </Card>
@@ -56,24 +56,24 @@ function GaugeCard({ label, value, hint, bands, unit = '%' }) {
   return (
     <div style={{ flex: '1 1 150px', textAlign: 'center', minWidth: 140 }}>
       <Gauge value={value} unit={unit} bands={bands} label={label} />
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginTop: -8 }}>{label}</div>
-      {hint && <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 2 }}>{hint}</div>}
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{label}</div>
+      <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 2, minHeight: 14 }}>{hint || ' '}</div>
     </div>
   );
 }
 
 const SCORE_BANDS = [
-  { upTo: 50, color: SEVERITY_COLORS.critical },
-  { upTo: 70, color: SEVERITY_COLORS.high },
-  { upTo: 85, color: SEVERITY_COLORS.medium },
-  { upTo: 100, color: SEVERITY_COLORS.low },
+  { upTo: 50, color: BAND_COLORS.critical },
+  { upTo: 70, color: BAND_COLORS.high },
+  { upTo: 85, color: BAND_COLORS.medium },
+  { upTo: 100, color: BAND_COLORS.low },
 ];
 
 const SLA_BANDS = [
-  { upTo: 70, color: SEVERITY_COLORS.critical },
-  { upTo: 80, color: SEVERITY_COLORS.high },
-  { upTo: SLA_TARGET, color: SEVERITY_COLORS.medium },
-  { upTo: 100, color: SEVERITY_COLORS.low },
+  { upTo: 70, color: BAND_COLORS.critical },
+  { upTo: 80, color: BAND_COLORS.high },
+  { upTo: SLA_TARGET, color: BAND_COLORS.medium },
+  { upTo: 100, color: BAND_COLORS.low },
 ];
 
 function Legend({ items }) {
@@ -117,7 +117,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
   }, {});
   const donutSegments = ['critical', 'high', 'medium', 'low', 'informational']
     .filter((key) => severityCounts[key])
-    .map((key) => ({ label: key.toUpperCase(), value: severityCounts[key], color: SEVERITY_COLORS[key] }));
+    .map((key) => ({ label: key.toUpperCase(), value: severityCounts[key], color: CHART_COLORS[key] }));
 
   const dayTotal = HOURLY_VOLUME.reduce((sum, h) => sum + h.critical + h.high + h.medium + h.low, 0);
   const maxSource = Math.max(...DETECTION_SOURCES.map((s) => s.alerts));
@@ -133,7 +133,7 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
         <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>{SHIFT.onCall}</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+      <div className="sim-tile-row">
         <Tile label="Open alerts" value={open.length} sub={`${inProgress.length} being worked`} tone={open.length ? TONE.primary : undefined} icon={<IconInbox size={18} />} />
         <Tile label="Closed" value={closed.length} sub={`${resolvedWell.length} resolved correctly`} icon={<IconListChecks size={18} />} />
         <Tile label="SLA breaches" value={breaches.length} sub={`target ${SLA_TARGET}% within SLA`} tone={breaches.length ? TONE.concerned : TONE.positive} icon={<IconClock size={18} />} />
@@ -164,10 +164,10 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
         <Panel title="Alert volume — last 24 hours" icon={<IconActivity size={13} />} hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
           <StackedBars data={HOURLY_VOLUME} keys={['low', 'medium', 'high', 'critical']} height={150} />
           <Legend items={[
-            { label: 'Critical', color: SEVERITY_COLORS.critical, value: HOURLY_VOLUME.reduce((s, h) => s + h.critical, 0) },
-            { label: 'High', color: SEVERITY_COLORS.high, value: HOURLY_VOLUME.reduce((s, h) => s + h.high, 0) },
-            { label: 'Medium', color: SEVERITY_COLORS.medium, value: HOURLY_VOLUME.reduce((s, h) => s + h.medium, 0) },
-            { label: 'Low', color: SEVERITY_COLORS.low, value: HOURLY_VOLUME.reduce((s, h) => s + h.low, 0) },
+            { label: 'Critical', color: CHART_COLORS.critical, value: HOURLY_VOLUME.reduce((s, h) => s + h.critical, 0) },
+            { label: 'High', color: CHART_COLORS.high, value: HOURLY_VOLUME.reduce((s, h) => s + h.high, 0) },
+            { label: 'Medium', color: CHART_COLORS.medium, value: HOURLY_VOLUME.reduce((s, h) => s + h.medium, 0) },
+            { label: 'Low', color: CHART_COLORS.low, value: HOURLY_VOLUME.reduce((s, h) => s + h.low, 0) },
           ]} />
         </Panel>
 
@@ -228,21 +228,6 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-        <Panel title="Your queue by severity" icon={<IconPieChart size={13} />} hint="as reported by the tool">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <Donut segments={donutSegments} centerLabel={open.length} centerSub="open" />
-            <div style={{ flex: '1 1 120px' }}>
-              {donutSegments.map((segment) => (
-                <div key={segment.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textSecondary, marginBottom: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: segment.color }} />
-                  {segment.label}<span style={{ marginLeft: 'auto', color: C.text, fontFamily: MONO }}>{segment.value}</span>
-                </div>
-              ))}
-              {!donutSegments.length && <div style={{ fontSize: 12.5, color: C.textMuted }}>Queue clear.</div>}
-            </div>
-          </div>
-        </Panel>
-
         <Panel title="Alert pipeline — today" icon={<IconFilter size={13} />} hint="before a human sees anything">
           <Funnel stages={funnelTotals(scenarios.length)} format={formatCount} />
           <div style={{ fontSize: 11.5, color: C.textMuted, lineHeight: 1.55, marginTop: 6 }}>
@@ -250,45 +235,6 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
             {' '}{Math.round((AUTOMATION_FUNNEL[2].value / AUTOMATION_FUNNEL[1].value) * 100)}% were closed by automation
             before anyone read them. Your queue is what survived that.
           </div>
-        </Panel>
-
-        <Panel title="Detection sources" icon={<IconServer size={13} />} hint="alerts · auto-closed">
-          {DETECTION_SOURCES.map((source) => (
-            <MeterRow
-              key={source.source}
-              label={source.source}
-              value={source.alerts}
-              max={maxSource}
-              caption={`${source.alerts} · ${Math.round((source.autoClosed / source.alerts) * 100)}% auto`}
-              color={source.autoClosed / source.alerts > 0.9 ? C.textMuted : C.primary}
-            />
-          ))}
-        </Panel>
-
-        <Panel title="SLA compliance — 7 days" icon={<IconTrendingUp size={13} />} hint={`${currentSla}% today`}>
-          <Sparkline points={SLA_TREND} threshold={SLA_TARGET} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, fontFamily: MONO, marginTop: 4 }}>
-            {SLA_TREND.map((point) => <span key={point.day}>{point.day}</span>)}
-          </div>
-          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 8, lineHeight: 1.55 }}>
-            Dashed line is the {SLA_TARGET}% target. Tuesday dipped below it — that is the shape of a day when a noisy
-            rule went untuned.
-          </div>
-        </Panel>
-
-        
-
-        <Panel title="Top entities by alert count" icon={<IconUsers size={13} />} hint="last 24h">
-          {TOP_ENTITIES.map((entity) => (
-            <div key={entity.entity} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{entity.entity}</span>
-              <span style={{ fontSize: 11, color: C.textMuted }}>{entity.type}</span>
-              <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-                <Badge label={entity.risk} tone={severityTone(entity.risk)} />
-                <span style={{ fontFamily: MONO, fontSize: 12, color: C.textSecondary }}>{entity.alerts}</span>
-              </span>
-            </div>
-          ))}
         </Panel>
 
         <Panel title="ATT&CK detection coverage" icon={<IconTarget size={13} />} hint="by tactic">
@@ -305,6 +251,60 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6, lineHeight: 1.55 }}>
             This is why case tools insist on a technique per incident: mapped incidents are what turn into this chart,
             and this chart is what buys the next detection engineer.
+          </div>
+        </Panel>
+
+        
+
+        <Panel title="Detection sources" icon={<IconServer size={13} />} hint="alerts · auto-closed">
+          {DETECTION_SOURCES.map((source) => (
+            <MeterRow
+              key={source.source}
+              label={source.source}
+              value={source.alerts}
+              max={maxSource}
+              caption={`${source.alerts} · ${Math.round((source.autoClosed / source.alerts) * 100)}% auto`}
+              color={source.autoClosed / source.alerts > 0.9 ? C.textMuted : C.primary}
+            />
+          ))}
+        </Panel>
+
+        <Panel title="Top entities by alert count" icon={<IconUsers size={13} />} hint="last 24h">
+          {TOP_ENTITIES.map((entity) => (
+            <div key={entity.entity} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{entity.entity}</span>
+              <span style={{ fontSize: 11, color: C.textMuted }}>{entity.type}</span>
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Badge label={entity.risk} tone={severityTone(entity.risk)} />
+                <span style={{ fontFamily: MONO, fontSize: 12, color: C.textSecondary }}>{entity.alerts}</span>
+              </span>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel title="Your queue by severity" icon={<IconPieChart size={13} />} hint="as reported by the tool">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <Donut segments={donutSegments} centerLabel={open.length} centerSub="open" />
+            <div style={{ flex: '1 1 120px' }}>
+              {donutSegments.map((segment) => (
+                <div key={segment.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textSecondary, marginBottom: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: segment.color }} />
+                  {segment.label}<span style={{ marginLeft: 'auto', color: C.text, fontFamily: MONO }}>{segment.value}</span>
+                </div>
+              ))}
+              {!donutSegments.length && <div style={{ fontSize: 12.5, color: C.textMuted }}>Queue clear.</div>}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="SLA compliance — 7 days" icon={<IconTrendingUp size={13} />} hint={`${currentSla}% today`}>
+          <Sparkline points={SLA_TREND} threshold={SLA_TARGET} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, fontFamily: MONO, marginTop: 4 }}>
+            {SLA_TREND.map((point) => <span key={point.day}>{point.day}</span>)}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 8, lineHeight: 1.55 }}>
+            Dashed line is the {SLA_TARGET}% target. Tuesday dipped below it — that is the shape of a day when a noisy
+            rule went untuned.
           </div>
         </Panel>
 

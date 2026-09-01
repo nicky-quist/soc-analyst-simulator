@@ -5,7 +5,7 @@ import { C, MONO } from '../theme.js';
 // library's worth. Everything scales through viewBox so the cards stay
 // responsive, and every colour comes from a theme token so light mode works.
 
-import { SEVERITY_COLORS } from '../theme.js';
+import { BAND_COLORS, CHART_COLORS } from '../theme.js';
 
 export function StackedBars({ data, keys, height = 150, xKey = 'hour' }) {
   const width = 720;
@@ -26,7 +26,7 @@ export function StackedBars({ data, keys, height = 150, xKey = 'hour' }) {
               const value = row[key] || 0;
               const h = (value / max) * (plot - 4);
               y -= h;
-              return <rect key={key} x={x} y={y} width={barWidth} height={h} fill={SEVERITY_COLORS[key]} rx="1" />;
+              return <rect key={key} x={x} y={y} width={barWidth} height={h} fill={CHART_COLORS[key]} rx="1" />;
             })}
             {i % 3 === 0 && (
               <text x={x + barWidth / 2} y={height - 5} textAnchor="middle" fontSize="10" fill={C.textMuted} fontFamily={MONO}>
@@ -121,17 +121,18 @@ function arcPath(cx, cy, r, startAngle, endAngle) {
 
 // A speedometer-style gauge — the shape every SIEM vendor dashboard (XSIAM,
 // Sentinel, Splunk ES) reaches for when a KPI has a "good end" and a "bad end".
-// Bands default to a red/orange/yellow/green split, same four colours the rest
-// of the console already uses for severity, so a glance at the needle reads
-// the same way a glance at a severity badge does.
+// Bands default to the vivid red/orange/yellow/green --band-* ramp. It shares
+// its hue order with severity badges and the bar chart, so a glance at the
+// needle reads the same way, but it stays fully saturated: these are thin arcs
+// that have to carry meaning at a glance, not large fills.
 export function Gauge({ value, max = 100, unit = '', bands, size = 148, label }) {
   const W = 200, H = 150, cx = W / 2, cy = 100, r = 74, strokeWidth = 15;
   const clamped = Math.max(0, Math.min(max, value));
   const useBands = bands || [
-    { upTo: max * 0.5, color: SEVERITY_COLORS.critical },
-    { upTo: max * 0.75, color: SEVERITY_COLORS.high },
-    { upTo: max * 0.9, color: SEVERITY_COLORS.medium },
-    { upTo: max, color: SEVERITY_COLORS.low },
+    { upTo: max * 0.5, color: BAND_COLORS.critical },
+    { upTo: max * 0.75, color: BAND_COLORS.high },
+    { upTo: max * 0.9, color: BAND_COLORS.medium },
+    { upTo: max, color: BAND_COLORS.low },
   ];
 
   const segments = useBands.reduce((acc, b) => {
