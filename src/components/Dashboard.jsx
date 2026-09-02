@@ -18,18 +18,21 @@ const SLA_TARGET = 90;
 
 function Tile({ label, value, sub, tone, icon }) {
   return (
-    <div style={{
-      background: C.surface, border: `1px solid ${C.border}`,
-      borderLeft: `3px solid ${tone ? tone.border : C.borderStrong}`,
-      borderRadius: 8, padding: '12px 14px', boxShadow: C.shadow,
+    <div className="sim-tile" style={{
+      background: C.surface,
+      border: `1px solid ${tone ? tone.border : C.border}`,
+      borderTop: `2px solid ${tone ? tone.fg : C.borderStrong}`,
+      borderRadius: 8,
+      padding: '14px 16px',
+      boxShadow: C.shadow,
       display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start',
     }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>
           {label}
         </div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 4, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3, minHeight: 15 }}>{sub || ' '}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 6, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+        <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 5, lineHeight: 1.4, minHeight: 16 }}>{sub || ' '}</div>
       </div>
       {icon && (
         <div style={{ color: tone ? tone.fg : C.textMuted, opacity: 0.75, flexShrink: 0 }}>
@@ -42,10 +45,10 @@ function Tile({ label, value, sub, tone, icon }) {
 
 function Panel({ title, icon, hint, children, style }) {
   return (
-    <Card style={{ padding: 16, ...style }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+    <Card accent={C.primary} style={{ padding: 16, ...style }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
         <SectionLabel icon={icon} style={{ marginBottom: 0 }}>{title}</SectionLabel>
-        {hint && <span style={{ fontSize: 11, color: C.textMuted, lineHeight: 1 }}>{hint}</span>}
+        {hint && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: MONO, lineHeight: 1 }}>{hint}</span>}
       </div>
       {children}
     </Card>

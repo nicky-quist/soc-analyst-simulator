@@ -322,9 +322,10 @@ export default function SOCAnalystSim() {
         ${THEME_CSS}
         * { box-sizing: border-box; }
         body { background: var(--bg); margin: 0; }
-        ::-webkit-scrollbar { width: 9px; height: 9px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--surface-alt); }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
         select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px var(--primary-soft); }
         button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .app-shell { display: flex; align-items: stretch; min-height: 100vh; }
@@ -348,6 +349,12 @@ export default function SOCAnalystSim() {
         }
         .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; animation: live-pulse 2s ease-in-out infinite; }
         @keyframes live-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,211,153,0.5); } 50% { opacity: 0.55; box-shadow: 0 0 0 3px rgba(52,211,153,0); } }
+        .sim-btn:hover:not(:disabled) { filter: brightness(1.12); }
+        .sim-btn-primary:hover:not(:disabled) { box-shadow: var(--glow-primary); }
+        .sim-tile { transition: transform 0.15s, box-shadow 0.15s; }
+        .sim-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg) !important; }
+        table tbody tr:hover { background: var(--surface-hover) !important; }
+        .sim-alert-row { transition: background 0.1s; }
         .sim-body { display: grid; grid-template-columns: 272px minmax(0, 1fr) 300px; align-items: start; }
         .sim-queue { background: var(--surface); border-right: 1px solid var(--border); position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
         .sim-main { padding: 20px 24px 60px; min-width: 0; }
@@ -427,6 +434,9 @@ export default function SOCAnalystSim() {
         </aside>
 
         <div className="app-content">
+      {/* Accent bar: the one piece of chrome that says "this is a console",
+          now that the shield and the nav both live in the rail. */}
+      <div style={{ height: 3, background: `linear-gradient(90deg, ${C.primary} 0%, ${C.info} 60%, transparent 100%)` }} />
       <header style={{
         borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center',
         gap: 14, background: C.surface, flexWrap: 'wrap',
