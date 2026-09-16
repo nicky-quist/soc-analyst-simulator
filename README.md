@@ -6,6 +6,8 @@ Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 
 
 **[Live demo →](https://nicky-quist.github.io/soc-analyst-simulator/)**
 
+![Shift dashboard: queue, SLA gauges, alert volume, pipeline, ATT&CK coverage](docs/screenshot.jpeg)
+
 ## Why this exists
 
 Most SOC practice tools (this repo's own [soc-triage-tool](https://github.com/nicky-quist/soc-triage-tool), LetsDefend, TryHackMe SOC rooms) stop at "classify this alert correctly," and they hand you the evidence: click the pivot, read the result, pick from the dropdown. Real L1 work has three parts that multiple-choice can't reach — you have to *find* the evidence, decide *what to do about it*, and live with the consequences of both. The most common way a new analyst fails isn't picking the wrong classification. It's searching the wrong index, leaving the time picker on its default, treating "no records found" as "clean," or reaching for a containment action that breaks something.
