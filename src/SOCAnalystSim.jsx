@@ -415,6 +415,16 @@ export default function SOCAnalystSim() {
     if (window.location.hash !== hash) window.history.replaceState(null, '', hash);
   }, [shift.view]);
 
+  // And the other way: editing the hash, or following a #link on this page, switches tab.
+  useEffect(() => {
+    const onHashChange = () => {
+      const view = viewFromHash();
+      if (view) update((prev) => (prev.view === view ? prev : { ...prev, view }));
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []); // update only calls the stable setShift, so subscribing once is enough
+
   function toggleTheme() {
     update((prev) => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
   }
