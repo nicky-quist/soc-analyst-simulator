@@ -32,7 +32,7 @@ Most of the "paste your alert into a chatbot" tools ship the alert to a third-pa
 
 ## Stack
 
-React 19 + Vite, no backend, no API key, no dependencies beyond React itself. Deployed to GitHub Pages via GitHub Actions on every push to `main`.
+React 19 + Vite, no backend, no API key, no dependencies beyond React itself. Deployed to GitHub Pages via GitHub Actions on every push to `main`, but only after lint, the test suite and the build all pass.
 
 ## Running locally
 
@@ -44,12 +44,41 @@ npm run dev
 ```bash
 npm run build     # production build to dist/
 npm run preview   # preview the production build
+npm test          # 126 tests over the rule engine, no browser needed
 ```
 
 ## Project structure
 
 ```
 src/
-├── SOCTriageTool.jsx   # UI + offline rule-based analysis engine
+├── engine/
+│   ├── format.js       # format detection, IP extraction, Zeek conn.log parser
+│   ├── analyze.js      # the rule engine: format → severity, ATT&CK, IOCs, action
+│   └── validation.js   # rejects input too thin to triage, and says why
+├── SOCTriageTool.jsx   # UI only
 └── main.jsx            # entry point
+tests/
+├── fixtures.js         # realistic samples for every supported format
+├── format.test.js      # detection, extraction, Zeek column parsing
+├── analyze.test.js     # verdicts per format, including severity ordering
+├── validation.test.js  # the input-rejection rules
+└── contract.test.js    # invariants that must hold for every input
 ```
+
+The engine is plain JavaScript with no React or DOM dependency, so it runs under `node --test` directly.
+
+## Testing
+
+The pitch for this tool is that every verdict traces back to a specific pattern match. The test suite is what holds it to that. It has three layers:
+
+- **Verdicts.** Each format's rules are checked against realistic samples: a download cradle in a PowerShell script block is CRITICAL, a single failed SSH login is LOW and flagged as a likely false positive, a port scan ranks below Cobalt Strike C2.
+- **Ordering, not just labels.** Several tests assert *relative* severity rather than exact values. For example, root targeting must outrank an identical non-root burst, and severity must rise with failure count. That way a threshold can be retuned without the tests breaking, as long as the ranking stays sensible.
+- **Contract.** For every fixture, the result has every field, severity and false-positive level come from the allowed sets, confidence stays within 0–100, IOCs are deduplicated, and no summary leaks `undefined` or `NaN`. The same input always gives the same verdict. The engine doesn't throw on hostile input (empty, 50 KB, null bytes, regex metacharacters, truncated CEF). It never calls `fetch`, which is the offline guarantee enforced as a test.
+
+### A bug the tests found
+
+The first version of the Zeek `conn.log` rule scraped the raw text instead of reading columns: the largest run of six-plus digits became the byte count, the first `digits.digits` became the duration, and a C2 port counted as present if its digits appeared *anywhere* in the line. In a Zeek log, the first thing matching all three is the Unix timestamp.
+
+On the tool's own sample alert, a one-hour, 2.3 MB flow was reported as **"Long-duration connection (473688h) with high outbound data (1626MB)"**. That verdict happened to be correct, but only by accident. On other inputs the same bug gave wrong answers: an ordinary 0.4-second TLS flow was called a C2 beacon, a large short upload was called beaconing instead of exfiltration, and a real connection to port 31337 was never flagged because the misread timestamp tripped an earlier rule first.
+
+The fix is a real column parser (`parseZeek`) that reads the `#fields` header, or falls back to the standard conn.log order when there isn't one, and turns Zeek's `-` markers into `null` instead of `NaN`. Six regression tests cover it. All six fail against the original code and pass against the fix, so none of them passes regardless of the bug.
