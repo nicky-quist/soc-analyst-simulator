@@ -24,5 +24,5 @@ dist-ssr
 *.sw?
 *.env
 
-# Claude Code: share the dev-server config, keep local settings out
-.claude/settings.local.json
+# Local AI-assistant tooling config
+.claude/
