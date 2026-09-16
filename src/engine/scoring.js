@@ -1,6 +1,6 @@
 // Grades a closed case against the scenario's ground truth. Deterministic and
 // offline — no third-party API calls, matching this project family's existing
-// "no external dependency to run" design (see soc-triage-tool).
+// "no external dependency to run" design (the Triage engine works the same way).
 //
 // A case is graded on four things, because a real shift is judged on four
 // things: the calls you made (classification, escalation, severity, ATT&CK

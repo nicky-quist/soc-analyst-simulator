@@ -37,7 +37,7 @@ This is infrastructure on your own machine — nothing here can be automated fro
 Don't hand-write exploits — **Atomic Red Team** (open source, MITRE ATT&CK-mapped, official GitHub repo) is the standard tool for exactly this use case: small, safe, scripted actions that reproduce the *telemetry signature* of real attack techniques without needing actual malware.
 
 1. Install the `invoke-atomicredteam` PowerShell module on your Windows victim VM (official install instructions are in the Atomic Red Team GitHub repo — read them directly from source, don't run a script from a random blog).
-2. Pick a technique that matches a scenario you want to build — e.g., `T1110.001` (brute force) or `T1059.001` (PowerShell) map directly onto techniques already in this simulator and in `soc-triage-tool`.
+2. Pick a technique that matches a scenario you want to build — e.g., `T1110.001` (brute force) or `T1059.001` (PowerShell) map directly onto techniques already in this console's scenarios and its Triage engine.
 3. Run the atomic test, then go verify the resulting telemetry actually landed in Splunk the way you expected. This step — confirming what a real attack technique *actually* looks like in your own logs — is the single most valuable part of this whole lab, more than the app itself.
 
 ## 5. Closing the loop back to this project
