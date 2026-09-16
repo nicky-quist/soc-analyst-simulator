@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeOffline } from '../src/engine/analyze.js';
+import { analyzeOffline } from '../../src/engine/triage/analyze.js';
 import * as F from './fixtures.js';
 
 const SEVERITIES = ['INFORMATIONAL', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];

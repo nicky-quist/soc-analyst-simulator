@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
-import { validateInput, VALIDATION_RULES } from '../src/engine/validation.js';
+import { validateInput, VALIDATION_RULES } from '../../src/engine/triage/validation.js';
 import * as F from './fixtures.js';
 
 const ids = input => validateInput(input).map(i => i.id);

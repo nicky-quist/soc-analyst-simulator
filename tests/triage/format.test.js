@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectFormat, extractIPs, uniq, parseZeek, ZEEK_CONN_FIELDS } from '../src/engine/format.js';
+import { detectFormat, extractIPs, uniq, parseZeek, ZEEK_CONN_FIELDS } from '../../src/engine/triage/format.js';
 import * as F from './fixtures.js';
 
 describe('detectFormat', () => {
