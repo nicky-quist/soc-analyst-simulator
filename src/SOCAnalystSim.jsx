@@ -7,12 +7,13 @@ import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
 import { buildRecord, emptyProgress, planFocus, recordCase } from './engine/progress.js';
 import ProgressView from './components/ProgressView.jsx';
+import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary } from './engine/personas.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser,
+  IconDashboard, IconFilter, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -27,6 +28,18 @@ import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
 
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
+
+// The console's sections, in rail order. Each also answers to a URL hash
+// (#triage and so on), so a link can open straight onto a tab.
+const VIEWS = ['dashboard', 'queue', 'triage', 'progress'];
+
+// The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
+const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
+
+function viewFromHash() {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash.slice(1);
+  return VIEWS.includes(hash) ? hash : null;
+}
 
 // Separate from the shift, because it has to outlive every shift reset.
 const PROGRESS_KEY = 'soc-analyst-sim:progress:v1';
@@ -118,7 +131,7 @@ function loadShift() {
     );
     return {
       theme,
-      view: ['queue', 'progress'].includes(parsed.view) ? parsed.view : 'dashboard',
+      view: VIEWS.includes(parsed.view) ? parsed.view : 'dashboard',
       cases,
       shiftStartedAt: parsed.shiftStartedAt,
       deal,
@@ -157,7 +170,13 @@ function openShift(loaded, progress) {
 
 export default function SOCAnalystSim() {
   const [progress, setProgress] = useState(loadProgress);
-  const [shift, setShift] = useState(() => openShift(loadShift(), loadProgress()));
+  const [shift, setShift] = useState(() => {
+    const opened = openShift(loadShift(), loadProgress());
+    const linked = viewFromHash();
+    return linked ? { ...opened, view: linked } : opened;
+  });
+  // Kept here rather than in the view so leaving the tab doesn't lose the work.
+  const [triage, setTriage] = useState(EMPTY_TRIAGE);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tab, setTab] = useState('overview');
   const [walkthrough, setWalkthrough] = useState(false);
@@ -390,6 +409,12 @@ export default function SOCAnalystSim() {
     update((prev) => ({ ...prev, view }));
   }
 
+  // Mirror the current tab into the URL so it can be bookmarked or linked.
+  useEffect(() => {
+    const hash = `#${shift.view}`;
+    if (window.location.hash !== hash) window.history.replaceState(null, '', hash);
+  }, [shift.view]);
+
   function toggleTheme() {
     update((prev) => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
   }
@@ -524,6 +549,16 @@ export default function SOCAnalystSim() {
             <button
               type="button"
               className="rail-nav-btn"
+              data-active={shift.view === 'triage'}
+              onClick={() => setView('triage')}
+              aria-current={shift.view === 'triage' ? 'page' : undefined}
+              title="Alert triage"
+            >
+              <IconFilter size={18} />
+            </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
               data-active={shift.view === 'progress'}
               onClick={() => setView('progress')}
               aria-current={shift.view === 'progress' ? 'page' : undefined}
@@ -600,6 +635,12 @@ export default function SOCAnalystSim() {
             focus={shift.focus}
             onOpenAlert={selectScenario}
           />
+        </main>
+      )}
+
+      {shift.view === 'triage' && (
+        <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
+          <TriageView state={triage} onChange={setTriage} />
         </main>
       )}
 
