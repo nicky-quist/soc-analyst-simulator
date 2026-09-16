@@ -120,7 +120,7 @@ The focus is decided when a shift is dealt and stored with it. The queue is re-d
 - **Some report points are graded on what you didn't write.** The false-positive scenario checks you never recommended blocking your own scanner; the insider scenario checks you didn't state theft as established fact. Negation and hedging pass — "do not block this host" and "potential data theft pending review" are correct analyst writing; "the employee stole records" is the thing being caught.
 - **Personas are rule-based**, driven by harm caused, escalation direction, investigation coverage and severity distance rather than per-scenario scripts, so they generalize when scenarios are added. Stakeholder reactions to harmful actions live with the action itself, which is what lets a damaging click answer back immediately instead of at grading time.
 - **ATT&CK is kept because analysts really use it** — SIEM detections ship with technique IDs and case tools ask for one on every incident. It's a picker over plausible candidates rather than free text, since choosing between neighbouring techniques is the actual difficulty.
-- **Roadmap**: mid-shift alert arrivals and fast-triage noise alerts (so volume is practised, not just depth); a shift history with a per-shift report card; an optional LLM-backed persona mode (Claude API, same offline-fallback pattern as this family's [AI SOC Copilot](https://github.com/nicky-quist/llm-cybersecurity-benchmark/tree/main/copilot)) so the CISO can interrogate your specific report; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
+- **Roadmap**: mid-shift alert arrivals and fast-triage noise alerts (so volume is practised, not just depth); a per-shift report card alongside the cross-shift progress view; an optional LLM-backed persona mode (Claude API, same offline-fallback pattern as this family's [AI SOC Copilot](https://github.com/nicky-quist/llm-cybersecurity-benchmark/tree/main/copilot)) so the CISO can interrogate your specific report; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
 
 ## Tech
 
@@ -138,10 +138,11 @@ src/
     techniques  46-technique ATT&CK catalog for the picker
     estate      shift-wide dashboard data — seeded per shift: volume, funnel, sources, coverage, feed
   engine/       query parser + executor, intel lookup, base64 decoder, scoring, personas, case state,
-                the shift deal, and the seeded PRNG everything shift-specific is drawn from
-  components/   dashboard, one module per console tab, queue, case timeline
+                the shift deal, cross-shift progress and the adaptive focus, and the seeded PRNG
+                everything shift-specific is drawn from
+  components/   dashboard, progress view, one module per console tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          68 tests across six suites
+tests/          100 tests across seven suites
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
@@ -150,4 +151,4 @@ The engines are unit-tested with Node's built-in test runner — no test framewo
 npm test
 ```
 
-The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually.
+The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually. The progress suite checks that the record only counts first, unassisted attempts, that no weakness is named from too few cases, that a focused shift still keeps every quota, that each focus rule lifts its target's chance of being dealt by at least 0.10, and that the unfocused deal still matches the golden file of hands from before the feature existed.
