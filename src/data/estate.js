@@ -6,12 +6,56 @@
 // keeping up. The funnel numbers below are the shape most banks actually see —
 // millions of events, a four-figure alert count, and a two-figure number of
 // things a person ever reads.
+//
+// Anything that describes *this* shift — the header, the 24h volume chart, the
+// week of SLA compliance behind it — is built from the shift's seed rather than
+// frozen into the file. Frozen numbers read as a screenshot: the same Tuesday
+// slips below target every time you open the console, which teaches you to stop
+// looking at the chart. Seeded numbers hold still for the length of a shift and
+// are a different week the next time you sit down.
 
-export const SHIFT = {
-  label: 'Friday 21 August 2026',
-  window: 'Day shift · 07:00–15:00',
-  onCall: 'IR on-call: M. Bell · Duty CISO: S. Okafor',
-};
+import { between, mulberry32, pick, shiftSeed } from '../engine/random.js';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Two shifts can start in the same 8-hour block — reset the board and you get
+// another one — so the deal counter is folded in as well.
+function seedFor(startedAt, variant = 0, salt = 0) {
+  return (shiftSeed(startedAt) ^ Math.imul(variant + 1, 0x9e3779b1) ^ salt) >>> 0;
+}
+
+const SHIFT_BLOCKS = [
+  { name: 'Night shift', window: '23:00–07:00' },
+  { name: 'Day shift', window: '07:00–15:00' },
+  { name: 'Swing shift', window: '15:00–23:00' },
+];
+
+const IR_ON_CALL = ['M. Bell', 'R. Okonkwo', 'T. Vasquez', 'J. Hale', 'A. Duarte'];
+const DUTY_CISO = ['S. Okafor', 'D. Lindqvist', 'P. Raghavan'];
+
+function shiftBlock(hour) {
+  if (hour < 7) return SHIFT_BLOCKS[0];
+  if (hour < 15) return SHIFT_BLOCKS[1];
+  if (hour < 23) return SHIFT_BLOCKS[2];
+  return SHIFT_BLOCKS[0];
+}
+
+// The header a console shows you when you badge in: today's date, the block you
+// are sitting in, and who to wake up if this turns into an incident.
+export function buildShift(startedAt = Date.now(), variant = 0) {
+  const rand = mulberry32(seedFor(startedAt, variant));
+  const date = new Date(startedAt);
+  const block = shiftBlock(date.getHours());
+  return {
+    label: `${WEEKDAY_LONG[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`,
+    window: `${block.name} · ${block.window}`,
+    onCall: `IR on-call: ${pick(rand, IR_ON_CALL)} · Duty CISO: ${pick(rand, DUTY_CISO)}`,
+  };
+}
 
 export const AUTOMATION_FUNNEL = [
   { stage: 'Events ingested', value: 41208442, note: 'across 38 log sources' },
@@ -20,8 +64,11 @@ export const AUTOMATION_FUNNEL = [
   { stage: 'Routed to an analyst', value: 105, note: 'across three shifts' },
 ];
 
-// 24 hours of alert volume by severity, ending at the current shift.
-export const HOURLY_VOLUME = [
+// The shape of a banking day in alert volume: quiet overnight, a ramp when the
+// branch network logs on, a mid-morning peak, a lunch dip, a second afternoon
+// bump. Indexed by hour of day — the chart rotates this so it ends on the hour
+// you are actually sitting in.
+const HOURLY_BASELINE = [
   { hour: '00', critical: 0, high: 2, medium: 6, low: 19 },
   { hour: '01', critical: 0, high: 1, medium: 4, low: 14 },
   { hour: '02', critical: 1, high: 3, medium: 5, low: 12 },
@@ -48,15 +95,118 @@ export const HOURLY_VOLUME = [
   { hour: '23', critical: 1, high: 2, medium: 4, low: 13 },
 ];
 
-export const SLA_TREND = [
-  { day: 'Sat', pct: 96 },
-  { day: 'Sun', pct: 98 },
-  { day: 'Mon', pct: 91 },
-  { day: 'Tue', pct: 88 },
-  { day: 'Wed', pct: 93 },
-  { day: 'Thu', pct: 95 },
-  { day: 'Fri', pct: 92 },
+export const SLA_TARGET = 90;
+
+// Why a week went wrong. Each reads as both "the shape of a day when X" and as
+// a clause after an em dash, because the caption uses it both ways.
+const SLA_CAUSES = [
+  'a noisy rule went untuned',
+  'a phishing wave landed during handover',
+  'two analysts were out and the queue backed up',
+  'an EDR sensor upgrade doubled the alert volume',
+  'a change window pushed a batch of vulnerability findings into the queue',
+  'an upstream log source lagged and every clock started late',
 ];
+
+// Last 24 hours of alert volume, rotated so the final bar is the current hour
+// and jittered off the baseline. One hour of the shift gets a burst, because a
+// flat day is the one shape a SOC never has.
+export function buildHourlyVolume(startedAt = Date.now(), variant = 0) {
+  const rand = mulberry32(seedFor(startedAt, variant, 0x1f5));
+  const endHour = new Date(startedAt).getHours();
+  const jitter = (value) => {
+    if (!value) return rand() < 0.12 ? 1 : 0;
+    return Math.max(0, Math.round(value * (0.75 + rand() * 0.5)));
+  };
+
+  const hours = Array.from({ length: 24 }, (_, i) => {
+    const hour = (endHour + 1 + i) % 24;
+    const base = HOURLY_BASELINE[hour];
+    return {
+      hour: String(hour).padStart(2, '0'),
+      critical: jitter(base.critical),
+      high: jitter(base.high),
+      medium: jitter(base.medium),
+      low: jitter(base.low),
+    };
+  });
+
+  // The burst lands in the back half of the window — recent enough that it is
+  // plausibly related to what is sitting in your queue right now.
+  const burst = hours[between(rand, 14, 22)];
+  burst.critical += between(rand, 1, 2);
+  burst.high += between(rand, 3, 6);
+  burst.medium += between(rand, 4, 9);
+  burst.low += between(rand, 8, 20);
+
+  return hours;
+}
+
+// The six days behind you, plus today. Weekends hold their target easily (a
+// third of the volume, same headcount); weekdays are tighter. Most weeks lose a
+// single day, a bad week loses two running, and about one in five comes in
+// clean — so the chart is worth reading rather than recognising.
+//
+// Today is deliberately left empty. It is the one point on this chart the
+// analyst is producing themselves, and the console has no business inventing a
+// number for a shift that has not closed anything yet.
+export function buildSlaTrend(startedAt = Date.now(), variant = 0, target = SLA_TARGET) {
+  const rand = mulberry32(seedFor(startedAt, variant, 0x51a));
+
+  const history = Array.from({ length: 6 }, (_, i) => {
+    const date = new Date(startedAt - (6 - i) * DAY_MS);
+    const dow = date.getDay();
+    const weekend = dow === 0 || dow === 6;
+    return { day: WEEKDAY_SHORT[dow], long: WEEKDAY_LONG[dow], weekend, pct: between(rand, weekend ? 95 : 91, weekend ? 99 : 97) };
+  });
+
+  const roll = rand();
+  const shape = roll < 0.2 ? 'clean' : roll < 0.85 ? 'dip' : 'slump';
+  const cause = pick(rand, SLA_CAUSES);
+  const weekdays = history.map((p, i) => i).filter((i) => !history[i].weekend);
+  const bad = [];
+
+  if (shape === 'dip' && weekdays.length) {
+    bad.push(pick(rand, weekdays));
+  } else if (shape === 'slump') {
+    const runs = weekdays.filter((i) => weekdays.includes(i + 1));
+    if (runs.length) {
+      const start = pick(rand, runs);
+      bad.push(start, start + 1);
+    } else if (weekdays.length) {
+      bad.push(pick(rand, weekdays));
+    }
+  }
+
+  for (const i of bad) history[i].pct = target - between(rand, 1, 9);
+
+  const names = bad.map((i) => history[i].long);
+  const caption = bad.length === 0
+    ? `Dashed line is the ${target}% target. Every day of the week behind you closed above it — quiet weeks are what pay for the tuning that keeps them quiet.`
+    : bad.length === 1
+      ? `Dashed line is the ${target}% target. ${names[0]} dipped below it — that is the shape of a day when ${cause}.`
+      : `Dashed line is the ${target}% target. ${names[0]} and ${names[1]} both fell short — ${cause}, and a backlog takes more than one shift to clear.`;
+
+  const todayDate = new Date(startedAt);
+  const today = {
+    day: WEEKDAY_SHORT[todayDate.getDay()],
+    long: WEEKDAY_LONG[todayDate.getDay()],
+    weekend: todayDate.getDay() === 0 || todayDate.getDay() === 6,
+    pct: null,
+    today: true,
+  };
+
+  return { points: [...history, today], target, breachedDays: names, caption };
+}
+
+// Today's point once the analyst has closed or breached something. Kept as a
+// separate call so the chart module never has to know about case files.
+export function withToday(trend, pct) {
+  if (pct == null) return trend;
+  const points = trend.points.map((p) => (p.today ? { ...p, pct } : p));
+  return { ...trend, points };
+}
+
 
 export const DETECTION_SOURCES = [
   { source: 'Suricata IDS', alerts: 412, autoClosed: 381 },

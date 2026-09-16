@@ -4,7 +4,7 @@
 
 export default {
   id: 'malicious-powershell-precursor',
-  order: 4,
+  difficulty: 2,
   queueLabel: 'EDR Alert — Suspicious PowerShell Execution, host FIN-WKSTN-22',
   source: 'CrowdStrike EDR',
   alert: {

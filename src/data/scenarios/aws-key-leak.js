@@ -6,7 +6,7 @@
 
 export default {
   id: 'aws-key-leak',
-  order: 6,
+  difficulty: 3,
   queueLabel: 'Cloud Alert — Anomalous API Activity for IAM Key AKIA…N7QF',
   source: 'AWS GuardDuty + CloudTrail',
   alert: {

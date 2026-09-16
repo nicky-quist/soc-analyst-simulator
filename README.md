@@ -2,7 +2,7 @@
 
 A working replica of a Tier-1 analyst console, built to practise the whole shift rather than a quiz about it: a shift dashboard shows you what the estate is doing, alerts arrive in a queue with SLA clocks running, you investigate by typing your own searches against simulated data sources, enrich indicators you pull out of the evidence yourself, take real response actions that can help or make things worse, and write the incident report — at a fictional bank, Coastal Trust Bank, with a CISO, a CEO, an IR lead and an employment lawyer who react to what you actually did.
 
-Seven alerts, 18 searchable data sources, 36 searches over 150 events, 53 response actions of which 20 are mistakes.
+Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 searches over 240 events, 94 response actions of which 38 are mistakes.
 
 **[Live demo →](https://nicky-quist.github.io/soc-analyst-simulator/)**
 
@@ -14,11 +14,15 @@ So this sim is built so those things can happen to you.
 
 ## The console
 
-**Shift dashboard** — the landing view, because a real console opens on posture rather than on a ticket. Six KPI tiles (open, closed, SLA breaches, average case score, MTTR, alerts today), 24-hour alert volume stacked by severity, your queue's severity mix, an actionable open-alerts table you can click straight into, the day's detection sources with their auto-close rates, a 7-day SLA compliance trend against target, top entities by alert count, ATT&CK detection coverage by tactic, and a live tail of estate activity. All of it is inline SVG — no charting dependency, no network calls.
+**Shift dashboard** — the landing view, because a real console opens on posture rather than on a ticket. Six KPI tiles (open, closed, SLA breaches, average case score, MTTR, alerts today), 24-hour alert volume stacked by severity, your queue's severity mix, an actionable open-alerts table you can click straight into, the day's detection sources with their auto-close rates, a 7-day SLA compliance trend against target whose last point is yours, top entities by alert count, ATT&CK detection coverage by tactic, and a live tail of estate activity. All of it is inline SVG — no charting dependency, no network calls.
+
+**Your numbers, not the estate's.** SLA compliance on the dashboard is computed from the cases *you* closed and the clocks *you* let run out — an alert counts once you close it or once it breaches, so the gauge starts at 100%, moves the moment you finish a case, and drops when one goes over. Today's point on the 7-day trend is left visibly empty until then, rather than filled with a number the console invented. The six days behind it are generated per shift: most weeks lose one day below target, a bad week loses two running, one in five comes in clean, and the caption under the chart describes the week that was actually drawn.
 
 The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 alerts → 1,179 closed by automation → 105 routed to analysts → 7 in your queue. That funnel is the part of the job a quiz never shows you, and it is why "just look at every alert" is not a strategy.
 
 **Alert queue** — seven alerts with status (New / In progress / Closed), the tool's reported severity, and a live SLA countdown that goes red when breached. Shift KPIs sit in the header too, so the numbers follow you out of the dashboard.
+
+**A dealt hand, not a fixed list.** The library holds thirteen scenarios and a shift deals seven of them, seeded from when the shift started, so a second sitting is a different queue in a different order. The deal is not a straight random draw: every hand is guaranteed at least one alert that should be closed rather than escalated, at least one that has to reach IR tonight, at least two that belong with Tier 2, and a spread of difficulty — because a queue of seven true positives quietly teaches an analyst to escalate everything. Reset deals the next hand.
 
 **Overview** — detection metadata (rule, rule ID, data source, entities) and the triggering event, exactly as much as a SIEM would give you. The reported severity is labelled "what the tool said — yours to confirm or overturn."
 
@@ -87,7 +91,7 @@ A case is scored on four things, because a shift is judged on four things:
 | Written report rubric | 25 |
 | Response actions taken | 15 |
 
-**"✓ Resolved correctly"** requires the right classification and escalation — and the correct escalation is not always upward: across the seven scenarios the right answer is IR five times, Tier 2 once, and close-with-no-escalation once, so over-escalating is a scored error too. It also requires a severity that isn't wildly off, a report complete enough to hand over, and no harmful action. **Investigation coverage**, **time to decision**, and **search efficiency** are reported next to the score but deliberately excluded from it — the score grades the case, and folding process into it hides which one you actually got wrong. The CISO covers the process instead: getting the right answer without running the checks earns "right answer, wrong process."
+**"✓ Resolved correctly"** requires the right classification and escalation — and the correct escalation is not always upward: across the thirteen scenarios the right answer is IR seven times, Tier 2 four times, and close-without-escalating twice, so over-escalating is a scored error too. It also requires a severity that isn't wildly off, a report complete enough to hand over, and no harmful action. **Investigation coverage**, **time to decision**, and **search efficiency** are reported next to the score but deliberately excluded from it — the score grades the case, and folding process into it hides which one you actually got wrong. The CISO covers the process instead: getting the right answer without running the checks earns "right answer, wrong process."
 
 ## Design notes
 
@@ -96,7 +100,7 @@ A case is scored on four things, because a shift is judged on four things:
 - **Some report points are graded on what you didn't write.** The false-positive scenario checks you never recommended blocking your own scanner; the insider scenario checks you didn't state theft as established fact. Negation and hedging pass — "do not block this host" and "potential data theft pending review" are correct analyst writing; "the employee stole records" is the thing being caught.
 - **Personas are rule-based**, driven by harm caused, escalation direction, investigation coverage and severity distance rather than per-scenario scripts, so they generalize when scenarios are added. Stakeholder reactions to harmful actions live with the action itself, which is what lets a damaging click answer back immediately instead of at grading time.
 - **ATT&CK is kept because analysts really use it** — SIEM detections ship with technique IDs and case tools ask for one on every incident. It's a picker over plausible candidates rather than free text, since choosing between neighbouring techniques is the actual difficulty.
-- **Roadmap**: an optional LLM-backed persona mode (Claude API, same offline-fallback pattern as this family's [AI SOC Copilot](https://github.com/nicky-quist/llm-cybersecurity-benchmark/tree/main/copilot)) so the CISO can interrogate your specific report; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
+- **Roadmap**: mid-shift alert arrivals and fast-triage noise alerts (so volume is practised, not just depth); a shift history with a per-shift report card; an optional LLM-backed persona mode (Claude API, same offline-fallback pattern as this family's [AI SOC Copilot](https://github.com/nicky-quist/llm-cybersecurity-benchmark/tree/main/copilot)) so the CISO can interrogate your specific report; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
 
 ## Tech
 
@@ -111,12 +115,13 @@ npm run dev
 src/
   data/
     scenarios/  one file per alert — datasets, searches, intel, actions, ground truth
-    techniques  39-technique ATT&CK catalog for the picker
-    estate      shift-wide dashboard data: volume, funnel, sources, coverage, feed
-  engine/       query parser + executor, intel lookup, base64 decoder, scoring, personas, case state
+    techniques  46-technique ATT&CK catalog for the picker
+    estate      shift-wide dashboard data — seeded per shift: volume, funnel, sources, coverage, feed
+  engine/       query parser + executor, intel lookup, base64 decoder, scoring, personas, case state,
+                the shift deal, and the seeded PRNG everything shift-specific is drawn from
   components/   dashboard, one module per console tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          52 tests across five suites
+tests/          68 tests across six suites
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
@@ -125,4 +130,4 @@ The engines are unit-tested with Node's built-in test runner — no test framewo
 npm test
 ```
 
-The tests that matter most: a textbook-perfect case scores exactly 100 on all five scenarios (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic.
+The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually.

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SCENARIOS, COMPANY } from './data/scenarios/index.js';
+import { COMPANY } from './data/scenarios/index.js';
+import { buildShift } from './data/estate.js';
+import { dealShift } from './engine/deal.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
@@ -50,7 +52,10 @@ const EMPTY_CASE = {
   noiseSearches: 0,
 };
 
-const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null };
+// `deal` is the hand counter, not the hand: the seven alerts are re-derived
+// from (shiftStartedAt, deal) on every load, so a reload restores the queue you
+// were working and "Reset shift" — same clock, next counter — deals a new one.
+const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0 };
 
 // A shift board that just keeps counting is not what a SOC dashboard is for —
 // after this long the queue, SLA clocks, and estate feed should look like a
@@ -66,7 +71,10 @@ function loadShift() {
     const stale = !parsed.shiftStartedAt || Date.now() - parsed.shiftStartedAt > SHIFT_RESET_MS;
     if (stale) return { ...EMPTY_SHIFT, theme };
 
-    const valid = new Set(SCENARIOS.map((s) => s.id));
+    // Cases for alerts that are not in this hand are dropped rather than kept
+    // invisibly: the board has to agree with the queue it is counting.
+    const deal = Number.isInteger(parsed.deal) ? parsed.deal : 0;
+    const valid = new Set(dealShift(parsed.shiftStartedAt, deal).map((s) => s.id));
     const cases = Object.fromEntries(
       Object.entries(parsed.cases || {})
         .filter(([id]) => valid.has(id))
@@ -77,6 +85,7 @@ function loadShift() {
       view: parsed.view === 'queue' ? 'queue' : 'dashboard',
       cases,
       shiftStartedAt: parsed.shiftStartedAt,
+      deal,
     };
   } catch {
     return EMPTY_SHIFT;
@@ -100,14 +109,32 @@ function startClock(shift, scenarioId) {
   return { ...withShiftStamp, cases: { ...withShiftStamp.cases, [scenarioId]: { ...existing, startedAt: Date.now() } } };
 }
 
+// A shift has to have a start before it can have a queue, so the stamp comes
+// first and the hand is dealt from it.
+function openShift(loaded) {
+  const stamped = loaded.shiftStartedAt ? loaded : { ...loaded, shiftStartedAt: Date.now() };
+  return startClock(stamped, dealShift(stamped.shiftStartedAt, stamped.deal)[0].id);
+}
+
 export default function SOCAnalystSim() {
-  const [shift, setShift] = useState(() => startClock(loadShift(), SCENARIOS[0].id));
+  const [shift, setShift] = useState(() => openShift(loadShift()));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tab, setTab] = useState('overview');
   const [walkthrough, setWalkthrough] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
-  const scenario = SCENARIOS[currentIndex];
+  // The console header and the dashboard have to agree about which shift this
+  // is, so both read the same builder off the same seed. startClock() stamps
+  // shiftStartedAt on the first render, so the `now` fallback is only ever the
+  // value for that one frame.
+  const seedAt = shift.shiftStartedAt || now;
+  const shiftHeader = useMemo(() => buildShift(seedAt, shift.deal), [seedAt, shift.deal]);
+
+  // Your seven for this shift, dealt from the library and stable for as long as
+  // the shift is.
+  const queue = useMemo(() => dealShift(seedAt, shift.deal), [seedAt, shift.deal]);
+
+  const scenario = queue[Math.min(currentIndex, queue.length - 1)];
   const caseFile = shift.cases[scenario.id] || EMPTY_CASE;
   const result = caseFile.result;
   const closed = !!result;
@@ -123,7 +150,7 @@ export default function SOCAnalystSim() {
       setNow(nowTs);
       setShift((prev) => {
         if (!prev.shiftStartedAt || nowTs - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
-        const fresh = { ...startClock(EMPTY_SHIFT, SCENARIOS[0].id), theme: prev.theme };
+        const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: prev.deal + 1 }), theme: prev.theme };
         saveShift(fresh);
         return fresh;
       });
@@ -263,9 +290,9 @@ export default function SOCAnalystSim() {
   function selectScenario(index) {
     setCurrentIndex(index);
     update((prev) => ({ ...prev, view: 'queue' }));
-    setTab(shift.cases[SCENARIOS[index].id]?.result ? 'debrief' : 'overview');
+    setTab(shift.cases[queue[index].id]?.result ? 'debrief' : 'overview');
     setWalkthrough(false);
-    update((prev) => startClock(prev, SCENARIOS[index].id));
+    update((prev) => startClock(prev, queue[index].id));
   }
 
   function toggleWalkthrough() {
@@ -275,14 +302,16 @@ export default function SOCAnalystSim() {
     if (opening && !closed) updateCase((current) => ({ ...current, assisted: true }));
   }
 
+  // Reset deals the next hand rather than the same one again — the counter is
+  // what makes a second shift a second shift.
   const handleReset = useCallback(() => {
-    const fresh = startClock(EMPTY_SHIFT, SCENARIOS[0].id);
-    saveShift({ ...fresh, theme: shift.theme });
-    setShift({ ...fresh, theme: shift.theme });
+    const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }), theme: shift.theme };
+    saveShift(fresh);
+    setShift(fresh);
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme]);
+  }, [shift.theme, shift.deal]);
 
   function setView(view) {
     update((prev) => ({ ...prev, view }));
@@ -293,15 +322,15 @@ export default function SOCAnalystSim() {
   }
 
   const closedCases = useMemo(
-    () => SCENARIOS.map((s) => shift.cases[s.id]?.result).filter(Boolean),
-    [shift.cases]
+    () => queue.map((s) => shift.cases[s.id]?.result).filter(Boolean),
+    [queue, shift.cases]
   );
   const avgScore = closedCases.length
     ? Math.round(closedCases.reduce((sum, r) => sum + r.score.overallScore, 0) / closedCases.length)
     : null;
-  const slaBreaches = SCENARIOS.filter((s) => slaState(s, shift.cases[s.id], now).breached).length;
-  const shiftSummary = closedCases.length === SCENARIOS.length
-    ? generateShiftSummary(SCENARIOS.map((s) => shift.cases[s.id].result))
+  const slaBreaches = queue.filter((s) => slaState(s, shift.cases[s.id], now).breached).length;
+  const shiftSummary = closedCases.length === queue.length
+    ? generateShiftSummary(queue.map((s) => shift.cases[s.id].result))
     : null;
 
   const sla = slaState(scenario, caseFile, now);
@@ -415,8 +444,8 @@ export default function SOCAnalystSim() {
               title="Alert queue"
             >
               <IconInbox size={18} />
-              {SCENARIOS.length - closedCases.length > 0 && (
-                <span className="rail-count">{SCENARIOS.length - closedCases.length}</span>
+              {queue.length - closedCases.length > 0 && (
+                <span className="rail-count">{queue.length - closedCases.length}</span>
               )}
             </button>
           </nav>
@@ -448,12 +477,12 @@ export default function SOCAnalystSim() {
             <span style={{ fontSize: 10, fontWeight: 700, color: C.success, letterSpacing: 0.5 }}>LIVE</span>
           </div>
           <div style={{ fontSize: 11.5, color: C.textSecondary, marginTop: 1 }}>
-            {COMPANY.analyst.title} · {COMPANY.analyst.shift}
+            {COMPANY.analyst.title} · {shiftHeader.window}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Badge label={`${SCENARIOS.length - closedCases.length} open`} tone={TONE.primary} />
+          <Badge label={`${queue.length - closedCases.length} open`} tone={TONE.primary} />
           <Badge label={`${closedCases.length} closed`} tone={TONE.neutral} />
           {avgScore !== null && (
             <Badge label={`Avg ${avgScore}`} tone={avgScore >= 70 ? TONE.positive : TONE.coaching} />
@@ -480,9 +509,11 @@ export default function SOCAnalystSim() {
       {shift.view === 'dashboard' && (
         <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
           <Dashboard
-            scenarios={SCENARIOS}
+            scenarios={queue}
             cases={shift.cases}
             now={now}
+            shiftStartedAt={shift.shiftStartedAt}
+            deal={shift.deal}
             onOpenAlert={selectScenario}
           />
         </main>
@@ -491,7 +522,7 @@ export default function SOCAnalystSim() {
       {shift.view === 'queue' && (
       <div className="sim-body">
         <AlertQueue
-          scenarios={SCENARIOS}
+          scenarios={queue}
           currentId={scenario.id}
           cases={shift.cases}
           now={now}

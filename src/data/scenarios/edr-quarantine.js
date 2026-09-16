@@ -6,7 +6,7 @@
 
 export default {
   id: 'edr-quarantine-dual-use',
-  order: 7,
+  difficulty: 3,
   queueLabel: 'EDR Alert — Credential Dumping Tool Quarantined, host IT-LT-07',
   source: 'CrowdStrike EDR',
   alert: {

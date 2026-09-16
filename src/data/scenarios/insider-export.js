@@ -4,7 +4,7 @@
 
 export default {
   id: 'insider-after-hours-ambiguous',
-  order: 5,
+  difficulty: 3,
   queueLabel: 'DLP Alert — Large Data Export by Employee, After Hours',
   source: 'DLP (Data Loss Prevention) Platform',
   alert: {

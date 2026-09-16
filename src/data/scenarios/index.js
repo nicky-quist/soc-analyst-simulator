@@ -16,6 +16,8 @@
 //               Some of them cause damage; that is the point.
 //   truth     — ground truth for grading, including which searches and lookups
 //               a competent investigation has to include.
+//   difficulty — 1 clear-cut, 2 needs a pivot, 3 genuinely ambiguous. The deal
+//               uses it to make sure a shift is not all one register.
 
 import sshBruteSuccess from './ssh-brute-success.js';
 import vulnScanFalsePositive from './vuln-scan-false-positive.js';
@@ -24,15 +26,23 @@ import powershellPrecursor from './powershell-precursor.js';
 import insiderExport from './insider-export.js';
 import awsKeyLeak from './aws-key-leak.js';
 import edrQuarantine from './edr-quarantine.js';
+import mfaPushFatigue from './mfa-push-fatigue.js';
+import impossibleTravelVpn from './impossible-travel-vpn.js';
+import webShellUpload from './web-shell-upload.js';
+import cryptoMiningBuildAgent from './crypto-mining-build-agent.js';
+import oauthConsentGrant from './oauth-consent-grant.js';
+import dnsTunnelSuspected from './dns-tunnel-suspected.js';
 
 export const COMPANY = {
   name: 'Coastal Trust Bank',
   soc: 'Coastal SOC',
-  analyst: { name: 'You', title: 'Tier 1 Analyst', shift: 'Day shift · 07:00–15:00' },
+  analyst: { name: 'You', title: 'Tier 1 Analyst' },
   ciso: { name: 'Sarah Okafor', title: 'CISO' },
   ceo: { name: 'David Reyes', title: 'CEO' },
 };
 
+// The library, not the queue. A shift deals seven of these — see
+// ../../engine/deal.js — so the order here is just the order they were written.
 export const SCENARIOS = [
   sshBruteSuccess,
   vulnScanFalsePositive,
@@ -41,6 +51,12 @@ export const SCENARIOS = [
   insiderExport,
   awsKeyLeak,
   edrQuarantine,
+  mfaPushFatigue,
+  impossibleTravelVpn,
+  webShellUpload,
+  cryptoMiningBuildAgent,
+  oauthConsentGrant,
+  dnsTunnelSuspected,
 ];
 
 export const ESCALATION_OPTIONS = [

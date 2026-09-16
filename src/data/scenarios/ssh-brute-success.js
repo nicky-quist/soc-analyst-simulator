@@ -4,7 +4,7 @@
 
 export default {
   id: 'ssh-brute-success',
-  order: 1,
+  difficulty: 1,
   queueLabel: 'Auth Anomaly — Repeated Failed Logins, host db-prod-03',
   source: 'Splunk — Linux Auth Logs (auth.log)',
   alert: {

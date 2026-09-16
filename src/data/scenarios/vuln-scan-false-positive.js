@@ -4,7 +4,7 @@
 
 export default {
   id: 'vuln-scan-false-positive',
-  order: 2,
+  difficulty: 1,
   queueLabel: 'IDS Alert — Possible Network Reconnaissance, subnet 10.20.0.0/16',
   source: 'Suricata IDS',
   alert: {

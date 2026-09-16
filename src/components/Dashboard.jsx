@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BAND_COLORS, C, CHART_COLORS, MONO, TONE, severityTone } from '../theme.js';
 import {
-  AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, HOURLY_VOLUME, SHIFT,
-  SLA_TREND, TACTIC_COVERAGE, TOP_ENTITIES, formatCount, funnelTotals,
+  AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, SLA_TARGET, TACTIC_COVERAGE,
+  TOP_ENTITIES, buildHourlyVolume, buildShift, buildSlaTrend, formatCount, funnelTotals, withToday,
 } from '../data/estate.js';
-import { caseStatus, slaState } from '../engine/case.js';
+import { caseStatus, shiftCompliance, slaState } from '../engine/case.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
 import { Badge, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
@@ -13,8 +13,6 @@ import {
   IconActivity, IconClock, IconFilter, IconInbox, IconListChecks, IconPieChart,
   IconRadio, IconServer, IconTarget, IconTrendingUp, IconUsers,
 } from '../ui/icons.jsx';
-
-const SLA_TARGET = 90;
 
 function Tile({ label, value, sub, tone, icon }) {
   return (
@@ -92,8 +90,15 @@ function Legend({ items }) {
   );
 }
 
-export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
+export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, onOpenAlert }) {
   const [feedTick, setFeedTick] = useState(0);
+
+  // Everything estate-side is a function of the shift seed, so it is stable for
+  // as long as you are sitting in this shift and different the next one.
+  const seedAt = shiftStartedAt ?? now;
+  const shiftHeader = useMemo(() => buildShift(seedAt, deal), [seedAt, deal]);
+  const hourlyVolume = useMemo(() => buildHourlyVolume(seedAt, deal), [seedAt, deal]);
+  const week = useMemo(() => buildSlaTrend(seedAt, deal), [seedAt, deal]);
 
   useEffect(() => {
     const id = setInterval(() => setFeedTick((t) => t + 1), 4000);
@@ -122,9 +127,16 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
     .filter((key) => severityCounts[key])
     .map((key) => ({ label: key.toUpperCase(), value: severityCounts[key], color: CHART_COLORS[key] }));
 
-  const dayTotal = HOURLY_VOLUME.reduce((sum, h) => sum + h.critical + h.high + h.medium + h.low, 0);
+  const dayTotal = hourlyVolume.reduce((sum, h) => sum + h.critical + h.high + h.medium + h.low, 0);
   const maxSource = Math.max(...DETECTION_SOURCES.map((s) => s.alerts));
-  const currentSla = SLA_TREND[SLA_TREND.length - 1].pct;
+
+  // Today's compliance is yours, not the estate's: it is the one number on this
+  // board that moves because of what you do in the next twenty minutes.
+  const compliance = shiftCompliance(scenarios, cases, now);
+  const slaTrend = withToday(week, compliance.pct);
+  const complianceHint = compliance.handled
+    ? `${compliance.onTime} of ${compliance.handled} handled within target`
+    : 'nothing closed or breached yet';
 
   const feed = Array.from({ length: 6 }, (_, i) => ESTATE_FEED[(feedTick + i) % ESTATE_FEED.length]);
 
@@ -132,14 +144,14 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
     <div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 14 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Shift overview</h1>
-        <span style={{ fontSize: 12.5, color: C.textSecondary }}>{SHIFT.label} · {SHIFT.window}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>{SHIFT.onCall}</span>
+        <span style={{ fontSize: 12.5, color: C.textSecondary }}>{shiftHeader.label} · {shiftHeader.window}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>{shiftHeader.onCall}</span>
       </div>
 
       <div className="sim-tile-row">
         <Tile label="Open alerts" value={open.length} sub={`${inProgress.length} being worked`} tone={open.length ? TONE.primary : undefined} icon={<IconInbox size={18} />} />
         <Tile label="Closed" value={closed.length} sub={`${resolvedWell.length} resolved correctly`} icon={<IconListChecks size={18} />} />
-        <Tile label="SLA breaches" value={breaches.length} sub={`target ${SLA_TARGET}% within SLA`} tone={breaches.length ? TONE.concerned : TONE.positive} icon={<IconClock size={18} />} />
+        <Tile label="SLA breaches" value={breaches.length} sub={complianceHint} tone={breaches.length ? TONE.concerned : TONE.positive} icon={<IconClock size={18} />} />
         <Tile label="Avg case score" value={avgScore ?? '—'} sub={avgScore == null ? 'no cases closed yet' : 'this shift'} tone={avgScore == null ? undefined : avgScore >= 70 ? TONE.positive : TONE.coaching} icon={<IconTarget size={18} />} />
         <Tile label="MTTR" value={mttr == null ? '—' : formatDuration(mttr)} sub="mean time to resolve" icon={<IconClock size={18} />} />
         <Tile label="Alerts today" value={formatCount(dayTotal)} sub="estate-wide, all severities" icon={<IconActivity size={18} />} />
@@ -148,7 +160,12 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
       <div className="sim-dash-grid">
         <Panel title="Shift performance" icon={<IconTrendingUp size={13} />} hint="green is good, red needs attention" style={{ gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-around', gap: 12 }}>
-            <GaugeCard label="SLA compliance" value={currentSla} hint={`target ${SLA_TARGET}%`} bands={SLA_BANDS} />
+            <GaugeCard
+              label="SLA compliance"
+              value={compliance.pct ?? 100}
+              hint={compliance.handled ? complianceHint : `target ${SLA_TARGET}% — nothing handled yet`}
+              bands={SLA_BANDS}
+            />
             <GaugeCard
               label="Avg case score"
               value={avgScore ?? 0}
@@ -165,12 +182,12 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
         </Panel>
 
         <Panel title="Alert volume — last 24 hours" icon={<IconActivity size={13} />} hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
-          <StackedBars data={HOURLY_VOLUME} keys={['low', 'medium', 'high', 'critical']} height={150} />
+          <StackedBars data={hourlyVolume} keys={['low', 'medium', 'high', 'critical']} height={150} />
           <Legend items={[
-            { label: 'Critical', color: CHART_COLORS.critical, value: HOURLY_VOLUME.reduce((s, h) => s + h.critical, 0) },
-            { label: 'High', color: CHART_COLORS.high, value: HOURLY_VOLUME.reduce((s, h) => s + h.high, 0) },
-            { label: 'Medium', color: CHART_COLORS.medium, value: HOURLY_VOLUME.reduce((s, h) => s + h.medium, 0) },
-            { label: 'Low', color: CHART_COLORS.low, value: HOURLY_VOLUME.reduce((s, h) => s + h.low, 0) },
+            { label: 'Critical', color: CHART_COLORS.critical, value: hourlyVolume.reduce((s, h) => s + h.critical, 0) },
+            { label: 'High', color: CHART_COLORS.high, value: hourlyVolume.reduce((s, h) => s + h.high, 0) },
+            { label: 'Medium', color: CHART_COLORS.medium, value: hourlyVolume.reduce((s, h) => s + h.medium, 0) },
+            { label: 'Low', color: CHART_COLORS.low, value: hourlyVolume.reduce((s, h) => s + h.low, 0) },
           ]} />
         </Panel>
 
@@ -300,14 +317,30 @@ export default function Dashboard({ scenarios, cases, now, onOpenAlert }) {
           </div>
         </Panel>
 
-        <Panel title="SLA compliance — 7 days" icon={<IconTrendingUp size={13} />} hint={`${currentSla}% today`}>
-          <Sparkline points={SLA_TREND} threshold={SLA_TARGET} />
+        <Panel
+          title="SLA compliance — 7 days"
+          icon={<IconTrendingUp size={13} />}
+          hint={compliance.pct == null ? 'today pending' : `${compliance.pct}% today`}
+        >
+          <Sparkline points={slaTrend.points} threshold={SLA_TARGET} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, fontFamily: MONO, marginTop: 4 }}>
-            {SLA_TREND.map((point) => <span key={point.day}>{point.day}</span>)}
+            {slaTrend.points.map((point) => (
+              <span
+                key={point.day}
+                style={{
+                  color: point.pct != null && point.pct < SLA_TARGET ? C.danger : C.textMuted,
+                  fontWeight: point.today ? 700 : 400,
+                }}
+              >
+                {point.day}
+              </span>
+            ))}
           </div>
           <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 8, lineHeight: 1.55 }}>
-            Dashed line is the {SLA_TARGET}% target. Tuesday dipped below it — that is the shape of a day when a noisy
-            rule went untuned.
+            {slaTrend.caption}{' '}
+            {compliance.handled
+              ? `Today's point is yours: ${compliance.onTime} of ${compliance.handled} handled within target${compliance.breached ? `, ${compliance.breached} breached` : ''}.`
+              : 'Today is empty until you close an alert or let one breach — that point is yours to place.'}
           </div>
         </Panel>
 

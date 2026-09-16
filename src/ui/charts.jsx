@@ -81,15 +81,26 @@ export function Donut({ segments, size = 140, centerLabel, centerSub }) {
   );
 }
 
+// Points may carry a null pct, meaning "not measured yet" — today, before the
+// analyst has closed anything. A pending point is drawn as a hollow marker on
+// the target line with a dashed connector, rather than being plotted at zero or
+// quietly dropped: the gap is the honest rendering of a shift in progress.
 export function Sparkline({ points, height = 60, threshold }) {
   const width = 260;
-  const values = points.map((p) => p.pct);
+  const known = points.filter((p) => p.pct != null);
+  if (!known.length) return null;
+
+  const values = known.map((p) => p.pct);
   const min = Math.min(...values, threshold ?? 100) - 4;
   const max = Math.max(...values, 100);
   const scaleX = (i) => (i / (points.length - 1)) * (width - 8) + 4;
   const scaleY = (v) => height - 6 - ((v - min) / (max - min || 1)) * (height - 16);
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(i)} ${scaleY(p.pct)}`).join(' ');
-  const area = `${path} L ${scaleX(points.length - 1)} ${height} L ${scaleX(0)} ${height} Z`;
+
+  const plotted = points.map((p, i) => ({ ...p, i })).filter((p) => p.pct != null);
+  const path = plotted.map((p, n) => `${n === 0 ? 'M' : 'L'} ${scaleX(p.i)} ${scaleY(p.pct)}`).join(' ');
+  const last = plotted[plotted.length - 1];
+  const area = `${path} L ${scaleX(last.i)} ${height} L ${scaleX(plotted[0].i)} ${height} Z`;
+  const pending = points.map((p, i) => ({ ...p, i })).filter((p) => p.pct == null);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label="SLA compliance trend">
@@ -98,8 +109,18 @@ export function Sparkline({ points, height = 60, threshold }) {
       )}
       <path d={area} fill={C.primarySoft} />
       <path d={path} fill="none" stroke={C.primary} strokeWidth="2" strokeLinejoin="round" />
-      {points.map((p, i) => (
-        <circle key={p.day} cx={scaleX(i)} cy={scaleY(p.pct)} r="2.5" fill={p.pct < (threshold ?? 0) ? C.danger : C.primary} />
+      {pending.map((p) => (
+        <g key={`pending-${p.day}`}>
+          <line
+            x1={scaleX(last.i)} y1={scaleY(last.pct)}
+            x2={scaleX(p.i)} y2={scaleY(threshold ?? last.pct)}
+            stroke={C.borderStrong} strokeWidth="1.5" strokeDasharray="2 3"
+          />
+          <circle cx={scaleX(p.i)} cy={scaleY(threshold ?? last.pct)} r="3" fill={C.surface} stroke={C.borderStrong} strokeWidth="1.5" />
+        </g>
+      ))}
+      {plotted.map((p) => (
+        <circle key={p.day} cx={scaleX(p.i)} cy={scaleY(p.pct)} r="2.5" fill={p.pct < (threshold ?? 0) ? C.danger : C.primary} />
       ))}
     </svg>
   );

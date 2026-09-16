@@ -67,6 +67,42 @@ const IDEAL = {
     remediation:
       'Route to Tier 2 for a hunt on the two affected hosts, preserve the sample and USB device history, and raise a ticket to bring both sensors to the current version.',
   },
+  'mfa-push-fatigue': {
+    summary:
+      'This is a successful account takeover, not a user error. The password succeeded on every attempt and only the second factor was challenged, so the credential was already stolen; the attacker sent fourteen push prompts in eleven minutes until one was approved. Six minutes later they registered their own Microsoft Authenticator device and a proton.me recovery address, and created an inbox rule hiding security mail from the user. Treasury wire templates and the counterparty contact list were then downloaded to the attacker address.',
+    remediation:
+      'Revoke all sessions and refresh tokens, remove the attacker-registered authenticator and recovery address before resetting the password, and delete the inbox rule. Hand the other three targeted accounts to IR to work out where the passwords came from.',
+  },
+  'impossible-travel-vpn': {
+    summary:
+      'The Frankfurt address is our own corporate VPN egress, leased by Network Engineering and never registered in Entra ID named locations, which is why the platform reads it as another country. The emergency failover under CHG-4482 started six minutes before the alert. The same compliant managed device and a satisfied MFA claim appear on both sides of the "travel", and 61 users show the same jump inside fourteen minutes. The audit log shows no MFA registration, no inbox rule and no consent grant for this user.',
+    remediation:
+      'No containment is warranted. Close as a false positive citing the change ticket, and raise a request to add the EU egress range to named locations so the next failover does not generate another sixty of these.',
+  },
+  'web-shell-upload': {
+    summary:
+      'status.aspx in the customer document upload directory is a web shell being used for remote command execution on WEB-PROD-02. The IIS logs show it answering POSTs from 103.163.220.47 since 18 August, so access began three days before this alert. Through it the attacker ran whoami and domain enumeration, listed a loan file share, used certutil to download sq.exe and connected outbound to a known C2 address, with 118 MB leaving the host. The server is internet-facing, three framework versions behind, in detect-only mode, and holds customer loan documents.',
+    remediation:
+      'Isolate the host with EDR so it stays powered on and reachable, then capture memory and snapshot the volume before any cleanup. Block the C2 address, notify the application owner, and hand to IR for scoping of what was accessed.',
+  },
+  'crypto-mining-build-agent': {
+    summary:
+      'The miner was launched by a postinstall script in pdf-glyph-tools 2.4.1, a dormant npm dependency republished two days ago, pulled into build job #8841 — no person installed it. It ran as svc-build on a host holding a deployment token and a signing-service key, and registered a scheduled task named OneDriveSync32 running as SYSTEM for persistence. BUILD-AGENT-02 started mining 43 minutes later from the same dependency, so it spreads with every job that installs the package.',
+    remediation:
+      'Isolate both agents and stop the running jobs, rotate the deployment token and signing key, and block that package version at the internal proxy. Tier 2 should establish what job #8841 published and whether the signing key was used.',
+  },
+  'oauth-consent-grant': {
+    summary:
+      'This is consent phishing: no password was stolen, the user approved an OAuth grant giving an attacker-registered application Mail.Read, Files.Read.All and offline_access. The application has already acted on it — it synced 38 inbox items, searched the mailbox for "wire" and "invoice", and opened a rate sheet — so access is actual, not theoretical. The lure reached 11 mailboxes from statements-ctb.app, a domain registered two days ago, and 2 users consented nine minutes apart.',
+    remediation:
+      'Revoke the consent and delete the service principal, and revoke the refresh tokens issued to both users — deleting the app alone leaves existing tokens working. Purge the message from the other nine mailboxes and check them for further grants.',
+  },
+  'dns-tunnel-suspected': {
+    summary:
+      'MKT-LT-19 made 13,940 TXT queries in six hours with 13,902 unique subdomain labels averaging 48 characters, which is the shape of data encoded into names rather than of name resolution. The queries come from AdCopyStudio.exe, validly signed by Bright Harbor Media and installed by the user on 19 August; it has no entry in the approved software register. The vendor is reachable over HTTPS and the product used it to activate, so there is no technical reason for a telemetry channel over DNS to an unrelated domain. I could not read the payload, so whether this is vendor telemetry or exfiltration is not established.',
+    remediation:
+      'Sinkhole the domain at the resolver so the channel stops while the host and the sample stay intact, and preserve the three days of query labels with the case. Tier 2 to decode a sample and contact the vendor before any decision to remove the software.',
+  },
 };
 
 function idealSubmission(scenario) {

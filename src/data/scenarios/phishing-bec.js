@@ -4,7 +4,7 @@
 
 export default {
   id: 'phishing-bec-ambiguous',
-  order: 3,
+  difficulty: 2,
   queueLabel: 'Email Security Alert — Suspicious Login After Reported Phishing Click',
   source: 'M365 Defender + User-Reported Phishing',
   alert: {
