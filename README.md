@@ -1,8 +1,10 @@
-# soc-triage-tool
+# SOC Triage Tool
 
 A browser-based first-pass triage assistant for SOC alerts. Paste a raw log line or alert — syslog, Windows Event Log, Suricata JSON, Zeek/Bro, CEF, DNS query log, or plain English — and it identifies the format, scores severity, maps the activity to MITRE ATT&CK, pulls out IOCs, and recommends a next action.
 
 **[Live demo →](https://nicky-quist.github.io/soc-triage-tool/)**
+
+![SOC Triage Tool: sample alerts and the paste box, before analysis](docs/screenshot.jpeg)
 
 ## Why
 
