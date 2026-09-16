@@ -1,8 +1,19 @@
-# SOC Analyst Simulator
+# SOC Analyst Console
 
 A working replica of a Tier-1 analyst console, built to practise the whole shift rather than a quiz about it: a shift dashboard shows you what the estate is doing, alerts arrive in a queue with SLA clocks running, you investigate by typing your own searches against simulated data sources, enrich indicators you pull out of the evidence yourself, take real response actions that can help or make things worse, and write the incident report — at a fictional bank, Coastal Trust Bank, with a CISO, a CEO, an IR lead and an employment lawyer who react to what you actually did.
 
 Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 searches over 240 events, 94 response actions of which 38 are mistakes.
+
+Four tabs in the side rail, in the order an analyst uses them:
+
+| Tab | What it's for |
+|---|---|
+| **Dashboard** | The shift at a glance: queue, SLA compliance, alert volume, the automation pipeline, ATT&CK coverage |
+| **Alert queue** | Work the shift's seven cases: investigate, enrich, respond, write the report, get graded |
+| **Triage** | Paste any alert or log line and get a first-pass read: format, severity, ATT&CK, indicators, next step |
+| **Your progress** | Your record across shifts, and what the next shift will practise |
+
+Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#progress`), so a link can open straight onto one.
 
 **[Live demo →](https://nicky-quist.github.io/soc-analyst-simulator/)**
 
@@ -10,7 +21,7 @@ Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 
 
 ## Why this exists
 
-Most SOC practice tools (this repo's own [soc-triage-tool](https://github.com/nicky-quist/soc-triage-tool), LetsDefend, TryHackMe SOC rooms) stop at "classify this alert correctly," and they hand you the evidence: click the pivot, read the result, pick from the dropdown. Real L1 work has three parts that multiple-choice can't reach — you have to *find* the evidence, decide *what to do about it*, and live with the consequences of both. The most common way a new analyst fails isn't picking the wrong classification. It's searching the wrong index, leaving the time picker on its default, treating "no records found" as "clean," or reaching for a containment action that breaks something.
+Most SOC practice tools (LetsDefend, TryHackMe SOC rooms, and quick-triage tools like this console's own Triage tab) stop at "classify this alert correctly," and they hand you the evidence: click the pivot, read the result, pick from the dropdown. Real L1 work has three parts that multiple-choice can't reach — you have to *find* the evidence, decide *what to do about it*, and live with the consequences of both. The most common way a new analyst fails isn't picking the wrong classification. It's searching the wrong index, leaving the time picker on its default, treating "no records found" as "clean," or reaching for a containment action that breaks something.
 
 So this sim is built so those things can happen to you.
 
@@ -115,9 +126,29 @@ The record is kept honest on purpose:
 
 The focus is decided when a shift is dealt and stored with it. The queue is re-derived from the shift on every load, so reading live history instead would re-deal a different hand the moment you closed a case, and drop your open ones. A golden file of 900 hands pins the unfocused deal, so a shift saved before this feature existed re-deals to exactly the same queue.
 
+## Alert triage
+
+The **Triage** tab is a first-pass reader for an alert that isn't in the shift queue. Paste a raw log line or alert, and it identifies the format, scores severity with a confidence percentage, maps the activity to ATT&CK, extracts indicators, estimates how likely it is to be a false positive, and recommends a next step. The result can be exported as a `.txt` report, and the tab keeps a history of the session's analyses.
+
+It started as a separate project, `soc-triage-tool`, and was merged in with its commit history. It runs a deterministic rule engine in the browser ([`src/engine/triage`](src/engine/triage)). Nothing you paste leaves the tab, there's no API key, and every verdict traces back to a specific pattern match rather than a model's judgement.
+
+| Format | What the rules look for |
+|---|---|
+| Syslog | SSH brute force (failure count, root/admin targeting, non-existent users), sudo/su elevation |
+| Windows Event Log | Malicious PowerShell (download cradles, `-EncodedCommand`), failed logons (4625), lateral movement over admin shares, persistence via Run keys and scheduled tasks |
+| Suricata JSON | Cobalt Strike and other C2/malware signatures, exploit attempts, scans, and the alert's own severity |
+| Zeek `conn.log` | Long, high-volume flows (beaconing), connections to common C2 ports, large uploads (exfiltration) |
+| CEF | Credential-dumping tools, exploit activity, and whether the device blocked it |
+| DNS logs | Base64-looking subdomain labels, a high-entropy flag when the log includes one, high outbound byte counts |
+| Free text | Lateral movement, malware delivery URLs, reconnaissance commands, file names and hashes |
+
+Input that's too thin to triage (a bare URL, a lone base64 blob, a fragment with no technical detail) is rejected with an explanation rather than guessed at.
+
+**A bug its tests found.** The first Zeek rule scraped the raw text instead of reading columns, so the Unix timestamp became the flow's duration and byte count. On the tool's own sample, a one-hour, 2.3 MB flow was reported as 473,688 hours and 1,626 MB. On other inputs it gave wrong verdicts: ordinary TLS traffic was called a C2 beacon, and a real connection to port 31337 was never flagged. The fix reads the `#fields` header, or the standard conn.log order when there isn't one. Six regression tests cover it, and all six fail against the original code.
+
 ## Design notes
 
-- **Deterministic and offline**, matching this project family's design ethos (see `soc-triage-tool`) — no API key, no third-party calls. Scoring is rubric-based, not an LLM call, so it's auditable and reproducible.
+- **Deterministic and offline**, in both the grader and the Triage engine: no API key, no third-party calls. Scoring is rubric-based, not an LLM call, so it's auditable and reproducible.
 - **Rubric keywords live with the scenario they grade**, so rewording a report point can't silently drop it from the grade. Matching is word-boundary based rather than substring — "HR" has to be the word *HR*, not the "hr" inside "through" — and a trailing `*` marks a stem (`isolat*` credits isolate/isolated/isolation).
 - **Some report points are graded on what you didn't write.** The false-positive scenario checks you never recommended blocking your own scanner; the insider scenario checks you didn't state theft as established fact. Negation and hedging pass — "do not block this host" and "potential data theft pending review" are correct analyst writing; "the employee stole records" is the thing being caught.
 - **Personas are rule-based**, driven by harm caused, escalation direction, investigation coverage and severity distance rather than per-scenario scripts, so they generalize when scenarios are added. Stakeholder reactions to harmful actions live with the action itself, which is what lets a damaging click answer back immediately instead of at grading time.
@@ -126,7 +157,7 @@ The focus is decided when a shift is dealt and stored with it. The queue is re-d
 
 ## Tech
 
-React + Vite, no backend, same tooling as `soc-triage-tool`.
+React + Vite, no backend.
 
 ```bash
 npm install
@@ -139,12 +170,14 @@ src/
     scenarios/  one file per alert — datasets, searches, intel, actions, ground truth
     techniques  46-technique ATT&CK catalog for the picker
     estate      shift-wide dashboard data — seeded per shift: volume, funnel, sources, coverage, feed
+    triage-samples  sample alerts and the format guide for the Triage tab
   engine/       query parser + executor, intel lookup, base64 decoder, scoring, personas, case state,
                 the shift deal, cross-shift progress and the adaptive focus, and the seeded PRNG
                 everything shift-specific is drawn from
-  components/   dashboard, progress view, one module per console tab, queue, case timeline
+    triage/     the Triage tab's rule engine: format detection, analysis, input validation
+  components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          100 tests across seven suites
+tests/          226 tests across eleven suites (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
@@ -154,3 +187,5 @@ npm test
 ```
 
 The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually. The progress suite checks that the record only counts first, unassisted attempts, that no weakness is named from too few cases, that a focused shift still keeps every quota, that each focus rule lifts its target's chance of being dealt by at least 0.10, and that the unfocused deal still matches the golden file of hands from before the feature existed.
+
+The Triage engine has 126 tests of its own. They check each format's verdicts and the relative ordering of severities, the input-rejection rules, and a contract that must hold for every input: every field present, values in range, the same verdict every time, no crash on hostile input, and no network call.
