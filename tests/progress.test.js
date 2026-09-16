@@ -8,6 +8,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import process from 'node:process';
+
+// Shifts are local: shiftSeed() buckets by local date and 8-hour block, so the
+// hand dealt for a timestamp depends on the time zone. The golden file was
+// generated in UTC; pin UTC here so the comparison means the same thing on a
+// laptop and on a CI runner. Each test file runs in its own process, and
+// nothing reads the clock before this line.
+process.env.TZ = 'UTC';
 
 import { SCENARIOS } from '../src/data/scenarios/index.js';
 import { HAND_SIZE, dealShift } from '../src/engine/deal.js';
