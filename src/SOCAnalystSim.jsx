@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { COMPANY } from './data/scenarios/index.js';
+import { COMPANY, SCENARIOS } from './data/scenarios/index.js';
 import { buildShift } from './data/estate.js';
 import { dealShift } from './engine/deal.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
+import { buildRecord, emptyProgress, planFocus, recordCase } from './engine/progress.js';
+import ProgressView from './components/ProgressView.jsx';
 import { generateShiftSummary } from './engine/personas.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconUser,
+  IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -25,6 +27,39 @@ import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
 
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
+
+// Separate from the shift, because it has to outlive every shift reset.
+const PROGRESS_KEY = 'soc-analyst-sim:progress:v1';
+
+function loadProgress() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(PROGRESS_KEY) || 'null');
+    if (!parsed || !Array.isArray(parsed.history)) return emptyProgress();
+    return { history: parsed.history, adaptive: parsed.adaptive !== false };
+  } catch {
+    return emptyProgress();
+  }
+}
+
+function saveProgress(progress) {
+  try {
+    window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  } catch {
+    // Storage unavailable: progress lasts for this session only.
+  }
+}
+
+// The focus is decided once, when a shift is dealt, and stored on the shift.
+// The hand is re-derived from the shift on every load, so reading live history
+// instead would re-deal a different hand the moment a case closed, and drop
+// the analyst's open cases.
+function focusFor(progress) {
+  return progress?.adaptive ? planFocus(progress.history, SCENARIOS) : null;
+}
+
+function validFocus(focus) {
+  return focus && typeof focus === 'object' && focus.weights && typeof focus.weights === 'object' ? focus : null;
+}
 
 const EMPTY_FORM = {
   classification: '',
@@ -55,7 +90,7 @@ const EMPTY_CASE = {
 // `deal` is the hand counter, not the hand: the seven alerts are re-derived
 // from (shiftStartedAt, deal) on every load, so a reload restores the queue you
 // were working and "Reset shift" — same clock, next counter — deals a new one.
-const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0 };
+const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null };
 
 // A shift board that just keeps counting is not what a SOC dashboard is for —
 // after this long the queue, SLA clocks, and estate feed should look like a
@@ -74,7 +109,8 @@ function loadShift() {
     // Cases for alerts that are not in this hand are dropped rather than kept
     // invisibly: the board has to agree with the queue it is counting.
     const deal = Number.isInteger(parsed.deal) ? parsed.deal : 0;
-    const valid = new Set(dealShift(parsed.shiftStartedAt, deal).map((s) => s.id));
+    const focus = validFocus(parsed.focus);
+    const valid = new Set(dealShift(parsed.shiftStartedAt, deal, undefined, focus).map((s) => s.id));
     const cases = Object.fromEntries(
       Object.entries(parsed.cases || {})
         .filter(([id]) => valid.has(id))
@@ -82,10 +118,11 @@ function loadShift() {
     );
     return {
       theme,
-      view: parsed.view === 'queue' ? 'queue' : 'dashboard',
+      view: ['queue', 'progress'].includes(parsed.view) ? parsed.view : 'dashboard',
       cases,
       shiftStartedAt: parsed.shiftStartedAt,
       deal,
+      focus,
     };
   } catch {
     return EMPTY_SHIFT;
@@ -111,13 +148,16 @@ function startClock(shift, scenarioId) {
 
 // A shift has to have a start before it can have a queue, so the stamp comes
 // first and the hand is dealt from it.
-function openShift(loaded) {
-  const stamped = loaded.shiftStartedAt ? loaded : { ...loaded, shiftStartedAt: Date.now() };
-  return startClock(stamped, dealShift(stamped.shiftStartedAt, stamped.deal)[0].id);
+function openShift(loaded, progress) {
+  const stamped = loaded.shiftStartedAt
+    ? loaded
+    : { ...loaded, shiftStartedAt: Date.now(), focus: focusFor(progress) };
+  return startClock(stamped, dealShift(stamped.shiftStartedAt, stamped.deal, undefined, stamped.focus)[0].id);
 }
 
 export default function SOCAnalystSim() {
-  const [shift, setShift] = useState(() => openShift(loadShift()));
+  const [progress, setProgress] = useState(loadProgress);
+  const [shift, setShift] = useState(() => openShift(loadShift(), loadProgress()));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tab, setTab] = useState('overview');
   const [walkthrough, setWalkthrough] = useState(false);
@@ -132,7 +172,7 @@ export default function SOCAnalystSim() {
 
   // Your seven for this shift, dealt from the library and stable for as long as
   // the shift is.
-  const queue = useMemo(() => dealShift(seedAt, shift.deal), [seedAt, shift.deal]);
+  const queue = useMemo(() => dealShift(seedAt, shift.deal, undefined, shift.focus), [seedAt, shift.deal, shift.focus]);
 
   const scenario = queue[Math.min(currentIndex, queue.length - 1)];
   const caseFile = shift.cases[scenario.id] || EMPTY_CASE;
@@ -150,7 +190,8 @@ export default function SOCAnalystSim() {
       setNow(nowTs);
       setShift((prev) => {
         if (!prev.shiftStartedAt || nowTs - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
-        const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: prev.deal + 1 }), theme: prev.theme };
+        // Read progress from storage: this interval closes over the first render's state.
+        const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: prev.deal + 1 }, loadProgress()), theme: prev.theme };
         saveShift(fresh);
         return fresh;
       });
@@ -264,6 +305,20 @@ export default function SOCAnalystSim() {
       assisted: caseFile.assisted,
       elapsedMs: caseFile.startedAt ? Date.now() - caseFile.startedAt : null,
     });
+    const record = buildRecord({
+      scenario,
+      submission: caseFile.form,
+      score,
+      attempt: caseFile.attempts + 1,
+      closedAt: Date.now(),
+      shiftStartedAt: shift.shiftStartedAt,
+      deal: shift.deal,
+    });
+    setProgress((prev) => {
+      const next = recordCase(prev, record);
+      if (next.recorded) saveProgress(next.progress);
+      return next.progress;
+    });
     updateCase((current) => ({
       ...current,
       result: { submission: current.form, score, attempt: current.attempts + 1 },
@@ -305,13 +360,31 @@ export default function SOCAnalystSim() {
   // Reset deals the next hand rather than the same one again — the counter is
   // what makes a second shift a second shift.
   const handleReset = useCallback(() => {
-    const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }), theme: shift.theme };
+    const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }, progress), theme: shift.theme };
     saveShift(fresh);
     setShift(fresh);
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme, shift.deal]);
+  }, [shift.theme, shift.deal, progress]);
+
+  // Takes effect from the next shift: the current hand was dealt with the
+  // focus it has, and changing it now would re-deal the queue under the analyst.
+  function toggleAdaptive() {
+    setProgress((prev) => {
+      const next = { ...prev, adaptive: !prev.adaptive };
+      saveProgress(next);
+      return next;
+    });
+  }
+
+  function clearHistory() {
+    setProgress((prev) => {
+      const next = { ...emptyProgress(), adaptive: prev.adaptive };
+      saveProgress(next);
+      return next;
+    });
+  }
 
   function setView(view) {
     update((prev) => ({ ...prev, view }));
@@ -448,6 +521,16 @@ export default function SOCAnalystSim() {
                 <span className="rail-count">{queue.length - closedCases.length}</span>
               )}
             </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
+              data-active={shift.view === 'progress'}
+              onClick={() => setView('progress')}
+              aria-current={shift.view === 'progress' ? 'page' : undefined}
+              title="Your progress"
+            >
+              <IconTrendingUp size={18} />
+            </button>
           </nav>
 
           <div style={{ flex: 1 }} />
@@ -514,7 +597,19 @@ export default function SOCAnalystSim() {
             now={now}
             shiftStartedAt={shift.shiftStartedAt}
             deal={shift.deal}
+            focus={shift.focus}
             onOpenAlert={selectScenario}
+          />
+        </main>
+      )}
+
+      {shift.view === 'progress' && (
+        <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
+          <ProgressView
+            progress={progress}
+            currentFocus={shift.focus}
+            onToggleAdaptive={toggleAdaptive}
+            onClearHistory={clearHistory}
           />
         </main>
       )}

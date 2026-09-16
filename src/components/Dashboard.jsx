@@ -6,7 +6,7 @@ import {
 } from '../data/estate.js';
 import { caseStatus, shiftCompliance, slaState } from '../engine/case.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
-import { Badge, Card, SectionLabel } from '../ui/primitives.jsx';
+import { Badge, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
 import { Donut, Funnel, Gauge, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
 import {
@@ -41,7 +41,7 @@ function Tile({ label, value, sub, tone, icon }) {
   );
 }
 
-function Panel({ title, icon, hint, children, style }) {
+export function Panel({ title, icon, hint, children, style }) {
   return (
     <Card accent={C.primary} style={{ padding: 16, ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
@@ -90,7 +90,7 @@ function Legend({ items }) {
   );
 }
 
-export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, onOpenAlert }) {
+export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert }) {
   const [feedTick, setFeedTick] = useState(0);
 
   // Everything estate-side is a function of the shift seed, so it is stable for
@@ -147,6 +147,13 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
         <span style={{ fontSize: 12.5, color: C.textSecondary }}>{shiftHeader.label} · {shiftHeader.window}</span>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>{shiftHeader.onCall}</span>
       </div>
+
+      {/* Said out loud, because a queue that quietly leans one way reads as luck. */}
+      {focus && (
+        <Callout tone={TONE.primary} title={`This shift leans toward practising ${focus.label.toLowerCase()}`} style={{ marginBottom: 14 }}>
+          {focus.summary} The mix quotas still apply. See Your progress for why.
+        </Callout>
+      )}
 
       <div className="sim-tile-row">
         <Tile label="Open alerts" value={open.length} sub={`${inProgress.length} being worked`} tone={open.length ? TONE.primary : undefined} icon={<IconInbox size={18} />} />

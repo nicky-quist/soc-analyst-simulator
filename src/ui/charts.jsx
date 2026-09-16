@@ -85,7 +85,7 @@ export function Donut({ segments, size = 140, centerLabel, centerSub }) {
 // analyst has closed anything. A pending point is drawn as a hollow marker on
 // the target line with a dashed connector, rather than being plotted at zero or
 // quietly dropped: the gap is the honest rendering of a shift in progress.
-export function Sparkline({ points, height = 60, threshold }) {
+export function Sparkline({ points, height = 60, threshold, ariaLabel = 'SLA compliance trend' }) {
   const width = 260;
   const known = points.filter((p) => p.pct != null);
   if (!known.length) return null;
@@ -103,7 +103,7 @@ export function Sparkline({ points, height = 60, threshold }) {
   const pending = points.map((p, i) => ({ ...p, i })).filter((p) => p.pct == null);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label="SLA compliance trend">
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label={ariaLabel}>
       {threshold != null && (
         <line x1="0" x2={width} y1={scaleY(threshold)} y2={scaleY(threshold)} stroke={C.borderStrong} strokeWidth="1" strokeDasharray="3 3" />
       )}

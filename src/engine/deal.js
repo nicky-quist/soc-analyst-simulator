@@ -52,10 +52,24 @@ function queueOrder(a, b) {
   return a.alert.slaMinutes - b.alert.slaMinutes;
 }
 
-export function dealShift(startedAt = Date.now(), variant = 0, library = SCENARIOS) {
+// Weighted random order (Efraimidis-Spirakis): each item draws u^(1/w) and the
+// highest keys go first, so an item with weight 2 tends to sit ahead of one
+// with weight 1 without ever being guaranteed a place.
+function weightedOrder(items, rand, weights) {
+  return items
+    .map((item) => ({ item, key: rand() ** (1 / Math.max(weights[item.id] ?? 1, 0.01)) }))
+    .sort((a, b) => b.key - a.key)
+    .map((entry) => entry.item);
+}
+
+// `focus` comes from engine/progress.js planFocus(). It only changes the order
+// the pool is drawn in, so every quota below still holds on a focused shift.
+// Without a focus the original shuffle runs unchanged, and a shift saved
+// before focus existed re-deals to exactly the same hand.
+export function dealShift(startedAt = Date.now(), variant = 0, library = SCENARIOS, focus = null) {
   const size = Math.min(HAND_SIZE, library.length);
   const rand = mulberry32((shiftSeed(startedAt) ^ Math.imul(variant + 1, 0x9e3779b1)) >>> 0);
-  const pool = shuffled(library, rand);
+  const pool = focus?.weights ? weightedOrder(library, rand, focus.weights) : shuffled(library, rand);
   const hand = [];
 
   for (const quota of QUOTAS) {
