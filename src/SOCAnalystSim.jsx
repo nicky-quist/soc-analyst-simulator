@@ -747,7 +747,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'dashboard' ? 'page' : undefined}
               title="Dashboard"
             >
-              <IconDashboard size={18} />
+              <IconDashboard size={19} />
             </button>
             <button
               type="button"
@@ -757,7 +757,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'queue' ? 'page' : undefined}
               title="Alert queue"
             >
-              <IconInbox size={18} />
+              <IconInbox size={19} />
               {queue.length - closedCases.length > 0 && (
                 <span className="rail-count">{queue.length - closedCases.length}</span>
               )}
@@ -770,7 +770,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'triage' ? 'page' : undefined}
               title="Alert triage"
             >
-              <IconActivity size={18} />
+              <IconActivity size={19} />
             </button>
             <button
               type="button"
@@ -780,7 +780,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'redops' ? 'page' : undefined}
               title="Red Ops"
             >
-              <IconZap size={18} />
+              <IconZap size={19} />
             </button>
             <button
               type="button"
@@ -790,7 +790,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'team' ? 'page' : undefined}
               title="Security org"
             >
-              <IconUsers size={18} />
+              <IconUsers size={19} />
             </button>
             <button
               type="button"
@@ -800,7 +800,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'progress' ? 'page' : undefined}
               title="Your progress"
             >
-              <IconTrendingUp size={18} />
+              <IconTrendingUp size={19} />
             </button>
             <button
               type="button"
@@ -810,18 +810,18 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'settings' ? 'page' : undefined}
               title="Settings"
             >
-              <IconSettings size={18} />
+              <IconSettings size={19} />
             </button>
           </nav>
 
           <div style={{ flex: 1 }} />
 
           <IconButton
-            icon={shift.theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
+            icon={shift.theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
             title="Toggle color theme"
             onClick={toggleTheme}
           />
-          <IconButton icon={<IconRotate size={16} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />
+          <IconButton icon={<IconRotate size={17} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />
         </aside>
 
         <div className="app-content">

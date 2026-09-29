@@ -2,7 +2,7 @@
 // product's chrome rather than emoji standing in for icons. Every icon is a
 // plain stroked SVG on a 24x24 grid — no icon library dependency, offline-safe.
 
-function Svg({ size = 16, strokeWidth = 1.8, children, style, ...rest }) {
+function Svg({ size = 16, strokeWidth = 2, children, style, ...rest }) {
   return (
     <svg
       width={size}
