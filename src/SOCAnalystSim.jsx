@@ -15,7 +15,7 @@ import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconSettings, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
+  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconSettings, IconShield, IconSparkles, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -397,6 +397,52 @@ export default function SOCAnalystSim() {
       const newIndex = reordered.findIndex((s) => s.id === scenario.id);
       if (newIndex !== -1) setCurrentIndex(newIndex);
     }
+    setTab('debrief');
+  }
+
+  // Demo shortcut: fills in the correct answer and every required search,
+  // lookup, and action instantly, then jumps to Debrief — for showing the AI
+  // Coach (or anything else on that tab) without working the case for real.
+  // Marked assisted, same as Learn Mode, so recordCase() refuses to enter it
+  // into progress history — it can never count toward a career promotion.
+  function handleSkipToDebrief() {
+    const truth = scenario.truth;
+    const summary = (truth.requiredReportPoints || [])
+      .filter((p) => p.any?.length)
+      .map((p) => p.any[0].replace(/\*$/, ''))
+      .join('. ');
+    const form = {
+      classification: truth.classification,
+      severity: truth.severity,
+      mitreTechnique: truth.mitreTechnique,
+      escalation: truth.escalation,
+      summary,
+      remediation: '',
+    };
+    updateCase((current) => {
+      const searchKeys = truth.requiredSearches || [];
+      const intelChecked = truth.requiredIntel || [];
+      const actions = truth.requiredActions || [];
+      const score = scoreCase(scenario, form, {
+        searchesRun: searchKeys,
+        intelChecked,
+        actionsTaken: actions,
+        noiseSearches: 0,
+        assisted: true,
+        elapsedMs: current.startedAt ? Date.now() - current.startedAt : null,
+      });
+      return {
+        ...current,
+        form,
+        searchKeys,
+        intelChecked,
+        actions,
+        assisted: true,
+        result: { submission: form, score, attempt: current.attempts + 1 },
+        attempts: current.attempts + 1,
+        timeline: note(current, 'report', `Report submitted — case closed (${score.overallScore}/100)`),
+      };
+    });
     setTab('debrief');
   }
 
@@ -867,14 +913,24 @@ export default function SOCAnalystSim() {
               <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.35 }}>{scenario.queueLabel}</h1>
               <div style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>{scenario.alert.rule}</div>
             </div>
-            <Button
-              variant={walkthrough ? 'primary' : 'secondary'}
-              onClick={toggleWalkthrough}
-              aria-expanded={walkthrough}
-              style={{ flexShrink: 0 }}
-            >
-              {walkthrough ? <><IconGraduationCap size={14} /> Hide walkthrough</> : <><IconGraduationCap size={14} /> Learn mode</>}
-            </Button>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+              {!closed && (
+                <Button
+                  variant="ghost"
+                  onClick={handleSkipToDebrief}
+                  title="Demo shortcut — auto-fills the correct answer and jumps to Debrief. Doesn't count toward your stats."
+                >
+                  <IconSparkles size={14} /> Skip to debrief
+                </Button>
+              )}
+              <Button
+                variant={walkthrough ? 'primary' : 'secondary'}
+                onClick={toggleWalkthrough}
+                aria-expanded={walkthrough}
+              >
+                {walkthrough ? <><IconGraduationCap size={14} /> Hide walkthrough</> : <><IconGraduationCap size={14} /> Learn mode</>}
+              </Button>
+            </div>
           </div>
 
           <Tabs tabs={tabs} active={tab} onSelect={setTab} />
