@@ -31,6 +31,8 @@ import Dashboard from './components/Dashboard.jsx';
 import TeamTab from './components/TeamTab.jsx';
 import RedOpsView from './components/RedOpsView.jsx';
 import SettingsView from './components/SettingsView.jsx';
+import EndShiftModal from './components/EndShiftModal.jsx';
+import { buildShiftHandoff } from './engine/handoff.js';
 
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
 
@@ -210,6 +212,7 @@ export default function SOCAnalystSim() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tab, setTab] = useState('overview');
   const [walkthrough, setWalkthrough] = useState(false);
+  const [showEndShiftReview, setShowEndShiftReview] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   // The console header and the dashboard have to agree about which shift this
@@ -517,6 +520,24 @@ export default function SOCAnalystSim() {
     setWalkthrough(false);
   }, [shift.theme, shift.deal, progress]);
 
+  // The real "end of shift" action: anything still open or escalated has to
+  // go to someone, so a shift with live work doesn't just quietly reset —
+  // it stops for a review of who picks each one up. Nothing to hand off
+  // means nothing to review, so it ends the same way handleReset always has.
+  function handleEndShift() {
+    const notes = buildShiftHandoff(queue, shift.cases);
+    if (notes.length === 0) {
+      handleReset();
+      return;
+    }
+    setShowEndShiftReview(true);
+  }
+
+  function confirmEndShift() {
+    setShowEndShiftReview(false);
+    handleReset();
+  }
+
   // Takes effect from the next shift: the current hand was dealt with the
   // focus it has, and changing it now would re-deal the queue under the analyst.
   function toggleAdaptive() {
@@ -773,9 +794,7 @@ export default function SOCAnalystSim() {
             title="Toggle colour theme"
             onClick={toggleTheme}
           />
-          {closedCases.length > 0 && (
-            <IconButton icon={<IconRotate size={16} />} title="Reset shift (also auto-resets every 12h)" onClick={handleReset} />
-          )}
+          <IconButton icon={<IconRotate size={16} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />
         </aside>
 
         <div className="app-content">
@@ -990,6 +1009,15 @@ export default function SOCAnalystSim() {
       )}
         </div>
       </div>
+
+      {showEndShiftReview && (
+        <EndShiftModal
+          scenarios={queue}
+          cases={shift.cases}
+          onCancel={() => setShowEndShiftReview(false)}
+          onConfirm={confirmEndShift}
+        />
+      )}
     </div>
   );
 }

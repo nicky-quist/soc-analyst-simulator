@@ -7,6 +7,17 @@ import { C, MONO } from '../theme.js';
 
 import { BAND_COLORS, CHART_COLORS } from '../theme.js';
 
+// "18" -> "6 PM": the hourly volume chart's x-axis is a zero-padded 24-hour
+// string (see buildHourlyVolume), which reads like a raw timestamp rather
+// than a time of day unless it's converted for display.
+function formatHour12(hourStr) {
+  const hour = Number(hourStr);
+  if (Number.isNaN(hour)) return hourStr;
+  const period = hour < 12 ? 'AM' : 'PM';
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelve}${period}`;
+}
+
 export function StackedBars({ data, keys, height = 150, xKey = 'hour' }) {
   const width = 720;
   const padBottom = 18;
@@ -30,7 +41,7 @@ export function StackedBars({ data, keys, height = 150, xKey = 'hour' }) {
             })}
             {i % 3 === 0 && (
               <text x={x + barWidth / 2} y={height - 5} textAnchor="middle" fontSize="10" fill={C.textMuted} fontFamily={MONO}>
-                {row[xKey]}
+                {xKey === 'hour' ? formatHour12(row[xKey]) : row[xKey]}
               </text>
             )}
           </g>
