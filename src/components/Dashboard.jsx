@@ -7,12 +7,12 @@ import {
 import { caseStatus, shiftCompliance, slaState } from '../engine/case.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
 import { slaComplianceTrend } from '../engine/progress.js';
-import { Badge, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
+import { Badge, Button, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
 import { Donut, Funnel, Gauge, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
 import {
   IconActivity, IconClock, IconFileCheck, IconFilter, IconInbox, IconListChecks, IconPieChart,
-  IconRadio, IconServer, IconTarget, IconTrendingUp, IconUsers,
+  IconRadio, IconRotate, IconServer, IconTarget, IconTrendingUp, IconUsers,
 } from '../ui/icons.jsx';
 import HandoffPanel from './HandoffPanel.jsx';
 
@@ -32,7 +32,7 @@ function Tile({ label, value, sub, tone, icon }) {
           {label}
         </div>
         <div style={{ fontSize: 28, fontWeight: 800, color: tone ? tone.fg : C.text, marginTop: 6, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-        <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 5, lineHeight: 1.4, minHeight: 16 }}>{sub || ' '}</div>
+        <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 5, lineHeight: 1.4, minHeight: 16 }}>{sub || ' '}</div>
       </div>
       {icon && (
         <div style={{ color: tone ? tone.fg : C.textMuted, opacity: 0.75, flexShrink: 0 }}>
@@ -60,7 +60,7 @@ function GaugeCard({ label, value, hint, bands, unit = '%' }) {
     <div style={{ flex: '1 1 150px', textAlign: 'center', minWidth: 140 }}>
       <Gauge value={value} unit={unit} bands={bands} label={label} />
       <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{label}</div>
-      <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 2, minHeight: 14 }}>{hint || ' '}</div>
+      <div style={{ fontSize: 10.5, color: C.textMuted, marginTop: 2, minHeight: 14 }}>{hint || ' '}</div>
     </div>
   );
 }
@@ -92,8 +92,9 @@ function Legend({ items }) {
   );
 }
 
-export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress }) {
+export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress, onFullReset }) {
   const [feedTick, setFeedTick] = useState(0);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   // Everything estate-side is a function of the shift seed, so it is stable for
   // as long as you are sitting in this shift and different the next one.
@@ -157,11 +158,31 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 4 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Shift overview</h1>
         <span style={{ fontSize: 12.5, color: C.textSecondary }}>{shiftHeader.label} · {shiftHeader.window}</span>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>{shiftHeader.onCall}</span>
       </div>
+
+      {onFullReset && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          {!confirmingReset ? (
+            <Button variant="ghost" onClick={() => setConfirmingReset(true)}>
+              <IconRotate size={13} /> Reset everything
+            </Button>
+          ) : (
+            <>
+              <span style={{ fontSize: 12, color: C.textSecondary }}>
+                Clears this queue and your whole skill/career history — start over completely?
+              </span>
+              <Button variant="danger" onClick={() => { onFullReset(); setConfirmingReset(false); }}>
+                Reset everything
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmingReset(false)}>Cancel</Button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Said out loud, because a queue that quietly leans one way reads as luck. */}
       {focus && (
@@ -295,8 +316,6 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
             and this chart is what buys the next detection engineer.
           </div>
         </Panel>
-
-        
 
         <Panel title="Detection sources" icon={<IconServer size={13} />} hint="alerts · auto-closed">
           {DETECTION_SOURCES.map((source) => (

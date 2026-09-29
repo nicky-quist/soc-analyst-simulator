@@ -477,6 +477,22 @@ export default function SOCAnalystSim() {
     });
   }
 
+  // The Dashboard's "Reset everything" — a genuine fresh start, not just a new
+  // hand: clears cross-shift history (skills, career rank, adaptive weighting)
+  // as well as the current queue, so a score you're about to compare against
+  // something isn't carrying baggage from an earlier test run.
+  const handleFullReset = useCallback(() => {
+    const freshProgress = { ...emptyProgress(), adaptive: progress.adaptive };
+    saveProgress(freshProgress);
+    setProgress(freshProgress);
+    const freshShift = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }, freshProgress), theme: shift.theme };
+    saveShift(freshShift);
+    setShift(freshShift);
+    setCurrentIndex(0);
+    setTab('overview');
+    setWalkthrough(false);
+  }, [shift.theme, shift.deal, progress.adaptive]);
+
   function setView(view) {
     update((prev) => ({ ...prev, view }));
   }
@@ -741,6 +757,7 @@ export default function SOCAnalystSim() {
             focus={shift.focus}
             onOpenAlert={selectScenario}
             progress={progress}
+            onFullReset={handleFullReset}
           />
         </main>
       )}
