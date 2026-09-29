@@ -5,7 +5,7 @@ import { dealShift } from './engine/deal.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
-import { buildRecord, careerStatus, emptyProgress, planFocus, recordCase } from './engine/progress.js';
+import { advanceCheckpoint, buildRecord, careerStatus, emptyProgress, planFocus, recordCase } from './engine/progress.js';
 import ProgressView from './components/ProgressView.jsx';
 import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
@@ -15,7 +15,7 @@ import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconDashboard, IconFilter, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
+  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -52,7 +52,14 @@ function loadProgress() {
   try {
     const parsed = JSON.parse(window.localStorage.getItem(PROGRESS_KEY) || 'null');
     if (!parsed || !Array.isArray(parsed.history)) return emptyProgress();
-    return { history: parsed.history, adaptive: parsed.adaptive !== false };
+    return {
+      history: parsed.history,
+      adaptive: parsed.adaptive !== false,
+      // A rank is a checkpoint, not a reflection of live history — it has to
+      // survive the same round-trip as everything else or a reload silently
+      // demotes an earned rank back to Trainee.
+      checkpointRankIndex: Number.isInteger(parsed.checkpointRankIndex) ? parsed.checkpointRankIndex : 0,
+    };
   } catch {
     return emptyProgress();
   }
@@ -363,8 +370,12 @@ export default function SOCAnalystSim() {
     });
     setProgress((prev) => {
       const next = recordCase(prev, record);
-      if (next.recorded) saveProgress(next.progress);
-      return next.progress;
+      if (!next.recorded) return next.progress;
+      // A rank is a checkpoint: once earned it never drops back down, even if
+      // history is cleared later — see advanceCheckpoint in progress.js.
+      const withCheckpoint = advanceCheckpoint(next.progress, SCENARIOS);
+      saveProgress(withCheckpoint);
+      return withCheckpoint;
     });
     updateCase((current) => ({
       ...current,
@@ -469,20 +480,25 @@ export default function SOCAnalystSim() {
     });
   }
 
+  // A rank is a checkpoint, not a reflection of live stats — clearing history
+  // (here, or from the Dashboard's "Reset everything") wipes the skill numbers
+  // and the adaptive weighting they drive, but never takes back a rank you
+  // already earned.
   function clearHistory() {
     setProgress((prev) => {
-      const next = { ...emptyProgress(), adaptive: prev.adaptive };
+      const next = { ...emptyProgress(), adaptive: prev.adaptive, checkpointRankIndex: prev.checkpointRankIndex ?? 0 };
       saveProgress(next);
       return next;
     });
   }
 
   // The Dashboard's "Reset everything" — a genuine fresh start, not just a new
-  // hand: clears cross-shift history (skills, career rank, adaptive weighting)
-  // as well as the current queue, so a score you're about to compare against
-  // something isn't carrying baggage from an earlier test run.
+  // hand: clears cross-shift history (skills, adaptive weighting) as well as
+  // the current queue, so a score you're about to compare against something
+  // isn't carrying baggage from an earlier test run. Your career rank is a
+  // checkpoint and survives this, same as clearHistory above.
   const handleFullReset = useCallback(() => {
-    const freshProgress = { ...emptyProgress(), adaptive: progress.adaptive };
+    const freshProgress = { ...emptyProgress(), adaptive: progress.adaptive, checkpointRankIndex: progress.checkpointRankIndex ?? 0 };
     saveProgress(freshProgress);
     setProgress(freshProgress);
     const freshShift = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }, freshProgress), theme: shift.theme };
@@ -491,7 +507,7 @@ export default function SOCAnalystSim() {
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme, shift.deal, progress.adaptive]);
+  }, [shift.theme, shift.deal, progress.adaptive, progress.checkpointRankIndex]);
 
   function setView(view) {
     update((prev) => ({ ...prev, view }));
@@ -524,7 +540,10 @@ export default function SOCAnalystSim() {
 
   // Your title is earned, not a fixed label — see engine/progress.js's
   // careerStatus() for the promotion bar.
-  const career = useMemo(() => careerStatus(progress.history, SCENARIOS), [progress]);
+  const career = useMemo(
+    () => careerStatus(progress.history, SCENARIOS, progress.checkpointRankIndex),
+    [progress]
+  );
   const avgScore = closedCases.length
     ? Math.round(closedCases.reduce((sum, r) => sum + r.score.overallScore, 0) / closedCases.length)
     : null;
@@ -656,7 +675,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'triage' ? 'page' : undefined}
               title="Alert triage"
             >
-              <IconFilter size={18} />
+              <IconActivity size={18} />
             </button>
             <button
               type="button"

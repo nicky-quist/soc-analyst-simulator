@@ -211,7 +211,7 @@ export default {
     'Classify False Positive at INFORMATIONAL and close with no escalation. Do not disable the account, revoke the other sixty users, or block our own egress — each of those costs real work and none of them is supported by the evidence.',
   ],
   debrief:
-`Impossible travel is one of the highest-volume identity detections in any bank, and most of what it produces is this: a true statement about geography that is a false statement about risk. The skill being practised is disproving a plausible story quickly and defensibly — infrastructure ownership, the change record, the device and MFA context, and the absence of the follow-on actions a real intruder takes within minutes.
+`Impossible travel is one of the highest-volume identity detections in any bank, and most of what it produces is this: a true statement about geography that is a false statement about risk. The skill being practiced is disproving a plausible story quickly and defensibly — infrastructure ownership, the change record, the device and MFA context, and the absence of the follow-on actions a real intruder takes within minutes.
 
 The cost model is the other half. The "safe" reflex — revoke everyone, disable the user — is only safe from the analyst's chair. Sixty-one signed-out staff during the morning rush, or a loan officer disabled mid-appointment, is a real incident caused by the response rather than the alert. Note also that this finding is worth more as a tuning request than as a closure: a named-location entry stops the next sixty-one.`,
 };

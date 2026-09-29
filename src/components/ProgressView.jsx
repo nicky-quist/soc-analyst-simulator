@@ -38,7 +38,10 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
   const weak = useMemo(() => weakestSkill(summary), [summary]);
   const tendency = useMemo(() => escalationTendency(history), [history]);
   const nextFocus = useMemo(() => planFocus(history, SCENARIOS), [history]);
-  const career = useMemo(() => careerStatus(history, SCENARIOS), [history]);
+  const career = useMemo(
+    () => careerStatus(history, SCENARIOS, progress.checkpointRankIndex),
+    [history, progress.checkpointRankIndex]
+  );
   const [confirmingClear, setConfirmingClear] = useState(false);
 
   const shifts = new Set(history.map((r) => r.key.split(':').slice(0, 2).join(':'))).size;
@@ -67,10 +70,51 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
         called a weak spot, so one bad case won't reshape your next shift.
       </p>
 
+      {/* Always shown, even with no history — a rank is a checkpoint, so it
+          has to survive a reset the same way the header title does. */}
+      <Panel
+        title="Career"
+        icon={<IconGraduationCap size={14} />}
+        hint={career.next ? `working toward ${career.next}` : 'top rank reached'}
+        style={{ marginBottom: 14 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: C.text }}>{career.rank}</div>
+        </div>
+        {career.viaCheckpoint && (
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginBottom: 10 }}>
+            Locked in as a checkpoint — cleared history doesn't take back a rank you already earned.
+          </div>
+        )}
+        {career.next ? (
+          <>
+            <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 10 }}>
+              Promotion to <strong>{career.next}</strong> needs:
+            </div>
+            {career.criteria.map((c, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, marginBottom: 8, lineHeight: 1.5 }}>
+                <span style={{ color: c.met ? C.success : C.textMuted, flexShrink: 0, display: 'flex', marginTop: 2 }}>
+                  {c.met ? <IconCheck size={13} /> : <IconCircleSlash size={13} />}
+                </span>
+                <span style={{ color: c.met ? C.text : C.textSecondary }}>
+                  {c.label} <span style={{ color: C.textMuted, fontFamily: MONO }}>({c.current}/{c.target})</span>
+                </span>
+              </div>
+            ))}
+          </>
+        ) : (
+          <Callout tone={TONE.positive}>
+            Top rank reached — every distinct case type in the library cleared at 80%+, no current weak skill,
+            no escalation lean, and clean response actions. This is the standard the org chart's Tier 2 seat
+            actually expects.
+          </Callout>
+        )}
+      </Panel>
+
       {history.length === 0 ? (
         <Callout tone={TONE.neutral} title="Nothing recorded yet">
           Close a case from the alert queue and it will show up here. After a few shifts, this page will show which
-          calls you keep missing, and the next shift's queue will lean toward practising them.
+          calls you keep missing, and the next shift's queue will lean toward practicing them.
         </Callout>
       ) : (
         <>
@@ -150,7 +194,7 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
               )}
 
               {adaptive && nextFocus && (
-                <Callout tone={TONE.coaching} title={`Next shift practises: ${nextFocus.label}`}>
+                <Callout tone={TONE.coaching} title={`Next shift practices: ${nextFocus.label}`}>
                   {nextFocus.summary} Scenarios that exercise it are more likely to be dealt. It's a weighting, not a
                   filter: every shift still has something to close, something for IR, and work for Tier 2.
                 </Callout>
@@ -199,35 +243,6 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
                   </>
                 )}
               </div>
-            </Panel>
-
-            <Panel title="Career" icon={<IconGraduationCap size={14} />} hint={career.next ? `working toward ${career.next}` : 'top rank reached'}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: C.text }}>{career.rank}</div>
-              </div>
-              {career.next ? (
-                <>
-                  <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 10 }}>
-                    Promotion to <strong>{career.next}</strong> needs:
-                  </div>
-                  {career.criteria.map((c, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, marginBottom: 8, lineHeight: 1.5 }}>
-                      <span style={{ color: c.met ? C.success : C.textMuted, flexShrink: 0, display: 'flex', marginTop: 2 }}>
-                        {c.met ? <IconCheck size={13} /> : <IconCircleSlash size={13} />}
-                      </span>
-                      <span style={{ color: c.met ? C.text : C.textSecondary }}>
-                        {c.label} <span style={{ color: C.textMuted, fontFamily: MONO }}>({c.current}/{c.target})</span>
-                      </span>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <Callout tone={TONE.positive}>
-                  Top rank reached — every distinct case type in the library cleared at 80%+, no current weak skill,
-                  no escalation lean, and clean response actions. This is the standard the org chart's Tier 2 seat
-                  actually expects.
-                </Callout>
-              )}
             </Panel>
           </div>
         </>

@@ -186,7 +186,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
 
       {/* Said out loud, because a queue that quietly leans one way reads as luck. */}
       {focus && (
-        <Callout tone={TONE.primary} title={`This shift leans toward practising ${focus.label.toLowerCase()}`} style={{ marginBottom: 14 }}>
+        <Callout tone={TONE.primary} title={`This shift leans toward practicing ${focus.label.toLowerCase()}`} style={{ marginBottom: 14 }}>
           {focus.summary} The mix quotas still apply. See Your progress for why.
         </Callout>
       )}

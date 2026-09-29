@@ -22,7 +22,7 @@ import { HAND_SIZE, dealShift } from '../src/engine/deal.js';
 import { scoreCase } from '../src/engine/scoring.js';
 import {
   MIN_ATTEMPTS, MAX_WEIGHT, HISTORY_LIMIT, PROMOTION_SCORE_BAR, SKILLS,
-  buildRecord, careerStatus, emptyProgress, escalationTendency, planFocus, recordCase,
+  advanceCheckpoint, buildRecord, careerStatus, emptyProgress, escalationTendency, planFocus, recordCase,
   skillSummary, slaComplianceTrend, smoothedRate, weakestSkill,
 } from '../src/engine/progress.js';
 
@@ -472,4 +472,52 @@ test('a consistent escalation lean blocks Senior even with full score coverage',
   assert.equal(career.rank, 'Tier 1 Analyst', 'score coverage alone is not enough for Senior');
   const escalationCriterion = career.criteria.find((c) => c.label.includes('escalation'));
   assert.equal(escalationCriterion.met, false);
+});
+
+// A rank is a checkpoint: once earned, clearing history (the Dashboard's
+// "Reset everything", or the Progress tab's "Clear history") must never take
+// it back. This is the property the analyst specifically asked for.
+test('an empty history with a checkpoint keeps the checkpoint\'s rank, not Trainee', () => {
+  const career = careerStatus([], FAKE_LIB, 1);
+  assert.equal(career.rank, 'Tier 1 Analyst');
+  assert.equal(career.viaCheckpoint, true);
+  // The criteria shown are for the *next* rank, computed from the (empty)
+  // live history — reaching Senior after a reset starts over for real.
+  assert.equal(career.next, 'Senior Analyst — Tier 2 ready');
+  assert.equal(career.criteria[0].current, '0');
+});
+
+test('a checkpoint never outranks what live history already earned', () => {
+  const history = Array.from({ length: FAKE_LIB.length }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR));
+  const career = careerStatus(history, FAKE_LIB, 0);
+  assert.equal(career.rank, 'Senior Analyst — Tier 2 ready');
+  assert.equal(career.viaCheckpoint, false, 'earned live, not just held up by a stale checkpoint');
+});
+
+test('advanceCheckpoint raises the checkpoint the moment history supports it, and never lowers it', () => {
+  let progress = { ...emptyProgress() };
+  assert.equal(progress.checkpointRankIndex, 0);
+
+  const tenDistinct = Array.from({ length: 10 }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR));
+  progress = { ...progress, history: tenDistinct };
+  progress = advanceCheckpoint(progress, FAKE_LIB);
+  assert.equal(progress.checkpointRankIndex, 1, 'ten distinct case types at the bar should raise the checkpoint to Tier 1 Analyst');
+
+  // History regresses (as if cleared) — the checkpoint must hold.
+  progress = { ...progress, history: [] };
+  progress = advanceCheckpoint(progress, FAKE_LIB);
+  assert.equal(progress.checkpointRankIndex, 1, 'a checkpoint never moves down');
+});
+
+test('clearing history preserves the checkpoint end to end', () => {
+  const full = Array.from({ length: FAKE_LIB.length }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR));
+  let progress = advanceCheckpoint({ ...emptyProgress(), history: full }, FAKE_LIB);
+  assert.equal(progress.checkpointRankIndex, 2);
+
+  // What SOCAnalystSim.jsx's clearHistory / handleFullReset actually do:
+  // rebuild from emptyProgress() but keep the checkpoint.
+  const cleared = { ...emptyProgress(), checkpointRankIndex: progress.checkpointRankIndex };
+  const career = careerStatus(cleared.history, FAKE_LIB, cleared.checkpointRankIndex);
+  assert.equal(career.rank, 'Senior Analyst — Tier 2 ready');
+  assert.equal(career.viaCheckpoint, true);
 });

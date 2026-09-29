@@ -47,7 +47,7 @@ export const SKILLS = [
 const skillById = Object.fromEntries(SKILLS.map((s) => [s.id, s]));
 
 export function emptyProgress() {
-  return { history: [], adaptive: true };
+  return { history: [], adaptive: true, checkpointRankIndex: 0 };
 }
 
 export function caseKey(shiftStartedAt, deal, scenarioId) {
@@ -151,7 +151,7 @@ function missesByScenario(history, skillId) {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-// Each rule answers: given this weakness, which scenarios practise it, and
+// Each rule answers: given this weakness, which scenarios practice it, and
 // why? Every boost carries a reason, because a trainee who can't see why the
 // queue looks the way it does will assume it's random.
 function targetedBoost(skillId, scenario, context) {
@@ -195,7 +195,7 @@ function targetedBoost(skillId, scenario, context) {
   return null;
 }
 
-// The plan for the next shift: which skill to practise, and a weight per
+// The plan for the next shift: which skill to practice, and a weight per
 // scenario. Deliberately a *weighting* and not a filter. The deal's mix quotas
 // still apply on top, so a focused shift is still a realistic shift, never
 // seven copies of one lesson.
@@ -262,8 +262,12 @@ function bestScoreByScenario(history) {
 
 // history: progress.history. library: the scenario pool a rank's breadth
 // requirement counts against (SCENARIOS — War Room follow-ons don't count,
-// you can't queue one up on demand).
-export function careerStatus(history, library) {
+// you can't queue one up on demand). checkpointRankIndex: the highest rank
+// ever actually earned — a rank is a checkpoint, not a reflection of your
+// current stats, so clearing history (the Dashboard's "Reset everything", or
+// the Progress tab's "Clear history") never demotes you. It only means the
+// live criteria below start over on the way to the *next* rank.
+export function careerStatus(history, library, checkpointRankIndex = 0) {
   const best = bestScoreByScenario(history);
   const libraryIds = new Set(library.map((s) => s.id));
   const qualifying = Object.entries(best).filter(([id, score]) => libraryIds.has(id) && score >= PROMOTION_SCORE_BAR);
@@ -309,13 +313,37 @@ export function careerStatus(history, library) {
     },
   ];
 
-  let rankIndex = 0;
-  if (analystCriteria.every((c) => c.met)) rankIndex = 1;
-  if (rankIndex === 1 && seniorCriteria.every((c) => c.met)) rankIndex = 2;
+  let liveRankIndex = 0;
+  if (analystCriteria.every((c) => c.met)) liveRankIndex = 1;
+  if (liveRankIndex === 1 && seniorCriteria.every((c) => c.met)) liveRankIndex = 2;
 
+  // The checkpoint can only hold a rank up, never pull it down — live history
+  // that currently looks worse than it used to (or was just cleared) doesn't
+  // erase a rank that was already earned.
+  const rankIndex = Math.max(liveRankIndex, checkpointRankIndex);
   const rank = CAREER_RANKS[rankIndex];
   const next = CAREER_RANKS[rankIndex + 1] || null;
   const criteria = rankIndex === 0 ? analystCriteria : rankIndex === 1 ? seniorCriteria : [];
 
-  return { rank: rank.label, rankId: rank.id, next: next?.label ?? null, criteria };
+  return {
+    rank: rank.label,
+    rankId: rank.id,
+    rankIndex,
+    next: next?.label ?? null,
+    criteria,
+    // True when the displayed rank is only standing because of a checkpoint —
+    // live history alone wouldn't currently support it. Lets the UI say so
+    // honestly instead of implying today's numbers earned it.
+    viaCheckpoint: rankIndex > liveRankIndex,
+  };
+}
+
+// Called whenever a case is recorded: if the live rank the history now
+// supports is higher than the checkpoint on file, the checkpoint moves up to
+// match. It never moves down — that's the whole point of a checkpoint.
+export function advanceCheckpoint(progress, library) {
+  const current = progress.checkpointRankIndex ?? 0;
+  const { rankIndex } = careerStatus(progress.history, library, current);
+  if (rankIndex <= current) return progress;
+  return { ...progress, checkpointRankIndex: rankIndex };
 }
