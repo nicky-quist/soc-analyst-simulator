@@ -11,9 +11,10 @@ import { Badge, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
 import { Donut, Funnel, Gauge, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
 import {
-  IconActivity, IconClock, IconFilter, IconInbox, IconListChecks, IconPieChart,
+  IconActivity, IconClock, IconFileCheck, IconFilter, IconInbox, IconListChecks, IconPieChart,
   IconRadio, IconServer, IconTarget, IconTrendingUp, IconUsers,
 } from '../ui/icons.jsx';
+import HandoffPanel from './HandoffPanel.jsx';
 
 function Tile({ label, value, sub, tone, icon }) {
   return (
@@ -358,6 +359,10 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
               ? `This shift: ${compliance.onTime} of ${compliance.handled} handled within target${compliance.breached ? `, ${compliance.breached} breached` : ''}.`
               : 'This shift: nothing closed or breached yet — that point is yours to place.'}
           </div>
+        </Panel>
+
+        <Panel title="Shift handoff" icon={<IconFileCheck size={13} />} hint="always current, not just at shift end" style={{ gridColumn: 'span 2' }}>
+          <HandoffPanel scenarios={scenarios} cases={cases} />
         </Panel>
 
         <Panel title="Estate activity" icon={<IconRadio size={13} />} hint="live tail" style={{ gridColumn: 'span 2' }}>

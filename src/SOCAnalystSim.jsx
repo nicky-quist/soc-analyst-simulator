@@ -702,7 +702,7 @@ export default function SOCAnalystSim() {
 
       {shift.view === 'team' && (
         <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-          <TeamTab progress={progress} />
+          <TeamTab progress={progress} closedCases={closedCases} warRoomActive={!!shift.warRoom} />
         </main>
       )}
 
@@ -804,7 +804,7 @@ export default function SOCAnalystSim() {
               />
             )}
             {tab === 'debrief' && closed && (
-              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} timeline={caseFile.timeline} />
+              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} timeline={caseFile.timeline} actions={caseFile.actions} />
             )}
           </div>
         </main>

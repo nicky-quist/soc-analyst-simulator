@@ -1,9 +1,10 @@
 import { C, TONE } from '../theme.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
 import { generateCisoResponse, generateCeoResponse } from '../engine/personas.js';
+import { buildHandoffNote, formatHandoffText } from '../engine/handoff.js';
 import { Badge, Button, Callout, Card, Metric, PersonaMessage, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
-import { IconAlertOctagon, IconCheck, IconCircleSlash, IconRotate, IconX } from '../ui/icons.jsx';
+import { IconAlertOctagon, IconCheck, IconCircleSlash, IconFileCheck, IconRotate, IconX } from '../ui/icons.jsx';
 import AiCoach from './AiCoach.jsx';
 
 function coverageTone(coverage) {
@@ -11,7 +12,7 @@ function coverageTone(coverage) {
   return coverage >= 0.5 ? TONE.coaching : TONE.concerned;
 }
 
-export default function DebriefTab({ scenario, result, onRetry, timeline }) {
+export default function DebriefTab({ scenario, result, onRetry, timeline, actions }) {
   const { submission, score } = result;
   const ciso = generateCisoResponse(scenario, submission, score);
   const ceo = generateCeoResponse(scenario, submission);
@@ -19,6 +20,8 @@ export default function DebriefTab({ scenario, result, onRetry, timeline }) {
   const tone = resolved ? TONE.positive : TONE.coaching;
   const { investigation, response } = score;
   const target = scenario.truth.responseTargetMinutes;
+  const escalated = submission.escalation === 'escalate_ir' || submission.escalation === 'escalate_tier2';
+  const handoffNote = escalated ? buildHandoffNote(scenario, { result, timeline, actions }) : null;
 
   return (
     <div>
@@ -117,6 +120,30 @@ export default function DebriefTab({ scenario, result, onRetry, timeline }) {
           </div>
         ))}
       </Card>
+
+      {handoffNote && (
+        <Card style={{ padding: 20, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SectionLabel icon={<IconFileCheck size={13} />} style={{ marginBottom: 0 }}>
+              Handoff note — filed to {handoffNote.escalatedTo}
+            </SectionLabel>
+            <Button
+              variant="ghost"
+              onClick={() => navigator.clipboard?.writeText(formatHandoffText([handoffNote])).catch(() => {})}
+            >
+              Copy
+            </Button>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.textSecondary, marginBottom: handoffNote.stillNeeded.length ? 6 : 0 }}>
+            {handoffNote.findings} · on it for {formatDuration(handoffNote.elapsedMs)}
+          </div>
+          {handoffNote.stillNeeded.length > 0 && (
+            <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>
+              Still needed: {handoffNote.stillNeeded.join('; ')}
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card tone={TONE.business} style={{ padding: 20, marginBottom: 16 }}>
         <SectionLabel>Debrief</SectionLabel>
