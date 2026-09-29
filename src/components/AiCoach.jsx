@@ -14,7 +14,7 @@ import { generateCoachDebrief } from '../engine/ai/coach.js';
 
 const STATUS = { IDLE: 'idle', CHECKING: 'checking', READY: 'ready', UNREACHABLE: 'unreachable', STREAMING: 'streaming', ERROR: 'error' };
 
-function SettingsPanel({ settings, onChange }) {
+export function SettingsPanel({ settings, onChange }) {
   return (
     <Card style={{ padding: 16, marginBottom: 14 }}>
       <Field label="Provider">

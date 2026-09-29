@@ -15,7 +15,7 @@ import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
+  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconSettings, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -30,12 +30,13 @@ import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import TeamTab from './components/TeamTab.jsx';
 import RedOpsView from './components/RedOpsView.jsx';
+import SettingsView from './components/SettingsView.jsx';
 
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
 
 // The console's sections, in rail order. Each also answers to a URL hash
 // (#triage and so on), so a link can open straight onto a tab.
-const VIEWS = ['dashboard', 'queue', 'triage', 'redops', 'team', 'progress'];
+const VIEWS = ['dashboard', 'queue', 'triage', 'redops', 'team', 'progress', 'settings'];
 
 // The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
@@ -707,6 +708,16 @@ export default function SOCAnalystSim() {
             >
               <IconTrendingUp size={18} />
             </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
+              data-active={shift.view === 'settings'}
+              onClick={() => setView('settings')}
+              aria-current={shift.view === 'settings' ? 'page' : undefined}
+              title="Settings"
+            >
+              <IconSettings size={18} />
+            </button>
           </nav>
 
           <div style={{ flex: 1 }} />
@@ -807,6 +818,12 @@ export default function SOCAnalystSim() {
             onToggleAdaptive={toggleAdaptive}
             onClearHistory={clearHistory}
           />
+        </main>
+      )}
+
+      {shift.view === 'settings' && (
+        <main className="sim-main" style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+          <SettingsView />
         </main>
       )}
 
