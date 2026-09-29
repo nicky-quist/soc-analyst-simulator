@@ -35,7 +35,7 @@ import dnsTunnelSuspected from './dns-tunnel-suspected.js';
 
 export const COMPANY = {
   name: 'Coastal Trust Bank',
-  soc: 'Coastal SOC',
+  soc: 'SEA SOC',
   analyst: { name: 'You', title: 'Tier 1 Analyst' },
   ciso: { name: 'Sarah Okafor', title: 'CISO' },
   ceo: { name: 'David Reyes', title: 'CEO' },
