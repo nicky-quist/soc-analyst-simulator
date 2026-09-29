@@ -44,9 +44,9 @@ export const THEME_CSS = `
   --band-high: #f76b15;
   --band-medium: #f5b301;
   --band-low: #16a34a;
-  --chart-critical: #e07a76;
-  --chart-high: #ef9d5c;
-  --chart-medium: #f2c85c;
+  --chart-critical: #c0504a;
+  --chart-high: #e8923f;
+  --chart-medium: #f7dc72;
   --chart-low: #6cc296;
   --chart-informational: #6bbcd4;
   --sev-critical: #b91c1c; --sev-critical-bg: #fef2f2;
@@ -88,9 +88,9 @@ export const THEME_CSS = `
   --band-high: #fb923c;
   --band-medium: #fbbf24;
   --band-low: #34d399;
-  --chart-critical: #d96a6a;
-  --chart-high: #dd9256;
-  --chart-medium: #e0b95a;
+  --chart-critical: #b8433d;
+  --chart-high: #d97d3a;
+  --chart-medium: #e8cf6e;
   --chart-low: #59ab86;
   --chart-informational: #58a3ba;
   --sev-critical: #f87171; --sev-critical-bg: #2a1212;
