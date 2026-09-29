@@ -23,7 +23,7 @@ import { scoreCase } from '../src/engine/scoring.js';
 import {
   MIN_ATTEMPTS, MAX_WEIGHT, HISTORY_LIMIT, SKILLS,
   buildRecord, emptyProgress, escalationTendency, planFocus, recordCase,
-  skillSummary, smoothedRate, weakestSkill,
+  skillSummary, slaComplianceTrend, smoothedRate, weakestSkill,
 } from '../src/engine/progress.js';
 
 const SEEDS = Array.from({ length: 300 }, (_, i) => Date.UTC(2026, 0, 1) + i * 9 * 3600_000);
@@ -376,4 +376,31 @@ test('a structural rule targets a minority of the library, or it is not a focus'
     const boosted = Object.entries(focus.weights).filter(([id, w]) => id !== MISS_SITE && w > 1).length;
     assert.ok(boosted <= Math.ceil(SCENARIOS.length * 0.7), `${name} boosts ${boosted} of ${SCENARIOS.length}`);
   }
+});
+
+// The dashboard replaced a synthetic 7-day calendar week (which could show a
+// weekday that didn't match the clock the analyst was actually sitting at)
+// with this: a trend built only from cases the analyst actually closed, with
+// no notion of "today" to fall out of sync. See Dashboard.jsx's SLA panel.
+function slaRecord(sla) {
+  return { outcomes: { ...Object.fromEntries(SKILLS.map((s) => [s.id, null])), sla } };
+}
+
+test('the SLA trend has no history before any case has been closed', () => {
+  assert.deepEqual(slaComplianceTrend([]), []);
+});
+
+test('the SLA trend only moves on cases that had a response-time target', () => {
+  const history = [slaRecord(true), slaRecord(null), slaRecord(true), slaRecord(false)];
+  const trend = slaComplianceTrend(history);
+  // The null (no target) case is skipped entirely, not counted as compliant.
+  assert.equal(trend.length, 3);
+  assert.deepEqual(trend.map((p) => p.pct), [100, 100, 67]);
+  assert.deepEqual(trend.map((p) => p.breached), [false, false, true]);
+});
+
+test('the SLA trend is cumulative and chronological, not a rolling window', () => {
+  const history = [slaRecord(false), slaRecord(false), slaRecord(true), slaRecord(true), slaRecord(true)];
+  const trend = slaComplianceTrend(history);
+  assert.deepEqual(trend.map((p) => p.pct), [0, 0, 33, 50, 60]);
 });

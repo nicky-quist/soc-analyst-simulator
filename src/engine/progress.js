@@ -109,6 +109,22 @@ export function skillSummary(history) {
   });
 }
 
+// Real SLA-compliance history, built only from cases you actually closed —
+// never invented calendar days, so there is no "today" for the clock you are
+// actually sitting at to fall out of sync with. Only cases with a
+// response-time target move the line; one with none is skipped rather than
+// counted as compliant. Cumulative and chronological, and it starts at 100%
+// for the same reason shiftCompliance does: nothing has gone wrong before
+// anything has happened.
+export function slaComplianceTrend(history) {
+  const relevant = history.filter((r) => r.outcomes.sla === true || r.outcomes.sla === false);
+  let onTime = 0;
+  return relevant.map((r, i) => {
+    if (r.outcomes.sla) onTime += 1;
+    return { day: i + 1, pct: Math.round((onTime / (i + 1)) * 100), breached: !r.outcomes.sla };
+  });
+}
+
 export function weakestSkill(summary) {
   const candidates = summary.filter((s) => s.attempts >= MIN_ATTEMPTS && s.smoothed < WEAK_BELOW);
   if (!candidates.length) return null;

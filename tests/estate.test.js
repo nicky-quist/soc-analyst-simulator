@@ -6,8 +6,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, SLA_TARGET, TACTIC_COVERAGE,
-  TOP_ENTITIES, buildHourlyVolume, buildShift, buildSlaTrend, formatCount, funnelTotals, withToday,
+  AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, TACTIC_COVERAGE,
+  TOP_ENTITIES, buildHourlyVolume, buildShift, formatCount, funnelTotals,
 } from '../src/data/estate.js';
 import { HAND_SIZE } from '../src/engine/deal.js';
 
@@ -44,49 +44,10 @@ test('the volume chart ends on the hour the analyst is sitting in', () => {
   }
 });
 
-test('the SLA week ends on today, which is left for the analyst to fill in', () => {
-  const shapes = new Set();
-  const badDays = new Set();
-  let cleanWeeks = 0;
-  for (const seed of SEEDS) {
-    const trend = buildSlaTrend(seed);
-    assert.equal(trend.points.length, 7);
-
-    const today = trend.points[6];
-    assert.equal(today.today, true);
-    assert.equal(today.day, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(seed).getDay()]);
-    assert.equal(today.pct, null, 'the console must not invent a number for a shift in progress');
-
-    const history = trend.points.slice(0, 6);
-    for (const point of history) assert.ok(point.pct > 0 && point.pct <= 100, `${point.day}: ${point.pct}%`);
-
-    const below = history.filter((p) => p.pct < SLA_TARGET);
-    assert.equal(below.length, trend.breachedDays.length, 'the caption must count the same bad days as the chart');
-    for (const point of below) assert.ok(!point.weekend, 'weekend volume does not miss the target');
-
-    shapes.add(history.map((p) => p.pct).join(','));
-    for (const name of trend.breachedDays) badDays.add(name);
-    if (!trend.breachedDays.length) cleanWeeks += 1;
-  }
-  assert.ok(shapes.size > 300, `only ${shapes.size} distinct weeks across 400 shifts — the chart is effectively static`);
-  assert.ok(badDays.size >= 4, `the dip only ever lands on ${[...badDays].join(', ')}`);
-  assert.ok(cleanWeeks > 20 && cleanWeeks < 160, `${cleanWeeks}/400 weeks with nothing to explain is the wrong balance`);
-});
-
-test("today's point is the analyst's, and only the analyst's", () => {
-  const trend = buildSlaTrend(Date.UTC(2026, 4, 12, 9, 30));
-  assert.equal(withToday(trend, null).points[6].pct, null, 'no figure yet leaves the point empty');
-
-  const placed = withToday(trend, 83);
-  assert.equal(placed.points[6].pct, 83);
-  assert.deepEqual(placed.points.slice(0, 6), trend.points.slice(0, 6), 'the week behind you does not move');
-  assert.equal(trend.points[6].pct, null, 'the generated week is not mutated');
-});
-
-test('the same shift start deals a different week after a reset', () => {
+test('the same shift start deals a different hourly volume after a reset', () => {
   const seed = Date.UTC(2026, 4, 12, 9, 30);
-  const first = buildSlaTrend(seed, 0).points.map((p) => p.pct).join(',');
-  const second = buildSlaTrend(seed, 1).points.map((p) => p.pct).join(',');
+  const first = buildHourlyVolume(seed, 0).map((h) => h.low).join(',');
+  const second = buildHourlyVolume(seed, 1).map((h) => h.low).join(',');
   assert.notEqual(first, second);
   const rosters = new Set(Array.from({ length: 8 }, (_, v) => buildShift(seed, v).onCall));
   assert.ok(rosters.size > 1, 'the on-call roster never changes between shifts');
@@ -94,10 +55,27 @@ test('the same shift start deals a different week after a reset', () => {
 
 test('the same shift always renders the same numbers', () => {
   const seed = Date.UTC(2026, 4, 12, 9, 30);
-  assert.deepEqual(buildSlaTrend(seed), buildSlaTrend(seed));
   assert.deepEqual(buildHourlyVolume(seed), buildHourlyVolume(seed));
   assert.deepEqual(buildShift(seed), buildShift(seed));
-  assert.deepEqual(buildSlaTrend(seed), buildSlaTrend(seed + 20 * 60_000), 'a shift must not re-roll mid-shift');
+  assert.deepEqual(buildHourlyVolume(seed), buildHourlyVolume(seed + 20 * 60_000), 'a shift must not re-roll mid-shift');
+});
+
+// This is the bug a real analyst actually caught: the alert pipeline funnel
+// and the per-source detection table sit on the same dashboard, and used to
+// quote independently authored numbers that didn't agree — 1,179 auto-closed
+// in the funnel against 1,133 implied by summing the per-source table. The
+// funnel now derives its middle two stages from DETECTION_SOURCES, and this
+// pins that down so the two panels can't drift apart again.
+test('the alert pipeline funnel agrees with the per-source detection table', () => {
+  const totalAlerts = DETECTION_SOURCES.reduce((sum, s) => sum + s.alerts, 0);
+  const totalAutoClosed = DETECTION_SOURCES.reduce((sum, s) => sum + s.autoClosed, 0);
+  const correlated = AUTOMATION_FUNNEL.find((s) => s.stage === 'Correlated into alerts');
+  const autoTriaged = AUTOMATION_FUNNEL.find((s) => s.stage === 'Auto-triaged or suppressed');
+  const routed = AUTOMATION_FUNNEL.find((s) => s.stage === 'Routed to an analyst');
+
+  assert.equal(correlated.value, totalAlerts, 'every alert in the funnel has to come from a named source');
+  assert.equal(autoTriaged.value, totalAutoClosed, 'auto-triaged has to match what the sources actually closed');
+  assert.equal(routed.value, totalAlerts - totalAutoClosed, 'the rest, and only the rest, reached an analyst');
 });
 
 test('the shift header names today and the block it belongs to', () => {

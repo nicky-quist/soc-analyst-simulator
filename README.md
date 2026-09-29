@@ -31,7 +31,7 @@ So this sim is built so those things can happen to you.
 
 **Your numbers, not the estate's.** SLA compliance on the dashboard is computed from the cases *you* closed and the clocks *you* let run out — an alert counts once you close it or once it breaches, so the gauge starts at 100%, moves the moment you finish a case, and drops when one goes over. Today's point on the 7-day trend is left visibly empty until then, rather than filled with a number the console invented. The six days behind it are generated per shift: most weeks lose one day below target, a bad week loses two running, one in five comes in clean, and the caption under the chart describes the week that was actually drawn.
 
-The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 alerts → 1,179 closed by automation → 105 routed to analysts → 7 in your queue. That funnel is the part of the job a quiz never shows you, and it is why "just look at every alert" is not a strategy.
+The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 alerts → 1,133 closed by automation → 151 routed to analysts → 7 in your queue. That funnel is the part of the job a quiz never shows you, and it is why "just look at every alert" is not a strategy.
 
 **Alert queue** — seven alerts with status (New / In progress / Closed), the tool's reported severity, and a live SLA countdown that goes red when breached. Shift KPIs sit in the header too, so the numbers follow you out of the dashboard.
 

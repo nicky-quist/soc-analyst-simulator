@@ -16,8 +16,6 @@
 
 import { between, mulberry32, pick, shiftSeed } from '../engine/random.js';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -57,11 +55,31 @@ export function buildShift(startedAt = Date.now(), variant = 0) {
   };
 }
 
+// Per-source detection volume and how much of it automation closed before a
+// human saw it. This is the source of truth AUTOMATION_FUNNEL agrees with
+// below: sum(autoClosed) is what "auto-triaged or suppressed" means, and
+// sum(alerts - autoClosed) is what "routed to an analyst" means. Two panels on
+// the same dashboard quoting numbers that silently drift apart is worse than
+// either panel alone, so the funnel derives its middle two stages from this
+// list instead of carrying its own, separately authored pair.
+export const DETECTION_SOURCES = [
+  { source: 'Suricata IDS', alerts: 412, autoClosed: 381 },
+  { source: 'CrowdStrike EDR', alerts: 268, autoClosed: 231 },
+  { source: 'M365 Defender', alerts: 244, autoClosed: 205 },
+  { source: 'Splunk correlation', alerts: 171, autoClosed: 149 },
+  { source: 'AWS GuardDuty', alerts: 96, autoClosed: 88 },
+  { source: 'DLP platform', alerts: 61, autoClosed: 55 },
+  { source: 'User-reported phishing', alerts: 32, autoClosed: 24 },
+];
+
+const TOTAL_ALERTS = DETECTION_SOURCES.reduce((sum, s) => sum + s.alerts, 0);
+const TOTAL_AUTO_CLOSED = DETECTION_SOURCES.reduce((sum, s) => sum + s.autoClosed, 0);
+
 export const AUTOMATION_FUNNEL = [
   { stage: 'Events ingested', value: 41208442, note: 'across 38 log sources' },
-  { stage: 'Correlated into alerts', value: 1284, note: 'detection rules fired' },
-  { stage: 'Auto-triaged or suppressed', value: 1179, note: 'playbooks, allowlists, tuning' },
-  { stage: 'Routed to an analyst', value: 105, note: 'across three shifts' },
+  { stage: 'Correlated into alerts', value: TOTAL_ALERTS, note: 'detection rules fired' },
+  { stage: 'Auto-triaged or suppressed', value: TOTAL_AUTO_CLOSED, note: 'playbooks, allowlists, tuning' },
+  { stage: 'Routed to an analyst', value: TOTAL_ALERTS - TOTAL_AUTO_CLOSED, note: 'across three shifts' },
 ];
 
 // The shape of a banking day in alert volume: quiet overnight, a ramp when the
@@ -97,17 +115,6 @@ const HOURLY_BASELINE = [
 
 export const SLA_TARGET = 90;
 
-// Why a week went wrong. Each reads as both "the shape of a day when X" and as
-// a clause after an em dash, because the caption uses it both ways.
-const SLA_CAUSES = [
-  'a noisy rule went untuned',
-  'a phishing wave landed during handover',
-  'two analysts were out and the queue backed up',
-  'an EDR sensor upgrade doubled the alert volume',
-  'a change window pushed a batch of vulnerability findings into the queue',
-  'an upstream log source lagged and every clock started late',
-];
-
 // Last 24 hours of alert volume, rotated so the final bar is the current hour
 // and jittered off the baseline. One hour of the shift gets a burst, because a
 // flat day is the one shape a SOC never has.
@@ -141,82 +148,6 @@ export function buildHourlyVolume(startedAt = Date.now(), variant = 0) {
 
   return hours;
 }
-
-// The six days behind you, plus today. Weekends hold their target easily (a
-// third of the volume, same headcount); weekdays are tighter. Most weeks lose a
-// single day, a bad week loses two running, and about one in five comes in
-// clean — so the chart is worth reading rather than recognising.
-//
-// Today is deliberately left empty. It is the one point on this chart the
-// analyst is producing themselves, and the console has no business inventing a
-// number for a shift that has not closed anything yet.
-export function buildSlaTrend(startedAt = Date.now(), variant = 0, target = SLA_TARGET) {
-  const rand = mulberry32(seedFor(startedAt, variant, 0x51a));
-
-  const history = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date(startedAt - (6 - i) * DAY_MS);
-    const dow = date.getDay();
-    const weekend = dow === 0 || dow === 6;
-    return { day: WEEKDAY_SHORT[dow], long: WEEKDAY_LONG[dow], weekend, pct: between(rand, weekend ? 95 : 91, weekend ? 99 : 97) };
-  });
-
-  const roll = rand();
-  const shape = roll < 0.2 ? 'clean' : roll < 0.85 ? 'dip' : 'slump';
-  const cause = pick(rand, SLA_CAUSES);
-  const weekdays = history.map((p, i) => i).filter((i) => !history[i].weekend);
-  const bad = [];
-
-  if (shape === 'dip' && weekdays.length) {
-    bad.push(pick(rand, weekdays));
-  } else if (shape === 'slump') {
-    const runs = weekdays.filter((i) => weekdays.includes(i + 1));
-    if (runs.length) {
-      const start = pick(rand, runs);
-      bad.push(start, start + 1);
-    } else if (weekdays.length) {
-      bad.push(pick(rand, weekdays));
-    }
-  }
-
-  for (const i of bad) history[i].pct = target - between(rand, 1, 9);
-
-  const names = bad.map((i) => history[i].long);
-  const caption = bad.length === 0
-    ? `Dashed line is the ${target}% target. Every day of the week behind you closed above it — quiet weeks are what pay for the tuning that keeps them quiet.`
-    : bad.length === 1
-      ? `Dashed line is the ${target}% target. ${names[0]} dipped below it — that is the shape of a day when ${cause}.`
-      : `Dashed line is the ${target}% target. ${names[0]} and ${names[1]} both fell short — ${cause}, and a backlog takes more than one shift to clear.`;
-
-  const todayDate = new Date(startedAt);
-  const today = {
-    day: WEEKDAY_SHORT[todayDate.getDay()],
-    long: WEEKDAY_LONG[todayDate.getDay()],
-    weekend: todayDate.getDay() === 0 || todayDate.getDay() === 6,
-    pct: null,
-    today: true,
-  };
-
-  return { points: [...history, today], target, breachedDays: names, caption };
-}
-
-// Today's point once the analyst has closed or breached something. Kept as a
-// separate call so the chart module never has to know about case files.
-export function withToday(trend, pct) {
-  if (pct == null) return trend;
-  const points = trend.points.map((p) => (p.today ? { ...p, pct } : p));
-  return { ...trend, points };
-}
-
-
-export const DETECTION_SOURCES = [
-  { source: 'Suricata IDS', alerts: 412, autoClosed: 381 },
-  { source: 'CrowdStrike EDR', alerts: 268, autoClosed: 231 },
-  { source: 'M365 Defender', alerts: 244, autoClosed: 205 },
-  { source: 'Splunk correlation', alerts: 171, autoClosed: 149 },
-  { source: 'AWS GuardDuty', alerts: 96, autoClosed: 88 },
-  { source: 'DLP platform', alerts: 61, autoClosed: 55 },
-  { source: 'User-reported phishing', alerts: 32, autoClosed: 24 },
-];
 
 export const TOP_ENTITIES = [
   { entity: 'db-prod-03', type: 'host', alerts: 14, risk: 'CRITICAL' },

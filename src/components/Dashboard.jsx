@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { BAND_COLORS, C, CHART_COLORS, MONO, TONE, severityTone } from '../theme.js';
 import {
   AUTOMATION_FUNNEL, DETECTION_SOURCES, ESTATE_FEED, SLA_TARGET, TACTIC_COVERAGE,
-  TOP_ENTITIES, buildHourlyVolume, buildShift, buildSlaTrend, formatCount, funnelTotals, withToday,
+  TOP_ENTITIES, buildHourlyVolume, buildShift, formatCount, funnelTotals,
 } from '../data/estate.js';
 import { caseStatus, shiftCompliance, slaState } from '../engine/case.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
+import { slaComplianceTrend } from '../engine/progress.js';
 import { Badge, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
 import { Donut, Funnel, Gauge, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
@@ -90,7 +91,7 @@ function Legend({ items }) {
   );
 }
 
-export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert }) {
+export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress }) {
   const [feedTick, setFeedTick] = useState(0);
 
   // Everything estate-side is a function of the shift seed, so it is stable for
@@ -98,7 +99,10 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
   const seedAt = shiftStartedAt ?? now;
   const shiftHeader = useMemo(() => buildShift(seedAt, deal), [seedAt, deal]);
   const hourlyVolume = useMemo(() => buildHourlyVolume(seedAt, deal), [seedAt, deal]);
-  const week = useMemo(() => buildSlaTrend(seedAt, deal), [seedAt, deal]);
+  // Real cases you've actually closed, not an invented calendar week — this is
+  // the one number on the board that can never read as "wrong day": there is
+  // no day attached to it, only the order you closed things in.
+  const slaHistory = useMemo(() => slaComplianceTrend(progress?.history || []), [progress]);
 
   useEffect(() => {
     const id = setInterval(() => setFeedTick((t) => t + 1), 4000);
@@ -133,10 +137,20 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
   // Today's compliance is yours, not the estate's: it is the one number on this
   // board that moves because of what you do in the next twenty minutes.
   const compliance = shiftCompliance(scenarios, cases, now);
-  const slaTrend = withToday(week, compliance.pct);
   const complianceHint = compliance.handled
     ? `${compliance.onTime} of ${compliance.handled} handled within target`
     : 'nothing closed or breached yet';
+
+  // Starts at 100% because nothing has gone wrong before anything has
+  // happened, then the real history you've built across every session, then
+  // this shift's own still-forming number — shown open/pending until you
+  // close or breach something, same as before, just never a calendar day.
+  const slaPoints = [
+    { day: 'start', pct: 100 },
+    ...slaHistory.slice(-11),
+    { day: 'now', pct: compliance.pct },
+  ];
+  const overallSlaPct = slaHistory.length ? slaHistory[slaHistory.length - 1].pct : null;
 
   const feed = Array.from({ length: 6 }, (_, i) => ESTATE_FEED[(feedTick + i) % ESTATE_FEED.length]);
 
@@ -325,29 +339,24 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
         </Panel>
 
         <Panel
-          title="SLA compliance — 7 days"
+          title="SLA compliance"
           icon={<IconTrendingUp size={13} />}
-          hint={compliance.pct == null ? 'today pending' : `${compliance.pct}% today`}
+          hint={compliance.pct == null ? 'this shift pending' : `${compliance.pct}% this shift`}
         >
-          <Sparkline points={slaTrend.points} threshold={SLA_TARGET} />
+          <Sparkline points={slaPoints} threshold={SLA_TARGET} ariaLabel="SLA compliance trend across your closed cases" />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, fontFamily: MONO, marginTop: 4 }}>
-            {slaTrend.points.map((point) => (
-              <span
-                key={point.day}
-                style={{
-                  color: point.pct != null && point.pct < SLA_TARGET ? C.danger : C.textMuted,
-                  fontWeight: point.today ? 700 : 400,
-                }}
-              >
-                {point.day}
-              </span>
-            ))}
+            <span>Start</span>
+            <span style={{ fontWeight: 700, color: compliance.pct != null && compliance.pct < SLA_TARGET ? C.danger : C.textMuted }}>
+              {compliance.pct == null ? 'This shift (pending)' : 'This shift'}
+            </span>
           </div>
           <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 8, lineHeight: 1.55 }}>
-            {slaTrend.caption}{' '}
+            {slaHistory.length
+              ? `Dashed line is the ${SLA_TARGET}% target. Across every case you've closed with a response-time target (${slaHistory.length} so far), you're running at ${overallSlaPct}%.`
+              : `Dashed line is the ${SLA_TARGET}% target. You start at 100% — this only moves once you close a case that has a response-time target.`}{' '}
             {compliance.handled
-              ? `Today's point is yours: ${compliance.onTime} of ${compliance.handled} handled within target${compliance.breached ? `, ${compliance.breached} breached` : ''}.`
-              : 'Today is empty until you close an alert or let one breach — that point is yours to place.'}
+              ? `This shift: ${compliance.onTime} of ${compliance.handled} handled within target${compliance.breached ? `, ${compliance.breached} breached` : ''}.`
+              : 'This shift: nothing closed or breached yet — that point is yours to place.'}
           </div>
         </Panel>
 
