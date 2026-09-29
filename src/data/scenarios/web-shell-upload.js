@@ -7,6 +7,10 @@
 export default {
   id: 'web-shell-upload',
   difficulty: 3,
+  variables: {
+    hostname: { value: 'WEB-PROD-02', pool: 'hostname-webserver' },
+    attackerIp: { value: '103.163.220.47', pool: 'ipv4-external' },
+  },
   queueLabel: 'EDR Alert — IIS worker process spawned a command shell, WEB-PROD-02',
   source: 'CrowdStrike EDR',
   alert: {

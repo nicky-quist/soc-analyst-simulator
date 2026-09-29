@@ -8,6 +8,12 @@
 export default {
   id: 'dns-tunnel-suspected',
   difficulty: 3,
+  variables: {
+    hostname: { value: 'MKT-LT-19', pool: 'hostname-workstation' },
+    internalIp: { value: '10.20.14.61', pool: 'ipv4-internal' },
+    domain: { value: 'sync-telemetry-cdn.net', pool: 'suspicious-domain' },
+    username: { value: 'lstreet', pool: 'human-username' },
+  },
   queueLabel: 'DNS Alert — Sustained TXT query volume to a young domain, MKT-LT-19',
   source: 'DNS security (Umbrella)',
   alert: {

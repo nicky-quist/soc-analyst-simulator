@@ -7,6 +7,10 @@
 export default {
   id: 'edr-quarantine-dual-use',
   difficulty: 3,
+  variables: {
+    username: { value: 'dkraft', pool: 'human-username' },
+    hostname: { value: 'IT-LT-07', pool: 'hostname-workstation' },
+  },
   queueLabel: 'EDR Alert — Credential Dumping Tool Quarantined, host IT-LT-07',
   source: 'CrowdStrike EDR',
   alert: {

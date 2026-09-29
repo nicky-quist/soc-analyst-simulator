@@ -13,8 +13,9 @@ const awsKeyLeak = SCENARIOS.find((s) => s.id === 'aws-key-leak');
 const sshBrute = SCENARIOS.find((s) => s.id === 'ssh-brute-success');
 
 test('a scenario with no variables passes through untouched', () => {
-  const untouched = SCENARIOS.find((s) => !s.variables);
-  assert.ok(untouched, 'need at least one scenario outside the pilot to test the no-op path');
+  // Every scenario in the library is tagged at this point, so the no-op path
+  // is exercised with a synthetic stand-in rather than a real library entry.
+  const untouched = { id: 'untagged-fixture', rawLog: 'nothing to substitute here' };
   assert.equal(instantiateScenario(untouched, 'any-seed'), untouched);
 });
 
@@ -26,9 +27,6 @@ test('the same scenario and seed always instantiate identically', () => {
 
 test('different seeds produce more than one distinct pick', () => {
   const seeds = Array.from({ length: 25 }, (_, i) => `${1700000000000 + i * 86_400_000}:${i}`);
-  // `variables` still holds the unchanged defaults after instantiation (it's
-  // the metadata, not the result) — read the resolved value off a field that
-  // actually gets substituted instead.
   const rawLogIps = new Set(seeds.map((seed) => {
     const s = instantiateScenario(awsKeyLeak, seed);
     return s.rawLog.match(/"sourceIPAddress":"([^"]+)"/)?.[1];
@@ -111,5 +109,61 @@ test('ssh-brute-success stays internally consistent under every re-roll', () => 
     assert.equal(s.truth.mitreTechnique, 'T1110.001');
     assert.deepEqual(s.truth.requiredSearches, sshBrute.truth.requiredSearches);
     assert.deepEqual(s.truth.requiredActions, sshBrute.truth.requiredActions);
+  }
+});
+
+// Extended pass: every scenario in the library now declares `variables`.
+// Rather than hand-writing a bespoke test per scenario (as above, kept for
+// the two pilots because they check field-specific things — e.g. that the
+// hostname search's own match.terms track the re-rolled value), this loops
+// the whole library and checks the invariants that apply universally:
+// nothing structural moves, required intel always resolves, and a default
+// that changed doesn't survive anywhere in the instantiated object.
+test('every tagged scenario in the library stays internally consistent across many seeds', () => {
+  const tagged = SCENARIOS.filter((s) => s.variables);
+  assert.equal(tagged.length, SCENARIOS.length, 'expected every scenario in the library to be tagged');
+
+  const seeds = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+  for (const scenario of tagged) {
+    for (const seed of seeds) {
+      const s = instantiateScenario(scenario, seed);
+      const label = `${scenario.id} (seed ${seed})`;
+
+      // Structural fields no variable is allowed to touch.
+      assert.equal(s.id, scenario.id, label);
+      assert.equal(s.difficulty, scenario.difficulty, label);
+      assert.equal(s.truth.classification, scenario.truth.classification, label);
+      assert.equal(s.truth.severity, scenario.truth.severity, label);
+      assert.equal(s.truth.mitreTechnique, scenario.truth.mitreTechnique, label);
+      assert.equal(s.truth.escalation, scenario.truth.escalation, label);
+      assert.deepEqual(s.truth.requiredSearches, scenario.truth.requiredSearches, label);
+      assert.deepEqual(s.truth.requiredActions, scenario.truth.requiredActions, label);
+      assert.deepEqual(s.searches.map((sr) => sr.id), scenario.searches.map((sr) => sr.id), label);
+      assert.deepEqual(s.actions.map((a) => a.id), scenario.actions.map((a) => a.id), label);
+
+      // Required intel must always name a key that actually exists.
+      for (const key of s.truth.requiredIntel) {
+        assert.ok(key in s.intel, `${label}: requiredIntel "${key}" missing from intel table`);
+      }
+
+      // No search's match terms were emptied or corrupted by a substitution.
+      for (const sr of s.searches) {
+        assert.ok(
+          sr.match.terms.every((t) => typeof t === 'string' && t.length > 0),
+          `${label}: search "${sr.id}" has an empty or non-string match term`
+        );
+      }
+
+      // A default that actually changed this seed must not survive anywhere
+      // in the instantiated object — deepSubstitute's own `variables` field
+      // gets walked too, so it already reflects the resolved value here.
+      const json = JSON.stringify(s);
+      for (const [key, meta] of Object.entries(scenario.variables)) {
+        const resolved = s.variables[key].value;
+        if (resolved !== meta.value) {
+          assert.ok(!json.includes(meta.value), `${label}: stale default "${meta.value}" (${key}) leaked through`);
+        }
+      }
+    }
   }
 });

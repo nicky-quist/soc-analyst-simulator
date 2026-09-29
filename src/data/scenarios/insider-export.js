@@ -5,6 +5,11 @@
 export default {
   id: 'insider-after-hours-ambiguous',
   difficulty: 3,
+  variables: {
+    username: { value: 'rpatterson', pool: 'human-username' },
+    hostname: { value: 'LEND-LT-14', pool: 'hostname-workstation' },
+    deviceSerial: { value: '0x9F44C1', pool: 'device-serial' },
+  },
   queueLabel: 'DLP Alert — Large Data Export by Employee, After Hours',
   source: 'DLP (Data Loss Prevention) Platform',
   alert: {

@@ -8,6 +8,12 @@
 export default {
   id: 'oauth-consent-grant',
   difficulty: 3,
+  // Username isn't tagged: mlowery, the second person who consented, is a
+  // decoy this scenario needs to stay distinct from rpatterson.
+  variables: {
+    domain: { value: 'statements-ctb.app', pool: 'suspicious-domain' },
+    tokenIp: { value: '45.61.187.92', pool: 'ipv4-external' },
+  },
   queueLabel: 'Cloud App Alert — Consent granted to an unverified application, rpatterson',
   source: 'M365 Defender',
   alert: {

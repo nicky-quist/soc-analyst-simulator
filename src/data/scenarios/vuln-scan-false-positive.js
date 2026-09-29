@@ -5,6 +5,9 @@
 export default {
   id: 'vuln-scan-false-positive',
   difficulty: 1,
+  variables: {
+    sourceIp: { value: '10.20.9.14', pool: 'ipv4-internal' },
+  },
   queueLabel: 'IDS Alert — Possible Network Reconnaissance, subnet 10.20.0.0/16',
   source: 'Suricata IDS',
   alert: {

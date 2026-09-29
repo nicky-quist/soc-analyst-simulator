@@ -5,6 +5,12 @@
 export default {
   id: 'malicious-powershell-precursor',
   difficulty: 2,
+  // The C2 IP is baked into the base64 -EncodedCommand blob, not just plain
+  // text, so it isn't safely substitutable without re-encoding that blob too.
+  // Hostname carries none of that risk.
+  variables: {
+    hostname: { value: 'FIN-WKSTN-22', pool: 'hostname-workstation' },
+  },
   queueLabel: 'EDR Alert — Suspicious PowerShell Execution, host FIN-WKSTN-22',
   source: 'CrowdStrike EDR',
   alert: {

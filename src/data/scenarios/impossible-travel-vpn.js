@@ -8,6 +8,13 @@
 export default {
   id: 'impossible-travel-vpn',
   difficulty: 1,
+  // The Frankfurt IP isn't tagged: its own /26 range is spelled out in the
+  // asset record ("194.36.108.0/26"), and keeping that CIDR in sync with a
+  // swapped IP isn't worth the risk for one scenario. Username carries none
+  // of that coupling.
+  variables: {
+    username: { value: 'jbaptiste', pool: 'human-username' },
+  },
   queueLabel: 'Identity Alert — Impossible travel, jbaptiste@coastaltrustbank.com',
   source: 'M365 Defender',
   alert: {

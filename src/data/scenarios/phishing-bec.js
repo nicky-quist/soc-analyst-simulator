@@ -5,6 +5,9 @@
 export default {
   id: 'phishing-bec-ambiguous',
   difficulty: 2,
+  variables: {
+    attackerIp: { value: '41.203.88.19', pool: 'ipv4-external' },
+  },
   queueLabel: 'Email Security Alert — Suspicious Login After Reported Phishing Click',
   source: 'M365 Defender + User-Reported Phishing',
   alert: {

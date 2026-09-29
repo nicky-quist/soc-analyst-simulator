@@ -8,6 +8,13 @@
 export default {
   id: 'mfa-push-fatigue',
   difficulty: 2,
+  // Username isn't tagged here: the attacker's recovery-address text
+  // ("h.stern.mail@proton.me") is derived from "hstern" in a different form
+  // that a plain substring swap can't follow, so renaming the account would
+  // leave that address stale and inconsistent.
+  variables: {
+    attackerIp: { value: '91.219.238.20', pool: 'ipv4-external' },
+  },
   queueLabel: 'Identity Alert — Repeated MFA prompts then approval, hstern@coastaltrustbank.com',
   source: 'Entra ID Protection',
   alert: {

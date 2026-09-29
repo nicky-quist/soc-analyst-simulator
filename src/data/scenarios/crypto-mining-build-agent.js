@@ -7,6 +7,13 @@
 export default {
   id: 'crypto-mining-build-agent',
   difficulty: 2,
+  // BUILD-AGENT-02 (the second infected host) is a decoy this scenario's
+  // whole point depends on staying distinct from BUILD-AGENT-04 — the pool
+  // below never includes "02" so a re-roll can't collide with it.
+  variables: {
+    hostname: { value: 'BUILD-AGENT-04', pool: 'hostname-buildagent' },
+    domain: { value: 'hashvault-eu.com', pool: 'suspicious-domain' },
+  },
   queueLabel: 'IDS Alert — Stratum mining protocol from BUILD-AGENT-04',
   source: 'Suricata IDS',
   alert: {
