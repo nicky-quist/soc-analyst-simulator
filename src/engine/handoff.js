@@ -24,8 +24,7 @@ function normalized(caseFile) {
 // or benign activity needs no handoff, the queue already reflects that.
 export function needsHandoff(caseFile) {
   if (caseFile.result) return !!ESCALATION_LABEL[caseFile.result.submission.escalation];
-  return (caseFile.searches?.length || 0) + (caseFile.intel?.length || 0) + (caseFile.actions?.length || 0) > 0
-    || !!caseFile.startedAt;
+  return (caseFile.searches?.length || 0) + (caseFile.intel?.length || 0) + (caseFile.actions?.length || 0) > 0;
 }
 
 function actionLabel(scenario, id) {
