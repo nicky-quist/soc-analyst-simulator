@@ -119,7 +119,7 @@ const EMPTY_CASE = {
 // were working and "Reset shift" — same clock, next counter — deals a new one.
 const EMPTY_SHIFT = {
   theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null,
-  warRoom: null, redOpsTarget: null, redOps: null,
+  warRoom: null, redOpsTarget: null, redOps: null, previousHandIds: [],
 };
 
 // A shift board that just keeps counting is not what a SOC dashboard is for —
@@ -150,7 +150,12 @@ function loadShift() {
       ? parsed.redOpsTarget
       : null;
     const redOps = parsed.redOps && typeof parsed.redOps.scenarioId === 'string' ? parsed.redOps : null;
-    const valid = new Set(dealShift(parsed.shiftStartedAt, deal, undefined, focus).map((s) => s.id));
+    const previousHandIds = Array.isArray(parsed.previousHandIds)
+      ? parsed.previousHandIds.filter((id) => typeof id === 'string')
+      : [];
+    const valid = new Set(
+      dealShift(parsed.shiftStartedAt, deal, undefined, focus, new Set(previousHandIds)).map((s) => s.id)
+    );
     if (warRoom) valid.add(warRoom.scenarioId);
     if (redOpsTarget) valid.add(redOpsTarget);
     const cases = Object.fromEntries(
@@ -168,6 +173,7 @@ function loadShift() {
       warRoom,
       redOpsTarget,
       redOps,
+      previousHandIds,
     };
   } catch {
     return EMPTY_SHIFT;
@@ -197,7 +203,8 @@ function openShift(loaded, progress) {
   const stamped = loaded.shiftStartedAt
     ? loaded
     : { ...loaded, shiftStartedAt: Date.now(), focus: focusFor(progress) };
-  return startClock(stamped, dealShift(stamped.shiftStartedAt, stamped.deal, undefined, stamped.focus)[0].id);
+  const recentIds = new Set(stamped.previousHandIds || []);
+  return startClock(stamped, dealShift(stamped.shiftStartedAt, stamped.deal, undefined, stamped.focus, recentIds)[0].id);
 }
 
 export default function SOCAnalystSim() {
@@ -226,10 +233,14 @@ export default function SOCAnalystSim() {
   // the shift is.
   const queue = useMemo(
     () => withWarRoom(
-      withRedOpsTarget(dealShift(seedAt, shift.deal, undefined, shift.focus), shift.redOpsTarget, SCENARIOS),
+      withRedOpsTarget(
+        dealShift(seedAt, shift.deal, undefined, shift.focus, new Set(shift.previousHandIds || [])),
+        shift.redOpsTarget,
+        SCENARIOS
+      ),
       shift.warRoom
     ),
-    [seedAt, shift.deal, shift.focus, shift.warRoom, shift.redOpsTarget]
+    [seedAt, shift.deal, shift.focus, shift.warRoom, shift.redOpsTarget, shift.previousHandIds]
   );
 
   const scenario = queue[Math.min(currentIndex, queue.length - 1)];
@@ -249,7 +260,13 @@ export default function SOCAnalystSim() {
       setShift((prev) => {
         if (!prev.shiftStartedAt || nowTs - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
         // Read progress from storage: this interval closes over the first render's state.
-        const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: prev.deal + 1 }, loadProgress()), theme: prev.theme };
+        const oldHandIds = dealShift(
+          prev.shiftStartedAt, prev.deal, undefined, prev.focus, new Set(prev.previousHandIds || [])
+        ).map((s) => s.id);
+        const fresh = {
+          ...openShift({ ...EMPTY_SHIFT, deal: prev.deal + 1, previousHandIds: oldHandIds }, loadProgress()),
+          theme: prev.theme,
+        };
         saveShift(fresh);
         return fresh;
       });
@@ -483,7 +500,11 @@ export default function SOCAnalystSim() {
       redOpsTarget: scenarioId,
       redOps: { scenarioId, ...redRun, completedAt: Date.now() },
     }));
-    const merged = withRedOpsTarget(dealShift(seedAt, shift.deal, undefined, shift.focus), scenarioId, SCENARIOS);
+    const merged = withRedOpsTarget(
+      dealShift(seedAt, shift.deal, undefined, shift.focus, new Set(shift.previousHandIds || [])),
+      scenarioId,
+      SCENARIOS
+    );
     const idx = merged.findIndex((s) => s.id === scenarioId);
     if (idx !== -1) setCurrentIndex(idx);
     setTab(shift.cases[scenarioId]?.result ? 'debrief' : 'overview');
@@ -512,13 +533,16 @@ export default function SOCAnalystSim() {
   // Reset deals the next hand rather than the same one again — the counter is
   // what makes a second shift a second shift.
   const handleReset = useCallback(() => {
-    const fresh = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }, progress), theme: shift.theme };
+    const fresh = {
+      ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1, previousHandIds: queue.map((s) => s.id) }, progress),
+      theme: shift.theme,
+    };
     saveShift(fresh);
     setShift(fresh);
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme, shift.deal, progress]);
+  }, [shift.theme, shift.deal, progress, queue]);
 
   // The real "end of shift" action: anything still open or escalated has to
   // go to someone, so a shift with live work doesn't just quietly reset —
@@ -569,13 +593,16 @@ export default function SOCAnalystSim() {
     const freshProgress = { ...emptyProgress(), adaptive: progress.adaptive, checkpointRankIndex: progress.checkpointRankIndex ?? 0 };
     saveProgress(freshProgress);
     setProgress(freshProgress);
-    const freshShift = { ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1 }, freshProgress), theme: shift.theme };
+    const freshShift = {
+      ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1, previousHandIds: queue.map((s) => s.id) }, freshProgress),
+      theme: shift.theme,
+    };
     saveShift(freshShift);
     setShift(freshShift);
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme, shift.deal, progress.adaptive, progress.checkpointRankIndex]);
+  }, [shift.theme, shift.deal, progress.adaptive, progress.checkpointRankIndex, queue]);
 
   function setView(view) {
     update((prev) => ({ ...prev, view }));

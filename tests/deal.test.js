@@ -68,6 +68,41 @@ test('shifts differ from each other but never mid-shift', () => {
   );
 });
 
+test('a just-dealt hand is deprioritized next time, without being excluded', () => {
+  // Chain deals the way the app does: each hand's ids become the next deal's
+  // "recent" set, same as previousHandIds carried shift to shift.
+  const startedAt = Date.UTC(2026, 2, 3, 9, 0);
+  const rounds = 40;
+  let recent = new Set();
+  let prevUnweighted = new Set();
+  let weightedOverlap = 0;
+  let unweightedOverlap = 0;
+
+  for (let variant = 0; variant < rounds; variant += 1) {
+    const weightedHand = dealShift(startedAt, variant, SCENARIOS, null, recent).map((s) => s.id);
+    const unweightedHand = dealShift(startedAt, variant).map((s) => s.id);
+
+    // Correctness must survive the bias: still a full, quota-satisfying hand
+    // even once "recent" covers most of a 13-scenario library.
+    assert.equal(weightedHand.length, HAND_SIZE);
+    assert.equal(new Set(weightedHand).size, HAND_SIZE);
+
+    if (variant > 0) {
+      weightedOverlap += weightedHand.filter((id) => recent.has(id)).length;
+      unweightedOverlap += unweightedHand.filter((id) => prevUnweighted.has(id)).length;
+    }
+    recent = new Set(weightedHand);
+    prevUnweighted = new Set(unweightedHand);
+  }
+
+  const avgWeighted = weightedOverlap / (rounds - 1);
+  const avgUnweighted = unweightedOverlap / (rounds - 1);
+  assert.ok(
+    avgWeighted < avgUnweighted,
+    `expected fewer repeats with the anti-repeat bias: weighted ${avgWeighted.toFixed(2)} vs unweighted ${avgUnweighted.toFixed(2)}`
+  );
+});
+
 test('every scenario in the library gets dealt eventually', () => {
   const seen = new Set();
   for (const seed of SEEDS) for (const s of dealShift(seed)) seen.add(s.id);

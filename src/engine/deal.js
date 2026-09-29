@@ -64,14 +64,33 @@ function weightedOrder(items, rand, weights) {
     .map((entry) => entry.item);
 }
 
+// A scenario that was just in the hand isn't excluded from the next one —
+// with 13 scenarios and a 7-slot hand, most things have to recur eventually,
+// and quotas already narrow the field further for a couple of slots. This
+// just makes a just-seen scenario compete at a disadvantage instead of on
+// equal footing, so back-to-back shifts don't keep landing on the same
+// handful of alerts the way an unweighted shuffle does in a library this size.
+const REPEAT_PENALTY = 0.15;
+
 // `focus` comes from engine/progress.js planFocus(). It only changes the order
 // the pool is drawn in, so every quota below still holds on a focused shift.
 // Without a focus the original shuffle runs unchanged, and a shift saved
 // before focus existed re-deals to exactly the same hand.
-export function dealShift(startedAt = Date.now(), variant = 0, library = SCENARIOS, focus = null) {
+export function dealShift(startedAt = Date.now(), variant = 0, library = SCENARIOS, focus = null, recentIds = null) {
   const size = Math.min(HAND_SIZE, library.length);
   const rand = mulberry32((shiftSeed(startedAt) ^ Math.imul(variant + 1, 0x9e3779b1)) >>> 0);
-  const pool = focus?.weights ? weightedOrder(library, rand, focus.weights) : shuffled(library, rand);
+  const hasRecent = recentIds && recentIds.size > 0;
+  let pool;
+  if (focus?.weights || hasRecent) {
+    const weights = {};
+    for (const s of library) {
+      const base = focus?.weights?.[s.id] ?? 1;
+      weights[s.id] = hasRecent && recentIds.has(s.id) ? base * REPEAT_PENALTY : base;
+    }
+    pool = weightedOrder(library, rand, weights);
+  } else {
+    pool = shuffled(library, rand);
+  }
   const hand = [];
 
   for (const quota of QUOTAS) {
