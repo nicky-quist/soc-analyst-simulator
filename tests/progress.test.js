@@ -21,8 +21,8 @@ import { SCENARIOS } from '../src/data/scenarios/index.js';
 import { HAND_SIZE, dealShift } from '../src/engine/deal.js';
 import { scoreCase } from '../src/engine/scoring.js';
 import {
-  MIN_ATTEMPTS, MAX_WEIGHT, HISTORY_LIMIT, SKILLS,
-  buildRecord, emptyProgress, escalationTendency, planFocus, recordCase,
+  MIN_ATTEMPTS, MAX_WEIGHT, HISTORY_LIMIT, PROMOTION_SCORE_BAR, SKILLS,
+  buildRecord, careerStatus, emptyProgress, escalationTendency, planFocus, recordCase,
   skillSummary, slaComplianceTrend, smoothedRate, weakestSkill,
 } from '../src/engine/progress.js';
 
@@ -403,4 +403,73 @@ test('the SLA trend is cumulative and chronological, not a rolling window', () =
   const history = [slaRecord(false), slaRecord(false), slaRecord(true), slaRecord(true), slaRecord(true)];
   const trend = slaComplianceTrend(history);
   assert.deepEqual(trend.map((p) => p.pct), [0, 0, 33, 50, 60]);
+});
+
+// Career progression. The requirement that actually matters here: breadth,
+// not volume — closing the same easy scenario over and over must never be a
+// path to promotion, because the queue re-deals the same alert across
+// separate shifts and "cases closed" alone would be a counter anyone could pad.
+const FAKE_LIB = Array.from({ length: 12 }, (_, i) => ({ id: `s${i}` }));
+
+function careerRecord(scenarioId, overallScore, overrides = {}) {
+  return {
+    scenarioId,
+    overallScore,
+    escalation: 'correct',
+    outcomes: Object.fromEntries(SKILLS.map((s) => [s.id, true])),
+    ...overrides,
+  };
+}
+
+test('a trainee with no history has nothing yet, and needs 10 distinct case types to promote', () => {
+  const career = careerStatus([], FAKE_LIB);
+  assert.equal(career.rank, 'Trainee');
+  assert.equal(career.next, 'Tier 1 Analyst');
+  assert.equal(career.criteria[0].current, '0');
+  assert.equal(career.criteria[0].target, '10');
+  assert.equal(career.criteria[0].met, false);
+});
+
+test('promotes to Tier 1 Analyst once 10 distinct case types are cleared at the bar', () => {
+  const history = Array.from({ length: 10 }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR));
+  const career = careerStatus(history, FAKE_LIB);
+  assert.equal(career.rank, 'Tier 1 Analyst');
+});
+
+test('replaying the same case type never counts toward promotion, no matter how many times', () => {
+  const history = Array.from({ length: 40 }, () => careerRecord('s0', 100));
+  const career = careerStatus(history, FAKE_LIB);
+  assert.equal(career.rank, 'Trainee', 'volume on one scenario is not breadth');
+  assert.equal(career.criteria[0].current, '1');
+});
+
+test('a score under the promotion bar does not count, even on a distinct case type', () => {
+  const history = Array.from({ length: 10 }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR - 1));
+  const career = careerStatus(history, FAKE_LIB);
+  assert.equal(career.rank, 'Trainee');
+});
+
+test('Senior needs the whole library, not just the ten for the first promotion', () => {
+  const history = Array.from({ length: 10 }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR));
+  const career = careerStatus(history, FAKE_LIB);
+  assert.equal(career.rank, 'Tier 1 Analyst');
+  assert.equal(career.next, 'Senior Analyst — Tier 2 ready');
+  assert.equal(career.criteria[0].current, '10');
+  assert.equal(career.criteria[0].target, `${FAKE_LIB.length}`);
+});
+
+test('full library coverage with clean skills promotes to Senior, with nothing left to chase', () => {
+  const history = Array.from({ length: FAKE_LIB.length }, (_, i) => careerRecord(`s${i}`, PROMOTION_SCORE_BAR));
+  const career = careerStatus(history, FAKE_LIB);
+  assert.equal(career.rank, 'Senior Analyst — Tier 2 ready');
+  assert.equal(career.next, null);
+  assert.deepEqual(career.criteria, []);
+});
+
+test('a consistent escalation lean blocks Senior even with full score coverage', () => {
+  const history = FAKE_LIB.map((s, i) => careerRecord(s.id, PROMOTION_SCORE_BAR, { escalation: i < 3 ? 'under' : 'correct' }));
+  const career = careerStatus(history, FAKE_LIB);
+  assert.equal(career.rank, 'Tier 1 Analyst', 'score coverage alone is not enough for Senior');
+  const escalationCriterion = career.criteria.find((c) => c.label.includes('escalation'));
+  assert.equal(escalationCriterion.met, false);
 });

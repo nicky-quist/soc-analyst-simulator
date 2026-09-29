@@ -7,12 +7,12 @@
 import { useMemo, useState } from 'react';
 import { SCENARIOS } from '../data/scenarios/index.js';
 import {
-  MIN_ATTEMPTS, escalationTendency, planFocus, skillSummary, weakestSkill,
+  MIN_ATTEMPTS, careerStatus, escalationTendency, planFocus, skillSummary, weakestSkill,
 } from '../engine/progress.js';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Callout, Metric } from '../ui/primitives.jsx';
 import { MeterRow, Sparkline } from '../ui/charts.jsx';
-import { IconActivity, IconListChecks, IconSwap, IconTarget } from '../ui/icons.jsx';
+import { IconActivity, IconCheck, IconCircleSlash, IconGraduationCap, IconListChecks, IconSwap, IconTarget } from '../ui/icons.jsx';
 import { Panel } from './Dashboard.jsx';
 
 const byId = Object.fromEntries(SCENARIOS.map((s) => [s.id, s]));
@@ -38,6 +38,7 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
   const weak = useMemo(() => weakestSkill(summary), [summary]);
   const tendency = useMemo(() => escalationTendency(history), [history]);
   const nextFocus = useMemo(() => planFocus(history, SCENARIOS), [history]);
+  const career = useMemo(() => careerStatus(history, SCENARIOS), [history]);
   const [confirmingClear, setConfirmingClear] = useState(false);
 
   const shifts = new Set(history.map((r) => r.key.split(':').slice(0, 2).join(':'))).size;
@@ -198,6 +199,35 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
                   </>
                 )}
               </div>
+            </Panel>
+
+            <Panel title="Career" icon={<IconGraduationCap size={14} />} hint={career.next ? `working toward ${career.next}` : 'top rank reached'}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: C.text }}>{career.rank}</div>
+              </div>
+              {career.next ? (
+                <>
+                  <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 10 }}>
+                    Promotion to <strong>{career.next}</strong> needs:
+                  </div>
+                  {career.criteria.map((c, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, marginBottom: 8, lineHeight: 1.5 }}>
+                      <span style={{ color: c.met ? C.success : C.textMuted, flexShrink: 0, display: 'flex', marginTop: 2 }}>
+                        {c.met ? <IconCheck size={13} /> : <IconCircleSlash size={13} />}
+                      </span>
+                      <span style={{ color: c.met ? C.text : C.textSecondary }}>
+                        {c.label} <span style={{ color: C.textMuted, fontFamily: MONO }}>({c.current}/{c.target})</span>
+                      </span>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <Callout tone={TONE.positive}>
+                  Top rank reached — every distinct case type in the library cleared at 80%+, no current weak skill,
+                  no escalation lean, and clean response actions. This is the standard the org chart's Tier 2 seat
+                  actually expects.
+                </Callout>
+              )}
             </Panel>
           </div>
         </>

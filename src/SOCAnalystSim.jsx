@@ -5,7 +5,7 @@ import { dealShift } from './engine/deal.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
-import { buildRecord, emptyProgress, planFocus, recordCase } from './engine/progress.js';
+import { buildRecord, careerStatus, emptyProgress, planFocus, recordCase } from './engine/progress.js';
 import ProgressView from './components/ProgressView.jsx';
 import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
@@ -468,6 +468,10 @@ export default function SOCAnalystSim() {
     () => queue.map((s) => shift.cases[s.id]?.result).filter(Boolean),
     [queue, shift.cases]
   );
+
+  // Your title is earned, not a fixed label — see engine/progress.js's
+  // careerStatus() for the promotion bar.
+  const career = useMemo(() => careerStatus(progress.history, SCENARIOS), [progress]);
   const avgScore = closedCases.length
     ? Math.round(closedCases.reduce((sum, r) => sum + r.score.overallScore, 0) / closedCases.length)
     : null;
@@ -650,7 +654,7 @@ export default function SOCAnalystSim() {
             <span style={{ fontSize: 10, fontWeight: 700, color: C.success, letterSpacing: 0.5 }}>LIVE</span>
           </div>
           <div style={{ fontSize: 11.5, color: C.textSecondary, marginTop: 1 }}>
-            {COMPANY.analyst.title} · {shiftHeader.window}
+            {career.rank} · {shiftHeader.window}
           </div>
         </div>
 
@@ -673,7 +677,7 @@ export default function SOCAnalystSim() {
             </div>
             <div style={{ lineHeight: 1.25 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{COMPANY.analyst.name}</div>
-              <div style={{ fontSize: 10.5, color: C.textMuted }}>{COMPANY.analyst.title}</div>
+              <div style={{ fontSize: 10.5, color: C.textMuted }}>{career.rank}</div>
             </div>
           </div>
         </div>
@@ -702,7 +706,7 @@ export default function SOCAnalystSim() {
 
       {shift.view === 'team' && (
         <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-          <TeamTab progress={progress} closedCases={closedCases} warRoomActive={!!shift.warRoom} />
+          <TeamTab progress={progress} closedCases={closedCases} warRoomActive={!!shift.warRoom} rank={career.rank} />
         </main>
       )}
 

@@ -42,7 +42,10 @@ export const COMPANY = {
   name: 'Coastal Trust Bank',
   soc: 'SEA SOC',
   analyst: {
-    name: 'You', title: 'Tier 1 Analyst', reportsTo: 'tier2',
+    // Title is a fallback for before any career history exists — everywhere
+    // this actually renders, it's overridden by engine/progress.js's
+    // careerStatus(), because the rank is earned, not handed out on page load.
+    name: 'You', title: 'Trainee', reportsTo: 'tier2',
     blurb: 'Works the queue: investigates, enriches, responds, writes the report.',
   },
   tier2: {

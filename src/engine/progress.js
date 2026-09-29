@@ -236,3 +236,86 @@ export function planFocus(history, library) {
 export function describeSkill(id) {
   return skillById[id]?.label ?? id;
 }
+
+// Career progression. The obvious version of this — "close N cases" — is a
+// counter you can pad by replaying whatever scenario you find easiest, in a
+// game whose queue quietly re-deals the same alert across separate shifts.
+// So the bar isn't volume, it's breadth at a real standard: a rank requires a
+// spread of distinct case types each cleared at PROMOTION_SCORE_BAR, using the
+// best score you've ever posted on that scenario, on an attempt that already
+// had to be unassisted and first-try to enter history at all.
+export const PROMOTION_SCORE_BAR = 80;
+
+export const CAREER_RANKS = [
+  { id: 'trainee', label: 'Trainee' },
+  { id: 'analyst', label: 'Tier 1 Analyst' },
+  { id: 'senior', label: 'Senior Analyst — Tier 2 ready' },
+];
+
+function bestScoreByScenario(history) {
+  const best = {};
+  for (const r of history) {
+    if (best[r.scenarioId] === undefined || r.overallScore > best[r.scenarioId]) best[r.scenarioId] = r.overallScore;
+  }
+  return best;
+}
+
+// history: progress.history. library: the scenario pool a rank's breadth
+// requirement counts against (SCENARIOS — War Room follow-ons don't count,
+// you can't queue one up on demand).
+export function careerStatus(history, library) {
+  const best = bestScoreByScenario(history);
+  const libraryIds = new Set(library.map((s) => s.id));
+  const qualifying = Object.entries(best).filter(([id, score]) => libraryIds.has(id) && score >= PROMOTION_SCORE_BAR);
+  const qualifyingCount = qualifying.length;
+
+  const summary = skillSummary(history);
+  const weak = weakestSkill(summary);
+  const tendency = escalationTendency(history);
+  const responseSkill = summary.find((s) => s.id === 'response');
+  const responseRate = responseSkill ? Math.round(responseSkill.smoothed * 100) : 50;
+
+  const analystCriteria = [{
+    label: `${PROMOTION_SCORE_BAR}%+ on 10 different case types`,
+    met: qualifyingCount >= 10,
+    current: `${qualifyingCount}`,
+    target: '10',
+  }];
+
+  const seniorCriteria = [
+    {
+      label: `${PROMOTION_SCORE_BAR}%+ on every case type in the library`,
+      met: qualifyingCount >= libraryIds.size,
+      current: `${qualifyingCount}`,
+      target: `${libraryIds.size}`,
+    },
+    {
+      label: 'No current weak skill',
+      met: !weak,
+      current: weak ? weak.label : 'none',
+      target: 'none',
+    },
+    {
+      label: 'No consistent escalation lean',
+      met: !tendency.direction,
+      current: tendency.direction ? `${tendency.direction}-escalates` : 'none',
+      target: 'none',
+    },
+    {
+      label: 'Clean response actions at least 90% of the time',
+      met: responseRate >= 90,
+      current: `${responseRate}%`,
+      target: '90%',
+    },
+  ];
+
+  let rankIndex = 0;
+  if (analystCriteria.every((c) => c.met)) rankIndex = 1;
+  if (rankIndex === 1 && seniorCriteria.every((c) => c.met)) rankIndex = 2;
+
+  const rank = CAREER_RANKS[rankIndex];
+  const next = CAREER_RANKS[rankIndex + 1] || null;
+  const criteria = rankIndex === 0 ? analystCriteria : rankIndex === 1 ? seniorCriteria : [];
+
+  return { rank: rank.label, rankId: rank.id, next: next?.label ?? null, criteria };
+}

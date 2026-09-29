@@ -44,7 +44,10 @@ function PresenceDot({ status, size = 11 }) {
   );
 }
 
-function ContactCard({ personKey, person, isYou, presence }) {
+// `title` overrides person.title when passed — the analyst's own card needs
+// this, since their title is an earned rank (engine/progress.js's
+// careerStatus()), not the fixed string every other role has.
+function ContactCard({ personKey, person, isYou, presence, title }) {
   return (
     <Card
       accent={isYou ? C.primary : undefined}
@@ -66,7 +69,7 @@ function ContactCard({ personKey, person, isYou, presence }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {person.name}
           </div>
-          <div style={{ fontSize: 11, color: C.textSecondary, marginBottom: 4 }}>{person.title}</div>
+          <div style={{ fontSize: 11, color: C.textSecondary, marginBottom: 4 }}>{title ?? person.title}</div>
         </div>
       </div>
       <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 9, lineHeight: 1.5 }}>{presence.label}</div>
@@ -79,7 +82,7 @@ function ContactCard({ personKey, person, isYou, presence }) {
   );
 }
 
-export default function TeamTab({ progress, closedCases = [], warRoomActive = false }) {
+export default function TeamTab({ progress, closedCases = [], warRoomActive = false, rank }) {
   const roster = Object.entries(COMPANY).filter(([, v]) => v && typeof v === 'object' && v.title);
   const ctx = { closedCases, warRoomActive, progress, library: SCENARIOS };
   const detectionEngNote = generateDetectionEngResponse(progress.history, SCENARIOS);
@@ -104,6 +107,7 @@ export default function TeamTab({ progress, closedCases = [], warRoomActive = fa
             personKey={key}
             person={person}
             isYou={key === 'analyst'}
+            title={key === 'analyst' ? rank : undefined}
             presence={key === 'analyst' ? { status: STATUS.ONLINE, label: 'You — working the queue' } : presenceFor(key, ctx)}
           />
         ))}
