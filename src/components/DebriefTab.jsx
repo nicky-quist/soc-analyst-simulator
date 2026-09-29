@@ -2,9 +2,10 @@ import { C, TONE } from '../theme.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
 import { generateCisoResponse, generateCeoResponse } from '../engine/personas.js';
 import { buildHandoffNote, formatHandoffText } from '../engine/handoff.js';
+import { compareRedBlue } from '../engine/redops.js';
 import { Badge, Button, Callout, Card, Metric, PersonaMessage, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
-import { IconAlertOctagon, IconCheck, IconCircleSlash, IconFileCheck, IconRotate, IconX } from '../ui/icons.jsx';
+import { IconAlertOctagon, IconCheck, IconCircleSlash, IconFileCheck, IconRotate, IconX, IconZap } from '../ui/icons.jsx';
 import AiCoach from './AiCoach.jsx';
 
 function coverageTone(coverage) {
@@ -12,7 +13,7 @@ function coverageTone(coverage) {
   return coverage >= 0.5 ? TONE.coaching : TONE.concerned;
 }
 
-export default function DebriefTab({ scenario, result, onRetry, timeline, actions }) {
+export default function DebriefTab({ scenario, result, onRetry, timeline, actions, redOps }) {
   const { submission, score } = result;
   const ciso = generateCisoResponse(scenario, submission, score);
   const ceo = generateCeoResponse(scenario, submission);
@@ -22,6 +23,8 @@ export default function DebriefTab({ scenario, result, onRetry, timeline, action
   const target = scenario.truth.responseTargetMinutes;
   const escalated = submission.escalation === 'escalate_ir' || submission.escalation === 'escalate_tier2';
   const handoffNote = escalated ? buildHandoffNote(scenario, { result, timeline, actions }) : null;
+  const redMatch = redOps?.scenarioId === scenario.id ? redOps : null;
+  const redBlueWinner = redMatch ? compareRedBlue(redMatch.evasionScore, score.overallScore) : null;
 
   return (
     <div>
@@ -103,6 +106,24 @@ export default function DebriefTab({ scenario, result, onRetry, timeline, action
           <PersonaMessage key={action.id} persona={action.consequence} />
         ))}
       </div>
+
+      {redMatch && (
+        <Card
+          tone={redBlueWinner === 'blue' ? TONE.positive : redBlueWinner === 'red' ? TONE.concerned : TONE.coaching}
+          style={{ padding: '16px 20px', marginBottom: 20 }}
+        >
+          <SectionLabel icon={<IconZap size={13} />} style={{ marginBottom: 12 }}>Red vs Blue — you played both sides</SectionLabel>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
+            <Metric label="Red — evasion" value={`${redMatch.evasionScore}/100`} tone={redBlueWinner === 'red' ? TONE.concerned : undefined} />
+            <Metric label="Blue — defense" value={`${score.overallScore}/100`} tone={redBlueWinner === 'blue' ? TONE.positive : undefined} />
+          </div>
+          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>
+            {redBlueWinner === 'blue' && "Blue wins this round — as the analyst, you caught more than your own attacker run got away with."}
+            {redBlueWinner === 'red' && 'Red wins this round — your attack choices would have stayed quieter than your own defense caught.'}
+            {redBlueWinner === 'tie' && "Dead even — your attacker run and your own investigation landed on the same number."}
+          </div>
+        </Card>
+      )}
 
       <AiCoach scenario={scenario} submission={submission} score={score} timeline={timeline} />
 

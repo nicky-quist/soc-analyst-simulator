@@ -10,11 +10,12 @@ import ProgressView from './components/ProgressView.jsx';
 import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
 import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
+import { withRedOpsTarget } from './engine/redops.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconDashboard, IconFilter, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers,
+  IconDashboard, IconFilter, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -28,12 +29,13 @@ import ReportTab from './components/ReportTab.jsx';
 import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import TeamTab from './components/TeamTab.jsx';
+import RedOpsView from './components/RedOpsView.jsx';
 
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
 
 // The console's sections, in rail order. Each also answers to a URL hash
 // (#triage and so on), so a link can open straight onto a tab.
-const VIEWS = ['dashboard', 'queue', 'triage', 'team', 'progress'];
+const VIEWS = ['dashboard', 'queue', 'triage', 'redops', 'team', 'progress'];
 
 // The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
@@ -105,7 +107,10 @@ const EMPTY_CASE = {
 // `deal` is the hand counter, not the hand: the seven alerts are re-derived
 // from (shiftStartedAt, deal) on every load, so a reload restores the queue you
 // were working and "Reset shift" — same clock, next counter — deals a new one.
-const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null, warRoom: null };
+const EMPTY_SHIFT = {
+  theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null,
+  warRoom: null, redOpsTarget: null, redOps: null,
+};
 
 // A shift board that just keeps counting is not what a SOC dashboard is for —
 // after this long the queue, SLA clocks, and estate feed should look like a
@@ -129,8 +134,15 @@ function loadShift() {
     const deal = Number.isInteger(parsed.deal) ? parsed.deal : 0;
     const focus = validFocus(parsed.focus);
     const warRoom = resolveWarRoomScenario(parsed.warRoom) ? parsed.warRoom : null;
+    // Same reasoning as War Room: a Red Ops target alert isn't part of the
+    // dealt hand either, so it needs the same manual add to the valid set.
+    const redOpsTarget = typeof parsed.redOpsTarget === 'string' && SCENARIOS.some((s) => s.id === parsed.redOpsTarget)
+      ? parsed.redOpsTarget
+      : null;
+    const redOps = parsed.redOps && typeof parsed.redOps.scenarioId === 'string' ? parsed.redOps : null;
     const valid = new Set(dealShift(parsed.shiftStartedAt, deal, undefined, focus).map((s) => s.id));
     if (warRoom) valid.add(warRoom.scenarioId);
+    if (redOpsTarget) valid.add(redOpsTarget);
     const cases = Object.fromEntries(
       Object.entries(parsed.cases || {})
         .filter(([id]) => valid.has(id))
@@ -144,6 +156,8 @@ function loadShift() {
       deal,
       focus,
       warRoom,
+      redOpsTarget,
+      redOps,
     };
   } catch {
     return EMPTY_SHIFT;
@@ -200,8 +214,11 @@ export default function SOCAnalystSim() {
   // Your seven for this shift, dealt from the library and stable for as long as
   // the shift is.
   const queue = useMemo(
-    () => withWarRoom(dealShift(seedAt, shift.deal, undefined, shift.focus), shift.warRoom),
-    [seedAt, shift.deal, shift.focus, shift.warRoom]
+    () => withWarRoom(
+      withRedOpsTarget(dealShift(seedAt, shift.deal, undefined, shift.focus), shift.redOpsTarget, SCENARIOS),
+      shift.warRoom
+    ),
+    [seedAt, shift.deal, shift.focus, shift.warRoom, shift.redOpsTarget]
   );
 
   const scenario = queue[Math.min(currentIndex, queue.length - 1)];
@@ -391,6 +408,26 @@ export default function SOCAnalystSim() {
     setTab(shift.cases[queue[index].id]?.result ? 'debrief' : 'overview');
     setWalkthrough(false);
     update((prev) => startClock(prev, queue[index].id));
+  }
+
+  // "Defend this incident now" from Red Ops: the scenario may not be part of
+  // this shift's dealt hand, so it gets injected the same way a War Room
+  // alert does — added to the queue, sorted in, and the index is resolved
+  // against that same merged queue rather than the position it doesn't have
+  // yet in `queue` from the last render.
+  function handleDefendFromRedOps(scenarioId, redRun) {
+    update((prev) => ({
+      ...prev,
+      view: 'queue',
+      redOpsTarget: scenarioId,
+      redOps: { scenarioId, ...redRun, completedAt: Date.now() },
+    }));
+    const merged = withRedOpsTarget(dealShift(seedAt, shift.deal, undefined, shift.focus), scenarioId, SCENARIOS);
+    const idx = merged.findIndex((s) => s.id === scenarioId);
+    if (idx !== -1) setCurrentIndex(idx);
+    setTab(shift.cases[scenarioId]?.result ? 'debrief' : 'overview');
+    setWalkthrough(false);
+    update((prev) => startClock(prev, scenarioId));
   }
 
   function toggleWalkthrough() {
@@ -608,6 +645,16 @@ export default function SOCAnalystSim() {
             <button
               type="button"
               className="rail-nav-btn"
+              data-active={shift.view === 'redops'}
+              onClick={() => setView('redops')}
+              aria-current={shift.view === 'redops' ? 'page' : undefined}
+              title="Red Ops"
+            >
+              <IconZap size={18} />
+            </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
               data-active={shift.view === 'team'}
               onClick={() => setView('team')}
               aria-current={shift.view === 'team' ? 'page' : undefined}
@@ -701,6 +748,12 @@ export default function SOCAnalystSim() {
       {shift.view === 'triage' && (
         <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
           <TriageView state={triage} onChange={setTriage} />
+        </main>
+      )}
+
+      {shift.view === 'redops' && (
+        <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+          <RedOpsView onDefend={handleDefendFromRedOps} />
         </main>
       )}
 
@@ -808,7 +861,7 @@ export default function SOCAnalystSim() {
               />
             )}
             {tab === 'debrief' && closed && (
-              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} timeline={caseFile.timeline} actions={caseFile.actions} />
+              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} timeline={caseFile.timeline} actions={caseFile.actions} redOps={shift.redOps} />
             )}
           </div>
         </main>
