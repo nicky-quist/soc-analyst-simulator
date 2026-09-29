@@ -3,7 +3,7 @@ import { C, MONO } from '../theme.js';
 // Hand-rolled SVG charts rather than a charting dependency: the whole project
 // runs offline with no third-party calls, and these are four shapes, not a
 // library's worth. Everything scales through viewBox so the cards stay
-// responsive, and every colour comes from a theme token so light mode works.
+// responsive, and every color comes from a theme token so light mode works.
 
 import { BAND_COLORS, CHART_COLORS } from '../theme.js';
 

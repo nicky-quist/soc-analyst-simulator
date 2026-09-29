@@ -57,7 +57,7 @@ export default {
         { _time: 'Aug 19 09:16', user: 'lstreet', process: 'AdCopyStudio.exe', signer: 'Bright Harbor Media LLC (valid)', detail: 'running; registered as a logon task' },
         { _time: 'continuous', user: 'lstreet', process: 'AdCopyStudio.exe', signer: 'Bright Harbor Media LLC (valid)', detail: 'issuing the TXT queries; no child processes; no credential access observed' },
       ],
-      note: 'A validly signed binary the user installed themselves, doing all the querying, with no other malicious behaviour on the host. Signed is not the same as trusted, and "no other behaviour" is not the same as harmless.',
+      note: 'A validly signed binary the user installed themselves, doing all the querying, with no other malicious behavior on the host. Signed is not the same as trusted, and "no other behavior" is not the same as harmless.',
     },
     {
       id: 's13-asset-software',
@@ -71,7 +71,7 @@ export default {
         { field: 'Host data', value: 'Campaign material; no customer PII; no privileged credentials' },
         { field: 'Install policy', value: 'Users may install to their own profile — allowed, not reviewed' },
       ],
-      note: 'Unreviewed software installed under an allowed policy. That makes it shadow IT rather than an intrusion on its own — and it means nobody can tell you what its network behaviour is supposed to look like.',
+      note: 'Unreviewed software installed under an allowed policy. That makes it shadow IT rather than an intrusion on its own — and it means nobody can tell you what its network behavior is supposed to look like.',
     },
     {
       id: 's13-proxy-vendor',
@@ -121,9 +121,9 @@ export default {
     },
     {
       id: 'contact-user',
-      label: 'Ask the user what the software is for and whether Marketing has a licence or vendor contact',
+      label: 'Ask the user what the software is for and whether Marketing has a license or vendor contact',
       verdict: 'acceptable',
-      result: 'User says a colleague recommended it for campaign copy, installed it themselves, and has no licence or vendor contact. That answers the shadow-IT question and not the traffic question.',
+      result: 'User says a colleague recommended it for campaign copy, installed it themselves, and has no license or vendor contact. That answers the shadow-IT question and not the traffic question.',
     },
     {
       id: 'allowlist-domain',
@@ -146,7 +146,7 @@ export default {
         from: 'Marcus Bell',
         role: 'IR Lead',
         tone: 'concerned',
-        message: 'You destroyed the only copy of the thing we needed to analyse. We cannot now say whether that was telemetry or exfiltration, which means we cannot tell anyone whether anything left.',
+        message: 'You destroyed the only copy of the thing we needed to analyze. We cannot now say whether that was telemetry or exfiltration, which means we cannot tell anyone whether anything left.',
       },
     },
     {
@@ -199,7 +199,7 @@ export default {
     'Read the numbers in the alert before the severity. 13,940 queries with 13,902 unique labels averaging 48 characters is not a client asking a question repeatedly — it is data being encoded into names.',
     '`index=dns sync-telemetry-cdn.net` over 24 hours shows the same shape on the two previous days and nothing at all before 19 August. Something started, and it is growing.',
     '`index=edr mkt-lt-19` names the source: AdCopyStudio.exe, validly signed by a small publisher, installed by the user on the 19th, no child processes, no credential access. A signature tells you who built it, not what it sends.',
-    '`index=asset adcopystudio` shows no entry in the approved software register. Shadow IT, installed under a policy that allows it — which also means nobody can tell you what its normal network behaviour is.',
+    '`index=asset adcopystudio` shows no entry in the approved software register. Shadow IT, installed under a policy that allows it — which also means nobody can tell you what its normal network behavior is.',
     '`index=proxy brightharbormedia.com` is the contradiction worth writing down: the product reached the vendor over HTTPS to activate, then chose thousands of encoded DNS queries a day to an unrelated domain instead.',
     'Intel on the domain returns almost nothing — two months old, privacy-protected, no reporting. On a young domain that is an absence of evidence, not a clean verdict.',
     'Sinkhole the domain so the channel stops while the host keeps working, export the labels as evidence, and escalate to Tier 2 with the open question stated: what do the labels decode to, and is this product doing this on any other estate. Classify Suspicious — Needs More Investigation at MEDIUM and map to T1071.004.',

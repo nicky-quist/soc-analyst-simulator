@@ -4,7 +4,7 @@
 //
 // Default target is Ollama on localhost — nothing leaves the machine. A cloud
 // provider is offered as a fallback for anyone without a GPU to spare, and it
-// is opt-in and clearly labelled: the key lives in this browser's storage only
+// is opt-in and clearly labeled: the key lives in this browser's storage only
 // and is sent straight to the provider, never to anything this project runs.
 
 const STORAGE_KEY = 'soc-sim-ai-settings';

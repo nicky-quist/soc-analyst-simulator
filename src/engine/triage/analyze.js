@@ -235,7 +235,7 @@ export function analyzeOffline(text) {
       Object.assign(r, { threat_type: "DNS Tunneling", mitre_tactic: "Command and Control",
         mitre_technique: "T1071.004 - DNS", severity: "MEDIUM", confidence: 68,
         summary: `Unusual DNS query volume / high outbound bytes — possible DNS tunneling or C2 over DNS.`,
-        recommended_action: "Analyse query frequency, length, and uniqueness. Deploy DNS sinkhole if malicious domain confirmed." });
+        recommended_action: "Analyze query frequency, length, and uniqueness. Deploy DNS sinkhole if malicious domain confirmed." });
     } else {
       r.summary = "DNS log event. Review query destinations and frequency for anomalies.";
       r.confidence = 50;
@@ -267,7 +267,7 @@ export function analyzeOffline(text) {
         recommended_action: "Correlate with process creation logs on the affected host." });
     } else {
       Object.assign(r, { severity: "LOW", confidence: 40, false_positive_likelihood: "High",
-        summary: "Free-form narrative analysed. No specific threat pattern matched.",
+        summary: "Free-form narrative analyzed. No specific threat pattern matched.",
         analyst_notes: "Include specific IPs, usernames, commands, and timestamps for higher-confidence results." });
     }
   }

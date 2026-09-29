@@ -48,7 +48,7 @@ describe('syslog / SSH brute force', () => {
     assert.match(r.analyst_notes, /does not exist|enumeration/i);
   });
 
-  test('recognises sudo elevation as privilege escalation, not brute force', () => {
+  test('recognizes sudo elevation as privilege escalation, not brute force', () => {
     const r = analyzeOffline(F.SYSLOG_SUDO);
     assert.equal(r.mitre_tactic, 'Privilege Escalation');
     assert.match(r.mitre_technique, /T1548\.003/);
@@ -211,7 +211,7 @@ describe('zeek conn.log', () => {
 });
 
 describe('CEF', () => {
-  test('credential dumping is recognised even when the action was blocked', () => {
+  test('credential dumping is recognized even when the action was blocked', () => {
     const r = analyzeOffline(F.CEF_MIMIKATZ);
     assert.equal(r.threat_type, 'Credential Dumping');
     assert.match(r.mitre_technique, /T1003/);

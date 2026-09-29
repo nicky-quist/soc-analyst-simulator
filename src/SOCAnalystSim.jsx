@@ -791,7 +791,7 @@ export default function SOCAnalystSim() {
 
           <IconButton
             icon={shift.theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
-            title="Toggle colour theme"
+            title="Toggle color theme"
             onClick={toggleTheme}
           />
           <IconButton icon={<IconRotate size={16} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />

@@ -119,7 +119,7 @@ export default {
       id: 'revoke-all-sessions',
       label: 'Revoke sessions for all 61 users seen from the Frankfurt address',
       verdict: 'harmful',
-      result: 'Sixty-one staff — most of them branch and contact-centre — are signed out mid-morning and cannot sign back in until the VPN path stabilises.',
+      result: 'Sixty-one staff — most of them branch and contact-center — are signed out mid-morning and cannot sign back in until the VPN path stabilizes.',
       consequence: {
         from: 'Priya Raghavan',
         role: 'Head of IT Service Delivery',

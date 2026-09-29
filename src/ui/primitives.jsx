@@ -214,7 +214,7 @@ export function Metric({ label, value, hint, tone }) {
 }
 
 // A bare square icon button — the header/rail chrome (theme toggle, reset,
-// nav rail entries) uses this instead of Button so icons sit centred with no
+// nav rail entries) uses this instead of Button so icons sit centered with no
 // label padding thrown off by a wrapping flex.
 export function IconButton({ icon, active, tone, title, onClick, style, ...rest }) {
   return (

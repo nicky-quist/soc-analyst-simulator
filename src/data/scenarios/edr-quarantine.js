@@ -63,7 +63,7 @@ Note: Sensor version 7.18 (current) on this host.`,
         { _time: '10:16:02', process: 'chrome.exe', detail: 'Navigated to the vendor download page for the same tool' },
         { _time: '10:19:31', process: 'outlook.exe', detail: 'Draft created to servicedesk@ — subject "EDR blocking my audit tool"' },
       ],
-      note: 'No LSASS access, no credential material touched, no lateral movement from this host. The user\'s behaviour after the block reads like someone doing their job, not someone caught.',
+      note: 'No LSASS access, no credential material touched, no lateral movement from this host. The user\'s behavior after the block reads like someone doing their job, not someone caught.',
     },
     {
       id: 's7-device-usb',

@@ -204,5 +204,5 @@ export default {
   debrief:
 `Mining alerts get triaged as nuisance because the payload is boring, and that is the trap. The miner is the part you can see; the part that matters is that arbitrary code from a public package ran as the build identity on a machine holding a deployment token and a signing key. Anything that could mine could also have read those, and a build that publishes signed artifacts is a supply chain of its own.
 
-The right severity here is a judgement call with a defensible answer: HIGH because credentials and a published artifact are in scope, Tier 2 rather than IR because the hosts are contained, the credentials are rotated, and there is no evidence yet that either was used. Stating that open question in the handover — what did job #8841 publish, and did the signing key get used — is what makes the escalation useful to whoever picks it up.`,
+The right severity here is a judgment call with a defensible answer: HIGH because credentials and a published artifact are in scope, Tier 2 rather than IR because the hosts are contained, the credentials are rotated, and there is no evidence yet that either was used. Stating that open question in the handover — what did job #8841 publish, and did the signing key get used — is what makes the escalation useful to whoever picks it up.`,
 };

@@ -102,7 +102,7 @@ export const FORMAT_GUIDE = [
     name: "Zeek / Bro",
     pattern: "conn.log TSV, ideally with its #fields header",
     example: "#fields ts uid id.orig_h id.orig_p id.resp_h id.resp_p proto duration orig_bytes\n1705276800.12 Cabc123 10.0.0.5 49201 203.0.113.9 4444 tcp 3600 2457600",
-    tips: "Include the #fields header so columns are read by name; without it the standard conn.log order is assumed. Only conn.log fields (duration, bytes, destination port) are analysed, so dns.log and http.log rows are recognised but not scored."
+    tips: "Include the #fields header so columns are read by name; without it the standard conn.log order is assumed. Only conn.log fields (duration, bytes, destination port) are analyzed, so dns.log and http.log rows are recognized but not scored."
   },
   {
     name: "CEF",
@@ -114,7 +114,7 @@ export const FORMAT_GUIDE = [
     name: "Splunk / SIEM Export",
     pattern: "Key: Value pairs or raw search result rows",
     example: "index=main sourcetype=sysmon EventCode=1\nImage=C:\\Windows\\System32\\cmd.exe\nCommandLine=cmd.exe /c whoami\nParentImage=explorer.exe",
-    tips: "There is no dedicated SIEM-export parser: key=value exports are analysed as free-form text. A Windows event is recognised as one only when it includes an EventID: line."
+    tips: "There is no dedicated SIEM-export parser: key=value exports are analyzed as free-form text. A Windows event is recognized as one only when it includes an EventID: line."
   },
   {
     name: "Free-form",

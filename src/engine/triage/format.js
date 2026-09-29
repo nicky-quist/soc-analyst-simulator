@@ -1,7 +1,7 @@
 // Extracted from SOCTriageTool.jsx so the rule engine can be tested
 // independently of React. Pure functions, no DOM, no network.
 
-/** Log formats the engine can recognise. */
+/** Log formats the engine can recognize. */
 export const FORMATS = [
   'CEF',
   'Suricata JSON',
