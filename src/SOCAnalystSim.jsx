@@ -11,6 +11,7 @@ import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
 import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
 import { withRedOpsTarget } from './engine/redops.js';
+import { instantiateScenario } from './engine/scenarioVariants.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
@@ -112,6 +113,7 @@ const EMPTY_CASE = {
   attempts: 0,
   lastRange: '15m',
   noiseSearches: 0,
+  nudgeAsks: {},
 };
 
 // `deal` is the hand counter, not the hand: the seven alerts are re-derived
@@ -230,18 +232,21 @@ export default function SOCAnalystSim() {
   const shiftHeader = useMemo(() => buildShift(seedAt, shift.deal), [seedAt, shift.deal]);
 
   // Your seven for this shift, dealt from the library and stable for as long as
-  // the shift is.
-  const queue = useMemo(
-    () => withWarRoom(
+  // the shift is. Scenarios that declare `variables` (see engine/scenarioVariants.js)
+  // get their attacker IP / hostname / service account re-rolled per shift, keyed
+  // off the same (seedAt, deal) as the deal itself so a reload never changes them.
+  const queue = useMemo(() => {
+    const hand = withWarRoom(
       withRedOpsTarget(
         dealShift(seedAt, shift.deal, undefined, shift.focus, new Set(shift.previousHandIds || [])),
         shift.redOpsTarget,
         SCENARIOS
       ),
       shift.warRoom
-    ),
-    [seedAt, shift.deal, shift.focus, shift.warRoom, shift.redOpsTarget, shift.previousHandIds]
-  );
+    );
+    const seedKey = `${seedAt}:${shift.deal}`;
+    return hand.map((s) => instantiateScenario(s, seedKey));
+  }, [seedAt, shift.deal, shift.focus, shift.warRoom, shift.redOpsTarget, shift.previousHandIds]);
 
   const scenario = queue[Math.min(currentIndex, queue.length - 1)];
   const caseFile = shift.cases[scenario.id] || EMPTY_CASE;
@@ -520,12 +525,16 @@ export default function SOCAnalystSim() {
   }
 
   // Asking Tier 2 is real help, same as opening Learn Mode — it counts as
-  // assisted so the attempt doesn't get credited as unaided skill.
-  function handleAskTier2() {
+  // assisted so the attempt doesn't get credited as unaided skill. Tracked
+  // per nudge target (search/intel/action id) so asking about the exact same
+  // still-missing thing again gets a more direct answer instead of the same
+  // hint on repeat — see engine/mentor.js.
+  function handleAskTier2(nudgeKey) {
     if (closed) return;
     updateCase((current) => ({
       ...current,
       assisted: true,
+      nudgeAsks: { ...current.nudgeAsks, [nudgeKey]: (current.nudgeAsks?.[nudgeKey] || 0) + 1 },
       timeline: note(current, 'assist', 'Asked Tier 2 for a nudge'),
     }));
   }

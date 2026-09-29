@@ -7,6 +7,14 @@
 export default {
   id: 'aws-key-leak',
   difficulty: 3,
+  // Pilot: cosmetic identifiers only, never a narrative fact — see
+  // engine/scenarioVariants.js. Attacker IP and the compromised service
+  // account are pure labels here; the byte counts and record counts the
+  // rubric actually reasons about are untouched.
+  variables: {
+    sourceIp: { value: '45.83.42.19', pool: 'ipv4-external' },
+    principal: { value: 'svc-etl-loader', pool: 'service-account' },
+  },
   queueLabel: 'Cloud Alert — Anomalous API Activity for IAM Key AKIA…N7QF',
   source: 'AWS GuardDuty + CloudTrail',
   alert: {

@@ -5,6 +5,14 @@
 export default {
   id: 'ssh-brute-success',
   difficulty: 1,
+  // Pilot: cosmetic identifiers only, never a narrative fact — see
+  // engine/scenarioVariants.js. The attacking IP and which prod host got hit
+  // are pure labels; "root," the exposure gap, and the exfiltration read are
+  // the actual incident and stay fixed.
+  variables: {
+    sourceIp: { value: '185.220.101.45', pool: 'ipv4-external' },
+    hostname: { value: 'db-prod-03', pool: 'hostname-server' },
+  },
   queueLabel: 'Auth Anomaly — Repeated Failed Logins, host db-prod-03',
   source: 'Splunk — Linux Auth Logs (auth.log)',
   alert: {

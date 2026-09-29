@@ -18,8 +18,9 @@ export default function OverviewTab({ scenario, showWalkthrough, caseFile, close
   const [nudge, setNudge] = useState(null);
 
   function askTier2() {
-    setNudge(generateTier2Nudge(scenario, caseFile));
-    onAskTier2?.();
+    const { key, persona } = generateTier2Nudge(scenario, caseFile);
+    setNudge(persona);
+    onAskTier2?.(key);
   }
 
   return (

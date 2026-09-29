@@ -41,9 +41,12 @@ export function generateWarRoomAlert(sourceScenario) {
 
 // Tier 2 helping mid-investigation, not after the fact. Pure wrapper around
 // mentor.js's deterministic nudge — kept here so every persona voice in the
-// sim comes from one file.
+// sim comes from one file. Returns the target key alongside the persona
+// message so the caller can track how many times this exact gap has been
+// asked about and escalate the next one.
 export function generateTier2Nudge(scenario, caseFile) {
-  return tier2('coaching', nextNudge(scenario, caseFile));
+  const { key, message } = nextNudge(scenario, caseFile);
+  return { key, persona: tier2('coaching', message) };
 }
 
 export function generateCisoResponse(scenario, submission, score) {
