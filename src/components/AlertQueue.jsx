@@ -61,6 +61,7 @@ export default function AlertQueue({ scenarios, currentId, cases, now, onSelect 
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+              {scenario.warRoomFollowOn && <Badge label="WAR ROOM" tone={TONE.concerned} />}
               <Badge label={scenario.alert.reportedSeverity} tone={severityTone(scenario.alert.reportedSeverity)} />
               {status !== 'closed' && (
                 <Badge

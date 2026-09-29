@@ -8,12 +8,13 @@ import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
 import { buildRecord, emptyProgress, planFocus, recordCase } from './engine/progress.js';
 import ProgressView from './components/ProgressView.jsx';
 import TriageView from './components/TriageView.jsx';
-import { generateShiftSummary } from './engine/personas.js';
+import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
+import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
-import { Badge, Button, Card, IconButton, SectionLabel, Tabs } from './ui/primitives.jsx';
+import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconDashboard, IconFilter, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser,
+  IconDashboard, IconFilter, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconShield, IconSun, IconTrendingUp, IconUser, IconUsers,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -26,12 +27,13 @@ import RespondTab from './components/RespondTab.jsx';
 import ReportTab from './components/ReportTab.jsx';
 import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
+import TeamTab from './components/TeamTab.jsx';
 
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
 
 // The console's sections, in rail order. Each also answers to a URL hash
 // (#triage and so on), so a link can open straight onto a tab.
-const VIEWS = ['dashboard', 'queue', 'triage', 'progress'];
+const VIEWS = ['dashboard', 'queue', 'triage', 'team', 'progress'];
 
 // The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
@@ -103,7 +105,7 @@ const EMPTY_CASE = {
 // `deal` is the hand counter, not the hand: the seven alerts are re-derived
 // from (shiftStartedAt, deal) on every load, so a reload restores the queue you
 // were working and "Reset shift" — same clock, next counter — deals a new one.
-const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null };
+const EMPTY_SHIFT = { theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null, warRoom: null };
 
 // A shift board that just keeps counting is not what a SOC dashboard is for —
 // after this long the queue, SLA clocks, and estate feed should look like a
@@ -120,10 +122,15 @@ function loadShift() {
     if (stale) return { ...EMPTY_SHIFT, theme };
 
     // Cases for alerts that are not in this hand are dropped rather than kept
-    // invisibly: the board has to agree with the queue it is counting.
+    // invisibly: the board has to agree with the queue it is counting. A War
+    // Room alert isn't part of the dealt hand, so its id has to be added to
+    // the valid set by hand or its case (and the alert itself) would vanish
+    // on reload.
     const deal = Number.isInteger(parsed.deal) ? parsed.deal : 0;
     const focus = validFocus(parsed.focus);
+    const warRoom = resolveWarRoomScenario(parsed.warRoom) ? parsed.warRoom : null;
     const valid = new Set(dealShift(parsed.shiftStartedAt, deal, undefined, focus).map((s) => s.id));
+    if (warRoom) valid.add(warRoom.scenarioId);
     const cases = Object.fromEntries(
       Object.entries(parsed.cases || {})
         .filter(([id]) => valid.has(id))
@@ -136,6 +143,7 @@ function loadShift() {
       shiftStartedAt: parsed.shiftStartedAt,
       deal,
       focus,
+      warRoom,
     };
   } catch {
     return EMPTY_SHIFT;
@@ -191,7 +199,10 @@ export default function SOCAnalystSim() {
 
   // Your seven for this shift, dealt from the library and stable for as long as
   // the shift is.
-  const queue = useMemo(() => dealShift(seedAt, shift.deal, undefined, shift.focus), [seedAt, shift.deal, shift.focus]);
+  const queue = useMemo(
+    () => withWarRoom(dealShift(seedAt, shift.deal, undefined, shift.focus), shift.warRoom),
+    [seedAt, shift.deal, shift.focus, shift.warRoom]
+  );
 
   const scenario = queue[Math.min(currentIndex, queue.length - 1)];
   const caseFile = shift.cases[scenario.id] || EMPTY_CASE;
@@ -344,6 +355,19 @@ export default function SOCAnalystSim() {
       attempts: current.attempts + 1,
       timeline: note(current, 'report', `Report submitted — case closed (${score.overallScore}/100)`),
     }));
+
+    // A response bad enough to leave the threat live escalates the shift, once
+    // — a second War Room can't stack on top of the first. Injecting it
+    // reorders the queue (a 5-minute CRITICAL sorts near the top), which would
+    // otherwise leave currentIndex pointing at whatever slid into this case's
+    // old slot — so the index is corrected to follow this case, not its slot.
+    if (!shift.warRoom && warRoomTriggered(scenario, score)) {
+      const newWarRoom = { scenarioId: followOnFor(scenario).id, sourceId: scenario.id, triggeredAt: Date.now() };
+      update((prev) => ({ ...prev, warRoom: newWarRoom }));
+      const reordered = withWarRoom(queue, newWarRoom);
+      const newIndex = reordered.findIndex((s) => s.id === scenario.id);
+      if (newIndex !== -1) setCurrentIndex(newIndex);
+    }
     setTab('debrief');
   }
 
@@ -374,6 +398,17 @@ export default function SOCAnalystSim() {
     setWalkthrough(opening);
     setTab('overview');
     if (opening && !closed) updateCase((current) => ({ ...current, assisted: true }));
+  }
+
+  // Asking Tier 2 is real help, same as opening Learn Mode — it counts as
+  // assisted so the attempt doesn't get credited as unaided skill.
+  function handleAskTier2() {
+    if (closed) return;
+    updateCase((current) => ({
+      ...current,
+      assisted: true,
+      timeline: note(current, 'assist', 'Asked Tier 2 for a nudge'),
+    }));
   }
 
   // Reset deals the next hand rather than the same one again — the counter is
@@ -569,6 +604,16 @@ export default function SOCAnalystSim() {
             <button
               type="button"
               className="rail-nav-btn"
+              data-active={shift.view === 'team'}
+              onClick={() => setView('team')}
+              aria-current={shift.view === 'team' ? 'page' : undefined}
+              title="Security org"
+            >
+              <IconUsers size={18} />
+            </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
               data-active={shift.view === 'progress'}
               onClick={() => setView('progress')}
               aria-current={shift.view === 'progress' ? 'page' : undefined}
@@ -644,6 +689,7 @@ export default function SOCAnalystSim() {
             deal={shift.deal}
             focus={shift.focus}
             onOpenAlert={selectScenario}
+            progress={progress}
           />
         </main>
       )}
@@ -651,6 +697,12 @@ export default function SOCAnalystSim() {
       {shift.view === 'triage' && (
         <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
           <TriageView state={triage} onChange={setTriage} />
+        </main>
+      )}
+
+      {shift.view === 'team' && (
+        <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+          <TeamTab progress={progress} />
         </main>
       )}
 
@@ -676,6 +728,17 @@ export default function SOCAnalystSim() {
         />
 
         <main className="sim-main">
+          {shift.warRoom && !shift.cases[shift.warRoom.scenarioId]?.result && (
+            <Card tone={TONE.concerned} style={{ padding: '14px 18px', marginBottom: 20 }}>
+              <SectionLabel style={{ marginBottom: 10 }}>War room — this shift just escalated</SectionLabel>
+              <PersonaMessage
+                persona={generateWarRoomAlert(
+                  SCENARIOS.find((s) => s.id === shift.warRoom.sourceId) || scenario
+                )}
+              />
+            </Card>
+          )}
+
           {shiftSummary && <ShiftSummary summary={shiftSummary} onReset={handleReset} />}
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 14 }}>
@@ -707,7 +770,16 @@ export default function SOCAnalystSim() {
           <Tabs tabs={tabs} active={tab} onSelect={setTab} />
 
           <div style={{ marginTop: 20 }}>
-            {tab === 'overview' && <OverviewTab scenario={scenario} showWalkthrough={walkthrough} />}
+            {tab === 'overview' && (
+              <OverviewTab
+                key={scenario.id}
+                scenario={scenario}
+                showWalkthrough={walkthrough}
+                caseFile={caseFile}
+                closed={closed}
+                onAskTier2={handleAskTier2}
+              />
+            )}
             {tab === 'investigate' && (
               <InvestigateTab
                 scenario={scenario}
@@ -732,7 +804,7 @@ export default function SOCAnalystSim() {
               />
             )}
             {tab === 'debrief' && closed && (
-              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} />
+              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} timeline={caseFile.timeline} />
             )}
           </div>
         </main>

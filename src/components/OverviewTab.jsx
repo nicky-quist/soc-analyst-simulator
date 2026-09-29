@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { C, MONO, TONE } from '../theme.js';
-import { Card, SectionLabel, SeverityBadge } from '../ui/primitives.jsx';
+import { Button, Card, PersonaMessage, SectionLabel, SeverityBadge } from '../ui/primitives.jsx';
+import { IconUsers } from '../ui/icons.jsx';
+import { generateTier2Nudge } from '../engine/personas.js';
 
 function DetailRow({ label, children }) {
   return (
@@ -10,11 +13,27 @@ function DetailRow({ label, children }) {
   );
 }
 
-export default function OverviewTab({ scenario, showWalkthrough }) {
+export default function OverviewTab({ scenario, showWalkthrough, caseFile, closed, onAskTier2 }) {
   const { alert } = scenario;
+  const [nudge, setNudge] = useState(null);
+
+  function askTier2() {
+    setNudge(generateTier2Nudge(scenario, caseFile));
+    onAskTier2?.();
+  }
 
   return (
     <div>
+      {!closed && (
+        <Card style={{ padding: 16, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: nudge ? 12 : 0 }}>
+            <SectionLabel icon={<IconUsers size={13} />} style={{ marginBottom: 0 }}>Ask a coworker</SectionLabel>
+            <Button variant="ghost" onClick={askTier2}>Ask Tier 2 for a nudge</Button>
+          </div>
+          {nudge && <PersonaMessage persona={nudge} />}
+        </Card>
+      )}
+
       {showWalkthrough && (
         <Card tone={TONE.primary} style={{ padding: 20, marginBottom: 20 }}>
           <SectionLabel>Walkthrough — how a senior analyst works this alert</SectionLabel>

@@ -32,13 +32,43 @@ import webShellUpload from './web-shell-upload.js';
 import cryptoMiningBuildAgent from './crypto-mining-build-agent.js';
 import oauthConsentGrant from './oauth-consent-grant.js';
 import dnsTunnelSuspected from './dns-tunnel-suspected.js';
+import warroomRansomwareDetonation from './warroom-ransomware-detonation.js';
 
+// The security org chart, drawn only as deep as it's actually relevant to a
+// Tier-1 shift — no HR, no marketing, nobody you'd never hear from. Each role
+// carries who it reports to (for the Team tab's tree) and a one-line blurb of
+// what it actually does in this sim, not a job-description fiction.
 export const COMPANY = {
   name: 'Coastal Trust Bank',
   soc: 'SEA SOC',
-  analyst: { name: 'You', title: 'Tier 1 Analyst' },
-  ciso: { name: 'Sarah Okafor', title: 'CISO' },
-  ceo: { name: 'David Reyes', title: 'CEO' },
+  analyst: {
+    name: 'You', title: 'Tier 1 Analyst', reportsTo: 'tier2',
+    blurb: 'Works the queue: investigates, enriches, responds, writes the report.',
+  },
+  tier2: {
+    name: 'Jordan Reyes', title: 'Senior Analyst (Tier 2)', reportsTo: 'teamLead',
+    blurb: "Sits one desk over. Won't hand you the answer, but will point at what you haven't looked at yet.",
+  },
+  teamLead: {
+    name: 'Priya Anand', title: 'SOC Team Lead', reportsTo: 'ciso',
+    blurb: 'Runs the shift. Reviews queue-level patterns across a whole night, not one case at a time.',
+  },
+  detectionEng: {
+    name: 'Marcus Ibe', title: 'Detection Engineering Lead', reportsTo: 'ciso',
+    blurb: "Owns the rules that generate these alerts. Cares when the tool's reported severity keeps missing.",
+  },
+  irLead: {
+    name: 'Marcus Bell', title: 'IR Lead', reportsTo: 'ciso',
+    blurb: 'Takes the handoff once something is escalated. Lives or dies by what evidence survived your response.',
+  },
+  ciso: {
+    name: 'Sarah Okafor', title: 'CISO', reportsTo: 'ceo',
+    blurb: 'Debriefs every closed case and reviews the shift as a whole.',
+  },
+  ceo: {
+    name: 'David Reyes', title: 'CEO', reportsTo: null,
+    blurb: 'Only shows up when a case actually reaches IR — wants the business answer, not the log excerpt.',
+  },
 };
 
 // The library, not the queue. A shift deals seven of these — see
@@ -58,6 +88,14 @@ export const SCENARIOS = [
   oauthConsentGrant,
   dnsTunnelSuspected,
 ];
+
+// War Room follow-ons — deliberately not part of SCENARIOS/the deal pool.
+// These never get dealt; engine/warroom.js injects one into a live shift when
+// its trigger case closes with a response bad enough to earn it. Keyed by the
+// scenario id that can trigger it.
+export const WAR_ROOM_SCENARIOS = {
+  [powershellPrecursor.id]: warroomRansomwareDetonation,
+};
 
 export const ESCALATION_OPTIONS = [
   { value: 'close_no_escalation', label: 'Close — Benign / Expected Activity' },

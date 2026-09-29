@@ -45,8 +45,10 @@ function shuffled(items, rand) {
 
 // The queue an analyst sees is sorted the way a console sorts one: by the
 // severity the tool reported — which is not the severity the case deserves —
-// and then by how little time is left on the clock.
-function queueOrder(a, b) {
+// and then by how little time is left on the clock. Exported so a War Room
+// alert injected mid-shift (engine/warroom.js) sorts into the same queue by
+// the same rule instead of just being appended at the end.
+export function queueOrder(a, b) {
   const bySeverity = (SEVERITY_RANK[a.alert.reportedSeverity] ?? 9) - (SEVERITY_RANK[b.alert.reportedSeverity] ?? 9);
   if (bySeverity) return bySeverity;
   return a.alert.slaMinutes - b.alert.slaMinutes;

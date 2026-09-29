@@ -6,10 +6,44 @@
 // executives really ask instead of technical ones.
 
 import { COMPANY } from '../data/scenarios/index.js';
-import { isResolvedCorrectly, underEscalated, overEscalated } from './scoring.js';
+import { isResolvedCorrectly, underEscalated, overEscalated, SEVERITY_ORDER } from './scoring.js';
+import { nextNudge } from './mentor.js';
 
 function ciso(tone, message) {
   return { from: COMPANY.ciso.name, role: COMPANY.ciso.title, tone, message };
+}
+
+function teamLead(tone, message) {
+  return { from: COMPANY.teamLead.name, role: COMPANY.teamLead.title, tone, message };
+}
+
+function tier2(tone, message) {
+  return { from: COMPANY.tier2.name, role: COMPANY.tier2.title, tone, message };
+}
+
+function detectionEng(tone, message) {
+  return { from: COMPANY.detectionEng.name, role: COMPANY.detectionEng.title, tone, message };
+}
+
+function irLead(tone, message) {
+  return { from: COMPANY.irLead.name, role: COMPANY.irLead.title, tone, message };
+}
+
+// Announces a War Room escalation the moment it's injected into the queue —
+// the IR Lead's voice, since this is exactly the handoff they own, and it's
+// the moment the shift needs to feel different from an ordinary queue item.
+export function generateWarRoomAlert(sourceScenario) {
+  return irLead(
+    'concerned',
+    `${sourceScenario.queueLabel} just came back on us. Whatever didn't get closed off there is still live, and it moved. I need eyes on the new alert right now — the clock on this one is real.`
+  );
+}
+
+// Tier 2 helping mid-investigation, not after the fact. Pure wrapper around
+// mentor.js's deterministic nudge — kept here so every persona voice in the
+// sim comes from one file.
+export function generateTier2Nudge(scenario, caseFile) {
+  return tier2('coaching', nextNudge(scenario, caseFile));
 }
 
 export function generateCisoResponse(scenario, submission, score) {
@@ -126,6 +160,45 @@ export function generateShiftSummary(results) {
     harmfulActions,
     assisted,
     investigationCoverage,
-    persona: ciso(tone, message),
+    // A shift lead reviewing tonight's whole queue, not the CISO reacting to
+    // every case — the CISO's voice stays reserved for the per-case debrief.
+    persona: teamLead(tone, message),
   };
+}
+
+// Fires once there's enough history to say something real: across every case
+// where the detection tool's reported severity was off by two steps or more
+// from the truth, did the analyst actually catch it? This is the payoff for
+// data progress.js already tracks (targetedBoost's severity-gap logic) but
+// never spoke back to the analyst as a person before now.
+const SEVERITY_GAP_MIN_SAMPLE = 4;
+
+export function generateDetectionEngResponse(history, library) {
+  const byId = Object.fromEntries(library.map((s) => [s.id, s]));
+  const gapped = history.filter((r) => {
+    const scenario = byId[r.scenarioId];
+    if (!scenario) return false;
+    const gap = Math.abs(
+      SEVERITY_ORDER.indexOf(scenario.alert.reportedSeverity) - SEVERITY_ORDER.indexOf(scenario.truth.severity)
+    );
+    return gap >= 2;
+  });
+  if (gapped.length < SEVERITY_GAP_MIN_SAMPLE) return null;
+
+  const caught = gapped.filter((r) => r.outcomes.severity === true).length;
+  const rate = caught / gapped.length;
+
+  if (rate >= 0.8) {
+    return detectionEng(
+      'positive',
+      `I pulled your history on the alerts where our rules are furthest off — ${caught} of ${gapped.length} times you caught it anyway and rated the real severity, not what the tool printed. That's exactly the signal I need to know a bad rule isn't also making a bad analyst.`
+    );
+  }
+  if (rate <= 0.4) {
+    return detectionEng(
+      'coaching',
+      `Looking at your history: on the ${gapped.length} alerts where our detection is most miscalibrated, you only caught the real severity ${caught} times. I own the rules, not your judgment, but a reported severity should be a starting point for you, not the answer — especially on the ones I already know are wrong.`
+    );
+  }
+  return null;
 }

@@ -4,13 +4,14 @@ import { generateCisoResponse, generateCeoResponse } from '../engine/personas.js
 import { Badge, Button, Callout, Card, Metric, PersonaMessage, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
 import { IconAlertOctagon, IconCheck, IconCircleSlash, IconRotate, IconX } from '../ui/icons.jsx';
+import AiCoach from './AiCoach.jsx';
 
 function coverageTone(coverage) {
   if (coverage === 1) return TONE.positive;
   return coverage >= 0.5 ? TONE.coaching : TONE.concerned;
 }
 
-export default function DebriefTab({ scenario, result, onRetry }) {
+export default function DebriefTab({ scenario, result, onRetry, timeline }) {
   const { submission, score } = result;
   const ciso = generateCisoResponse(scenario, submission, score);
   const ceo = generateCeoResponse(scenario, submission);
@@ -99,6 +100,8 @@ export default function DebriefTab({ scenario, result, onRetry }) {
           <PersonaMessage key={action.id} persona={action.consequence} />
         ))}
       </div>
+
+      <AiCoach scenario={scenario} submission={submission} score={score} timeline={timeline} />
 
       <Card style={{ padding: 20, marginBottom: 16 }}>
         <SectionLabel>Report checklist — {score.matchedCount}/{score.scorableCount} covered</SectionLabel>
