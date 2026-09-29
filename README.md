@@ -4,16 +4,19 @@ A working replica of a Tier-1 analyst console, built to practice the whole shift
 
 Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 searches over 240 events, 94 response actions of which 38 are mistakes.
 
-Four tabs in the side rail, in the order an analyst uses them:
+Seven destinations in the side rail, in the order an analyst uses them:
 
 | Tab | What it's for |
 |---|---|
-| **Dashboard** | The shift at a glance: queue, SLA compliance, alert volume, the automation pipeline, ATT&CK coverage |
+| **Dashboard** | The shift at a glance: queue, SLA compliance, alert volume, the automation pipeline, ATT&CK coverage, and a live shift-handoff panel |
 | **Alert queue** | Work the shift's seven cases: investigate, enrich, respond, write the report, get graded |
 | **Triage** | Paste any alert or log line and get a first-pass read: format, severity, ATT&CK, indicators, next step |
-| **Your progress** | Your record across shifts, and what the next shift will practice |
+| **Red Ops** | Play the attacker side of three of the scenarios, then defend the same incident you just ran and see who won |
+| **Security org** | The org chart as a Teams-style contact grid — who's online, their role, and a live presence status derived from real shift state |
+| **Your progress** | Your record across shifts, your career rank, and what the next shift will practice |
+| **Settings** | Configure the AI Coach (local Ollama or your own cloud key) without needing to close a case first |
 
-Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#progress`), so a link can open straight onto one.
+Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#redops`, `#team`, `#progress`, `#settings`), so a link can open straight onto one.
 
 **[Live demo →](https://nicky-quist.github.io/soc-analyst-simulator/)**
 
@@ -27,15 +30,17 @@ So this sim is built so those things can happen to you.
 
 ## The console
 
-**Shift dashboard** — the landing view, because a real console opens on posture rather than on a ticket. Six KPI tiles (open, closed, SLA breaches, average case score, MTTR, alerts today), 24-hour alert volume stacked by severity, your queue's severity mix, an actionable open-alerts table you can click straight into, the day's detection sources with their auto-close rates, a 7-day SLA compliance trend against target whose last point is yours, top entities by alert count, ATT&CK detection coverage by tactic, and a live tail of estate activity. All of it is inline SVG — no charting dependency, no network calls.
+**Shift dashboard** — the landing view, because a real console opens on posture rather than on a ticket. Six KPI tiles (open, closed, SLA breaches, average case score, MTTR, alerts today), 24-hour alert volume stacked by severity (AM/PM labeled), your queue's severity mix, an actionable open-alerts table you can click straight into, the day's detection sources with their auto-close rates, an SLA compliance trend, top entities by alert count, ATT&CK detection coverage by tactic, a live shift-handoff panel, and a live tail of estate activity. All of it is inline SVG — no charting dependency, no network calls.
 
-**Your numbers, not the estate's.** SLA compliance on the dashboard is computed from the cases *you* closed and the clocks *you* let run out — an alert counts once you close it or once it breaches, so the gauge starts at 100%, moves the moment you finish a case, and drops when one goes over. Today's point on the 7-day trend is left visibly empty until then, rather than filled with a number the console invented. The six days behind it are generated per shift: most weeks lose one day below target, a bad week loses two running, one in five comes in clean, and the caption under the chart describes the week that was actually drawn.
+**Your numbers, not the estate's.** SLA compliance is a running trend built purely from cases *you've* actually closed with a response-time target — no fictional calendar, no invented weekday. It starts at 100% because you haven't missed anything yet, moves the first time a real case gives it a data point, and every point after that is a case you closed, in the order you closed them. There is no day of the week attached to any point, so it can never disagree with itself.
 
 The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 alerts → 1,133 closed by automation → 151 routed to analysts → 7 in your queue. That funnel is the part of the job a quiz never shows you, and it is why "just look at every alert" is not a strategy.
 
 **Alert queue** — seven alerts with status (New / In progress / Closed), the tool's reported severity, and a live SLA countdown that goes red when breached. Shift KPIs sit in the header too, so the numbers follow you out of the dashboard.
 
-**A dealt hand, not a fixed list.** The library holds thirteen scenarios and a shift deals seven of them, seeded from when the shift started, so a second sitting is a different queue in a different order. The deal is not a straight random draw: every hand is guaranteed at least one alert that should be closed rather than escalated, at least one that has to reach IR tonight, at least two that belong with Tier 2, and a spread of difficulty — because a queue of seven true positives quietly teaches an analyst to escalate everything. Reset deals the next hand.
+**A dealt hand, not a fixed list.** The library holds thirteen scenarios and a shift deals seven of them, seeded from when the shift started, so a second sitting is a different queue in a different order. The deal is not a straight random draw: every hand is guaranteed at least one alert that should be closed rather than escalated, at least one that has to reach IR tonight, at least two that belong with Tier 2, and a spread of difficulty — because a queue of seven true positives quietly teaches an analyst to escalate everything. Scenarios you were just dealt are also weighted down (not excluded) the next time around, so back-to-back shifts don't keep landing on the same handful of alerts the way an unweighted shuffle does in a library this size.
+
+**The same case doesn't play the same twice.** Every scenario also re-rolls its cosmetic identifiers each shift — the attacker's IP, the compromised hostname, a service account name, a phishing domain — deterministically, so reloading mid-shift never changes them out from under you, but the ssh-brute-force case you solved last week has a different address and host this time. Only pure labels move; nothing the report rubric or the narrative actually reasons about (byte counts, record counts, a key's age) ever changes. **End shift** (the rail's rotate icon) deals the next hand — if anything is still open or escalated, it stops first for a review of exactly who that goes to (Tier 2, IR, or just the next shift) before dealing.
 
 **Overview** — detection metadata (rule, rule ID, data source, entities) and the triggering event, exactly as much as a SIEM would give you. The reported severity is labeled "what the tool said — yours to confirm or overturn."
 
@@ -48,6 +53,14 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 **Report** — classification, severity, an ATT&CK technique picked from a catalog of plausible candidates, a written summary and remediation, and the escalation decision.
 
 **Case notes** — a running timeline of every search, lookup, action, and decode with elapsed times. It's the audit trail a Tier-2 handoff would be built from, and reading your own back is usually how you notice you spent eleven minutes searching before you contained anything.
+
+**AI Coach** — an optional second, LLM-generated debrief on a closed case, alongside (never instead of) the deterministic CISO/CEO responses. Off by default. Local-first: it talks to your own Ollama instance so nothing leaves your machine, with a bring-your-own-key cloud fallback for anyone without a GPU to spare. Configure it from **Settings** or from the debrief screen itself.
+
+**Career progression** — the title in the header is earned, not a fixed label. Promotion to Tier 1 Analyst requires ten *distinct* scenario types closed at 80%+ — not raw close-count, so re-closing the same easy case across shifts doesn't count. Senior Analyst requires the full library at 80%+, no current weak skill, no escalation lean, and a clean response-action rate. A rank, once earned, is a permanent checkpoint: clearing your history or resetting everything wipes the stats that drive it but never takes the rank back.
+
+**Red Ops** — play the attacker side of three scenarios (a choice-driven walkthrough of the attack's real decision points, never freeform commands or payloads), get an evasion score against the same `TACTIC_COVERAGE` numbers the Dashboard uses, then defend the same incident from the blue side and see a head-to-head comparison on the debrief screen.
+
+**Shift handoff** — a Dashboard panel that's always current, not generated once at shift end: any case that's still open or was escalated shows up with its findings, evidence, and what's still needed. **End shift** turns this into an actual moment instead of a silent reset — if anything needs a handoff, it stops to show exactly who picks it up (Jordan Reyes for Tier 2, Marcus Bell for IR, or the next shift's analyst for anything nobody escalated) before dealing the next hand.
 
 Dark by default, with a light toggle.
 
@@ -153,7 +166,7 @@ Input that's too thin to triage (a bare URL, a lone base64 blob, a fragment with
 - **Some report points are graded on what you didn't write.** The false-positive scenario checks you never recommended blocking your own scanner; the insider scenario checks you didn't state theft as established fact. Negation and hedging pass — "do not block this host" and "potential data theft pending review" are correct analyst writing; "the employee stole records" is the thing being caught.
 - **Personas are rule-based**, driven by harm caused, escalation direction, investigation coverage and severity distance rather than per-scenario scripts, so they generalize when scenarios are added. Stakeholder reactions to harmful actions live with the action itself, which is what lets a damaging click answer back immediately instead of at grading time.
 - **ATT&CK is kept because analysts really use it** — SIEM detections ship with technique IDs and case tools ask for one on every incident. It's a picker over plausible candidates rather than free text, since choosing between neighboring techniques is the actual difficulty.
-- **Roadmap**: mid-shift alert arrivals and fast-triage noise alerts (so volume is practiced, not just depth); a per-shift report card alongside the cross-shift progress view; an optional LLM-backed persona mode (Claude API, same offline-fallback pattern as this family's [AI SOC Copilot](https://github.com/nicky-quist/llm-cybersecurity-benchmark/tree/main/copilot)) so the CISO can interrogate your specific report; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
+- **Roadmap**: fast-triage noise alerts alongside the seven-case deal (so volume is practiced, not just depth); a per-shift report card alongside the cross-shift progress view; extending cosmetic-identifier randomization's `variables` pattern to a couple of remaining edge cases (the C2 address baked into `malicious-powershell-precursor`'s base64 blob, a linked derived string in `mfa-push-fatigue`); an async, share-code two-player mode for Red Ops; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
 
 ## Tech
 
@@ -177,7 +190,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          226 tests across eleven suites (triage/ holds the Triage engine's)
+tests/          261 tests across 14 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
