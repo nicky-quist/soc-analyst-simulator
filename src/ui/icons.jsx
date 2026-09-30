@@ -253,3 +253,14 @@ export const IconLogOut = (p) => (
     <path d="M19.5 12H9.5" />
   </Svg>
 );
+
+// Leaderboard: a trophy cup with handles and a base.
+export const IconTrophy = (p) => (
+  <Svg {...p}>
+    <path d="M7.5 4h9v5.5a4.5 4.5 0 0 1-9 0V4z" />
+    <path d="M7.5 6H4.5a1 1 0 0 0-1 1c0 2.2 1.6 3.8 4 4" />
+    <path d="M16.5 6h3a1 1 0 0 1 1 1c0 2.2-1.6 3.8-4 4" />
+    <path d="M12 14v3.5" />
+    <path d="M8.5 20.5h7M9.5 17.5h5l.5 3h-6l.5-3z" />
+  </Svg>
+);

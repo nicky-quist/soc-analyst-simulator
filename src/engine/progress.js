@@ -260,6 +260,20 @@ function bestScoreByScenario(history) {
   return best;
 }
 
+// How many distinct case types you have cleared at the promotion bar, and your
+// average best score across the case types you have attempted. The leaderboard
+// reads these; rank itself still comes from careerStatus below.
+export function clearedCaseTypes(history, library) {
+  const libraryIds = new Set(library.map((s) => s.id));
+  return Object.entries(bestScoreByScenario(history))
+    .filter(([id, score]) => libraryIds.has(id) && score >= PROMOTION_SCORE_BAR).length;
+}
+
+export function averageBestScore(history) {
+  const scores = Object.values(bestScoreByScenario(history));
+  return scores.length ? Math.round(scores.reduce((n, v) => n + v, 0) / scores.length) : null;
+}
+
 // history: progress.history. library: the scenario pool a rank's breadth
 // requirement counts against (SCENARIOS — War Room follow-ons don't count,
 // you can't queue one up on demand). checkpointRankIndex: the highest rank

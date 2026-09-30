@@ -4,20 +4,21 @@ A working replica of a Tier-1 analyst console, built to practice the whole shift
 
 Seventeen alert scenarios dealt seven to a shift, 31 searchable data sources, 82 searches over 317 events, 125 response actions of which 51 are mistakes.
 
-Eight destinations in the side rail, in the order an analyst uses them:
+Nine destinations in the side rail, grouped the way an analyst uses them: the shift itself, practice, where you stand, and reference.
 
 | Tab | What it's for |
 |---|---|
 | **Dashboard** | The shift at a glance: queue, SLA compliance, alert volume, the automation pipeline, ATT&CK coverage, and a live shift-handoff panel |
 | **Alert queue** | Work the shift's seven cases: investigate, enrich, respond, write the report, get graded |
-| **Triage** | Paste any alert or log line and get a first-pass read: format, severity, ATT&CK, indicators, next step |
+| **Alert triage** | Paste any alert or log line and get a first-pass read: format, severity, ATT&CK, indicators, next step |
 | **Fast triage** | Twenty noise-heavy alert cards against a 12-minute clock: close, send to Tier 2, or page IR, with no feedback until the run ends |
 | **Red Ops** | Run the attacker side of four scenarios as a live operation while the SOC reacts to each move, then defend the same incident and see who won |
-| **Security org** | The org chart as a Teams-style contact grid — who's online, their role, and a live presence status derived from real shift state |
 | **Your progress** | Your record across shifts, your career rank, and what the next shift will practice |
+| **Leaderboard** | Three separate boards, Blue Team, Red Team and Secrets, ranking you against the fictional SEA SOC roster |
+| **Security org** | The org chart as a Teams-style contact grid — who's online, their role, and a live presence status derived from real shift state |
 | **Settings** | Configure the AI Coach (local Ollama or your own cloud key) without needing to close a case first |
 
-Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#fasttriage`, `#redops`, `#team`, `#progress`, `#settings`), so a link can open straight onto one.
+Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#fasttriage`, `#redops`, `#progress`, `#leaderboard`, `#team`, `#settings`), so a link can open straight onto one.
 
 **[Live demo →](https://nicky-quist.github.io/soc-analyst-simulator/)**
 
@@ -179,6 +180,26 @@ A run deals 20 alert cards from a pool of 36 and gives you 12 minutes. Each card
 - **Closing a live threat caps the grade at C**, whatever the rest of the run looked like, the same rule the main sim applies to a damaging response after a correct report.
 - **Kept honest.** Runs are seeded, so the deal is reproducible from its seed and varies across seeds; only finished runs are saved (last 20, in local storage); refreshing mid-run abandons it; **Reset everything** on the Dashboard clears them along with the rest.
 
+## Leaderboard
+
+Three separate boards, each ranking you against the fictional SEA SOC roster (the people the console already puts in front of you, like the Team Lead, the IR Lead and the CISO). Their standings are fixed, so a board looks the same every time and you climb it by playing. It is you against the sim's own people: nothing is uploaded or shared.
+
+| Board | Ranked by |
+|---|---|
+| **Blue Team** | career rank, then case types cleared at 80%+, then average best score |
+| **Red Team** | Red Ops rank, then operations cleared, then ghost runs, then best completed score |
+| **Secrets** | how many hidden secrets you have found |
+
+Ties share a rank (1, 2, 2, 4) and you are listed first among them. **Copy my standing** puts a short summary of all three ranks on the clipboard. Reset everything keeps ranks and found secrets and clears the record behind them, so the boards show the same rank with the progress bars back at zero. Every roster standing is beatable: a test builds a perfect player and checks they take first place on all three boards, and that a new player leads none of them. Roster standings also stay true as the library grows (a senior analyst has cleared every case type by definition).
+
+## Secrets
+
+There are twenty things hidden in the console. It never says how to find them; Settings lists the ones you have found and shows "???" for the rest, and one of them is a credits card. They are small in-voice rewards for doing what a curious person might try, spread across the investigation tools, the report, Fast triage, Red Ops, the theme toggle and the keyboard.
+
+- **Never part of the game.** A secret is announced and nothing more. None reads into a grade, a rank, your history or the "assisted" flag, and none can be tripped by working a real case: a test runs every scenario's own searches and lookups through the matchers to prove it.
+- **Reset everything leaves them alone**, like a rank. The only way to forget them is the button in Settings.
+- **Matchers are pure** (`engine/easterEggs.js`), so each trigger is unit-tested, along with the Konami tracker, the burst counter that catches rapid clicking, and the storage.
+
 ## Alert triage
 
 The **Triage** tab is a first-pass reader for an alert that isn't in the shift queue. Paste a raw log line or alert, and it identifies the format, scores severity with a confidence percentage, maps the activity to ATT&CK, extracts indicators, estimates how likely it is to be a false positive, and recommends a next step. The result can be exported as a `.txt` report, and the tab keeps a history of the session's analyses.
@@ -231,7 +252,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          304 tests across 18 files (triage/ holds the Triage engine's)
+tests/          330 tests across 20 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:

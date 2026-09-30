@@ -12,6 +12,11 @@ import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js
 import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
 import { clearFastTriageRuns } from './engine/fasttriageStore.js';
 import { RED_OPS } from './data/redops.js';
+import EggHost from './components/EggHost.jsx';
+import {
+  announce, createBurst, matchDeadEven, matchDecode, matchGhostwire, matchIntel, matchNightOwl,
+  matchQuickClose, matchReport, matchSearch,
+} from './engine/easterEggs.js';
 import { advanceRedCheckpoint, buildRedRecord, recordRedRun, redStatus, resetRedProgress } from './engine/redProgress.js';
 import { loadRedProgress, saveRedProgress } from './engine/redProgressStore.js';
 import { withRedOpsTarget } from './engine/redops.js';
@@ -20,7 +25,7 @@ import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconClipboardPulse, IconCrosshair, IconDashboard, IconGraduationCap, IconInbox, IconLogOut, IconSettings, IconShield, IconSparkles, IconStopwatch, IconThemeHalf, IconTrendingUp, IconUser, IconUsers,
+  IconClipboardPulse, IconCrosshair, IconDashboard, IconGraduationCap, IconInbox, IconLogOut, IconSettings, IconShield, IconSparkles, IconStopwatch, IconThemeHalf, IconTrendingUp, IconTrophy, IconUser, IconUsers,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -35,16 +40,22 @@ import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import TeamTab from './components/TeamTab.jsx';
 import RedOpsView from './components/RedOpsView.jsx';
+import LeaderboardView from './components/LeaderboardView.jsx';
 import FastTriageView from './components/FastTriageView.jsx';
 import SettingsView from './components/SettingsView.jsx';
 import EndShiftModal from './components/EndShiftModal.jsx';
 import { buildShiftHandoff } from './engine/handoff.js';
 
+// Announce a secret if there is one; matchers return null when nothing matched.
+function announceEgg(id) {
+  if (id) announce(id);
+}
+
 const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
 
 // The console's sections, in rail order. Each also answers to a URL hash
 // (#triage and so on), so a link can open straight onto a tab.
-const VIEWS = ['dashboard', 'queue', 'triage', 'fasttriage', 'redops', 'team', 'progress', 'settings'];
+const VIEWS = ['dashboard', 'queue', 'triage', 'fasttriage', 'redops', 'progress', 'leaderboard', 'team', 'settings'];
 
 // The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
@@ -218,6 +229,9 @@ export default function SOCAnalystSim() {
   const [progress, setProgress] = useState(loadProgress);
   // The attacker-side career: its own record and its own checkpoint rank.
   const [redProgress, setRedProgress] = useState(loadRedProgress);
+  // Bursts for two secrets: flipping the theme many times fast, clicking the logo.
+  const [themeBurst] = useState(() => createBurst(10, 6000));
+  const [logoBurst] = useState(() => createBurst(5, 3000));
   const [shift, setShift] = useState(() => {
     const opened = openShift(loadShift(), loadProgress());
     const linked = viewFromHash();
@@ -320,6 +334,7 @@ export default function SOCAnalystSim() {
   }
 
   function handleSearch(query, range) {
+    announceEgg(matchSearch(query) || matchNightOwl());
     const searchResult = runQuery(scenario, query, range);
     const matched = searchResult.status === 'ok'
       ? scenario.searches.find((s) => s.id === searchResult.searchId)
@@ -344,6 +359,7 @@ export default function SOCAnalystSim() {
   }
 
   function handleLookup(value) {
+    announceEgg(matchIntel(value));
     const lookup = lookupIndicator(scenario, value);
     updateCase((current) => ({
       ...current,
@@ -363,6 +379,7 @@ export default function SOCAnalystSim() {
 
   function handleDecode(input) {
     const decoded = decodeBase64(input);
+    if (decoded.ok) announceEgg(matchDecode(decoded.text));
     updateCase((current) => ({
       ...current,
       decodes: [...current.decodes, { at: stamp(), result: decoded }],
@@ -392,6 +409,10 @@ export default function SOCAnalystSim() {
       assisted: caseFile.assisted,
       elapsedMs: caseFile.startedAt ? Date.now() - caseFile.startedAt : null,
     });
+    // Secrets only announce; none of this reads back into the score or history.
+    announceEgg(matchReport(caseFile.form));
+    announceEgg(matchQuickClose(caseFile.startedAt ? Date.now() - caseFile.startedAt : null, isResolvedCorrectly(score)));
+    announceEgg(matchDeadEven(shift.redOps, scenario.id, score.overallScore));
     const record = buildRecord({
       scenario,
       submission: caseFile.form,
@@ -635,6 +656,7 @@ export default function SOCAnalystSim() {
     saveRedProgress(next);
     setRedProgress(next);
     const after = redStatus(next.history, ids, next.checkpointRankIndex);
+    announceEgg(matchGhostwire(next.history, ids));
     return after.rankIndex > before.rankIndex ? after.rank : null;
   }
 
@@ -659,6 +681,7 @@ export default function SOCAnalystSim() {
   }, []); // update only calls the stable setShift, so subscribing once is enough
 
   function toggleTheme() {
+    if (themeBurst()) announce('flashbang');
     update((prev) => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
   }
 
@@ -772,7 +795,7 @@ export default function SOCAnalystSim() {
           <div style={{
             width: 34, height: 34, borderRadius: 9, background: C.primary, color: C.onPrimary,
             display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-          }}>
+          }} onClick={() => { if (logoBurst()) announce('credits'); }}>
             <IconShield size={18} strokeWidth={2} />
           </div>
 
@@ -800,6 +823,7 @@ export default function SOCAnalystSim() {
                 <span className="rail-count">{queue.length - closedCases.length}</span>
               )}
             </button>
+            <div role="separator" aria-hidden="true" style={{ height: 1, background: C.border, margin: '4px 6px' }} />
             <button
               type="button"
               className="rail-nav-btn"
@@ -830,16 +854,7 @@ export default function SOCAnalystSim() {
             >
               <IconCrosshair size={19} />
             </button>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'team'}
-              onClick={() => setView('team')}
-              aria-current={shift.view === 'team' ? 'page' : undefined}
-              title="Security org"
-            >
-              <IconUsers size={19} />
-            </button>
+            <div role="separator" aria-hidden="true" style={{ height: 1, background: C.border, margin: '4px 6px' }} />
             <button
               type="button"
               className="rail-nav-btn"
@@ -849,6 +864,27 @@ export default function SOCAnalystSim() {
               title="Your progress"
             >
               <IconTrendingUp size={19} />
+            </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
+              data-active={shift.view === 'leaderboard'}
+              onClick={() => setView('leaderboard')}
+              aria-current={shift.view === 'leaderboard' ? 'page' : undefined}
+              title="Leaderboard"
+            >
+              <IconTrophy size={19} />
+            </button>
+            <div role="separator" aria-hidden="true" style={{ height: 1, background: C.border, margin: '4px 6px' }} />
+            <button
+              type="button"
+              className="rail-nav-btn"
+              data-active={shift.view === 'team'}
+              onClick={() => setView('team')}
+              aria-current={shift.view === 'team' ? 'page' : undefined}
+              title="Security org"
+            >
+              <IconUsers size={19} />
             </button>
             <button
               type="button"
@@ -965,6 +1001,12 @@ export default function SOCAnalystSim() {
             onToggleAdaptive={toggleAdaptive}
             onClearHistory={clearHistory}
           />
+        </main>
+      )}
+
+      {shift.view === 'leaderboard' && (
+        <main className="sim-main" style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+          <LeaderboardView progress={progress} redProgress={redProgress} />
         </main>
       )}
 
@@ -1091,6 +1133,8 @@ export default function SOCAnalystSim() {
       )}
         </div>
       </div>
+
+      <EggHost stats={{ blueRank: career.rank, redRank: redRank.rank, closed: closedCases.length }} />
 
       {showEndShiftReview && (
         <EndShiftModal
