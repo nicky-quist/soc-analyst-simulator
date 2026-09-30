@@ -3,11 +3,13 @@
 // choice you make here — it was already decided by the escalation call on the
 // Report tab. This just makes that consequence visible before you walk away.
 
+import { useRef } from 'react';
 import { COMPANY } from '../data/scenarios/index.js';
 import { buildShiftHandoff } from '../engine/handoff.js';
 import { C, TONE } from '../theme.js';
 import { Badge, Button, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
+import { useDialogFocus } from '../ui/useDialogFocus.js';
 import { IconFileCheck } from '../ui/icons.jsx';
 
 const NEXT_SHIFT_RECIPIENT = {
@@ -67,9 +69,14 @@ function NoteCard({ note }) {
 
 export default function EndShiftModal({ scenarios, cases, onConfirm, onCancel }) {
   const notes = buildShiftHandoff(scenarios, cases);
+  const dialogRef = useRef(null);
+  const keepWorkingRef = useRef(null);
+  // Focus starts on the safe choice, so an accidental Enter doesn't end the shift.
+  useDialogFocus(dialogRef, onCancel, keepWorkingRef);
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Review handoff before ending shift"
@@ -91,7 +98,7 @@ export default function EndShiftModal({ scenarios, cases, onConfirm, onCancel })
         {notes.map((note) => <NoteCard key={note.scenarioId} note={note} />)}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
-          <Button variant="ghost" onClick={onCancel}>Keep working</Button>
+          <Button variant="ghost" onClick={onCancel} ref={keepWorkingRef}>Keep working</Button>
           <Button variant="primary" onClick={onConfirm}>I've reviewed this — end shift</Button>
         </div>
       </div>

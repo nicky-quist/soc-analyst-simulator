@@ -722,6 +722,18 @@ export default function SOCAnalystSim() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: FONT, color: C.text }}>
+      <a
+        className="skip-link"
+        href="#"
+        onClick={(e) => {
+          // Not a hash link: the console's own #view routing owns the hash.
+          e.preventDefault();
+          const target = document.querySelector('main');
+          if (target) { target.setAttribute('tabindex', '-1'); target.focus(); }
+        }}
+      >
+        Skip to main content
+      </a>
       <style>{`
         ${THEME_CSS}
         * { box-sizing: border-box; }
@@ -731,12 +743,14 @@ export default function SOCAnalystSim() {
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
         select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px var(--primary-soft); }
-        button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        button:focus-visible, a:focus-visible, [role="tab"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .skip-link { position: absolute; left: -9999px; top: 8px; z-index: 1000; padding: 8px 14px; border-radius: 6px; background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 13px; text-decoration: none; }
+        .skip-link:focus { left: 8px; }
         .app-shell { display: flex; align-items: stretch; min-height: 100vh; }
         .app-rail {
           width: 60px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
           display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 12px;
-          position: sticky; top: 0; height: 100vh;
+          position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden;
         }
         .app-content { flex: 1; min-width: 0; }
         .rail-nav-btn {
@@ -786,7 +800,20 @@ export default function SOCAnalystSim() {
         }
         @media (max-width: 480px) {
           .app-rail { width: 48px; }
-          .rail-nav-btn { width: 34px; height: 34px; }
+          .rail-nav-btn { width: 38px; height: 38px; }
+        }
+        /* Tab strips wrap on phones so no tab is hidden behind a sideways scroll. */
+        @media (max-width: 640px) {
+          .sim-tabs { flex-wrap: wrap !important; overflow-x: visible !important; }
+        }
+        /* Touch: give in-page buttons a comfortable target. */
+        @media (pointer: coarse) {
+          main button, [role="tab"] { min-height: 40px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .live-dot { animation: none; }
+          .sim-tile, .sim-alert-row { transition: none; }
+          .sim-tile:hover { transform: none; }
         }
       `}</style>
 
@@ -807,6 +834,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('dashboard')}
               aria-current={shift.view === 'dashboard' ? 'page' : undefined}
               title="Dashboard"
+              aria-label="Dashboard"
             >
               <IconDashboard size={19} />
             </button>
@@ -817,6 +845,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('queue')}
               aria-current={shift.view === 'queue' ? 'page' : undefined}
               title="Alert queue"
+              aria-label="Alert queue"
             >
               <IconInbox size={19} />
               {queue.length - closedCases.length > 0 && (
@@ -831,6 +860,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('triage')}
               aria-current={shift.view === 'triage' ? 'page' : undefined}
               title="Alert triage"
+              aria-label="Alert triage"
             >
               <IconClipboardPulse size={19} />
             </button>
@@ -841,6 +871,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('fasttriage')}
               aria-current={shift.view === 'fasttriage' ? 'page' : undefined}
               title="Fast triage"
+              aria-label="Fast triage"
             >
               <IconStopwatch size={19} />
             </button>
@@ -851,6 +882,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('redops')}
               aria-current={shift.view === 'redops' ? 'page' : undefined}
               title="Red Ops"
+              aria-label="Red Ops"
             >
               <IconCrosshair size={19} />
             </button>
@@ -862,6 +894,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('progress')}
               aria-current={shift.view === 'progress' ? 'page' : undefined}
               title="Your progress"
+              aria-label="Your progress"
             >
               <IconTrendingUp size={19} />
             </button>
@@ -872,6 +905,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('leaderboard')}
               aria-current={shift.view === 'leaderboard' ? 'page' : undefined}
               title="Leaderboard"
+              aria-label="Leaderboard"
             >
               <IconTrophy size={19} />
             </button>
@@ -883,6 +917,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('team')}
               aria-current={shift.view === 'team' ? 'page' : undefined}
               title="Security org"
+              aria-label="Security org"
             >
               <IconUsers size={19} />
             </button>
@@ -893,6 +928,7 @@ export default function SOCAnalystSim() {
               onClick={() => setView('settings')}
               aria-current={shift.view === 'settings' ? 'page' : undefined}
               title="Settings"
+              aria-label="Settings"
             >
               <IconSettings size={19} />
             </button>

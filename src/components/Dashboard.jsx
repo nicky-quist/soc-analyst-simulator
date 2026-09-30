@@ -385,7 +385,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
         </Panel>
 
         <Panel title="Estate activity" icon={<IconRadio size={13} />} hint="live tail" style={{ gridColumn: 'span 2' }}>
-          <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6 }}>
             {feed.map((entry, i) => (
               <div key={`${feedTick}-${i}`} style={{
                 display: 'flex', gap: 10, alignItems: 'center', fontSize: 12,

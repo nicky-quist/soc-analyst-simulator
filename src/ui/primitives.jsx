@@ -1,3 +1,4 @@
+import { Children, cloneElement, isValidElement, useId } from 'react';
 import { C, FONT, MONO, TONE, severityTone } from '../theme.js';
 import { initials } from './helpers.js';
 
@@ -76,20 +77,47 @@ export function Button({ children, onClick, variant = 'secondary', disabled, sty
 }
 
 export function Field({ label, htmlFor, children, hint }) {
+  // A label is only a label if it points at its control. When a Field wraps a
+  // single control and nobody gave it an id, give it one and point the label there.
+  const autoId = useId();
+  const only = Children.count(children) === 1 && isValidElement(children) ? children : null;
+  const id = htmlFor || only?.props?.id || autoId;
+  const control = only && !only.props.id && !htmlFor ? cloneElement(only, { id }) : children;
+
   return (
     <div style={{ marginBottom: 16 }}>
-      <label htmlFor={htmlFor} style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6, display: 'block' }}>
+      <label htmlFor={id} style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6, display: 'block' }}>
         {label}
       </label>
-      {children}
+      {control}
       {hint && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 5 }}>{hint}</div>}
     </div>
   );
 }
 
 export function Tabs({ tabs, active, onSelect }) {
+  // WAI-ARIA tabs: Left/Right (and Home/End) move between tabs, and only the
+  // active tab is in the tab order.
+  function onKeyDown(e) {
+    const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const i = tabs.findIndex((t) => t.id === active);
+    const next = e.key === 'Home' ? 0
+      : e.key === 'End' ? tabs.length - 1
+        : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    onSelect(tabs[next].id);
+    const buttons = e.currentTarget.querySelectorAll('[role="tab"]');
+    buttons[next]?.focus();
+  }
+
   return (
-    <div role="tablist" style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}`, overflowX: 'auto', padding: '0 2px' }}>
+    <div
+      role="tablist"
+      className="sim-tabs"
+      onKeyDown={onKeyDown}
+      style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}`, overflowX: 'auto', padding: '0 2px' }}
+    >
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
@@ -98,6 +126,7 @@ export function Tabs({ tabs, active, onSelect }) {
             type="button"
             role="tab"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(tab.id)}
             style={{
               background: isActive ? C.primarySoft : 'transparent',

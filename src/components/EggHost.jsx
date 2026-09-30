@@ -14,6 +14,7 @@ import { announce, createKonami, subscribe } from '../engine/easterEggs.js';
 import { loadFound, saveFound, unlock } from '../engine/easterEggsStore.js';
 import { C, FONT, MONO } from '../theme.js';
 import { Button } from '../ui/primitives.jsx';
+import { useDialogFocus } from '../ui/useDialogFocus.js';
 import { IconSparkles, IconX } from '../ui/icons.jsx';
 
 const TOAST_MS = 8000;
@@ -48,15 +49,12 @@ function Toast({ egg, foundCount, onClose }) {
 
 function Overlay({ children, label, onClose }) {
   const closeRef = useRef(null);
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const dialogRef = useRef(null);
+  useDialogFocus(dialogRef, onClose, closeRef);
 
   return (
     <div
+      ref={dialogRef}
       role="dialog" aria-modal="true" aria-label={label}
       onClick={onClose}
       style={{

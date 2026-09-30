@@ -225,6 +225,7 @@ Input that's too thin to triage (a bare URL, a lone base64 blob, a fragment with
 
 ## Design notes
 
+- **Works on a phone and from the keyboard.** Every tab was checked at 375px wide and on a short landscape phone: nothing scrolls the page sideways, tab strips wrap instead of hiding tabs behind a scrollbar, and buttons get a 40px touch target. From the keyboard there is a skip-to-content link, the tab strips follow the ARIA pattern (arrow keys, one tab stop), every icon button has an accessible name, form labels point at their controls, and the dialogs move focus in, keep it inside, close on Escape and give focus back. Animations stop under `prefers-reduced-motion`. Text colors are held to WCAG AA (4.5:1) in both themes by a test that parses the real palette, which is how the low-contrast helper text and the light theme's informational badges were found.
 - **Deterministic and offline**, in both the grader and the Triage engine: no API key, no third-party calls. Scoring is rubric-based, not an LLM call, so it's auditable and reproducible.
 - **Rubric keywords live with the scenario they grade**, so rewording a report point can't silently drop it from the grade. Matching is word-boundary based rather than substring — "HR" has to be the word *HR*, not the "hr" inside "through" — and a trailing `*` marks a stem (`isolat*` credits isolate/isolated/isolation).
 - **Some report points are graded on what you didn't write.** The false-positive scenario checks you never recommended blocking your own scanner; the insider scenario checks you didn't state theft as established fact. Negation and hedging pass — "do not block this host" and "potential data theft pending review" are correct analyst writing; "the employee stole records" is the thing being caught.
@@ -255,7 +256,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          339 tests across 20 files (triage/ holds the Triage engine's)
+tests/          345 tests across 21 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
