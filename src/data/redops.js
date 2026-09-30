@@ -167,6 +167,57 @@ export const RED_OPS = {
       },
     ],
   },
+
+  'vendor-rmm-compromise': {
+    crew: 'Ghostwire (supply-chain intrusion set)',
+    objective: 'Use a technician login stolen in the vendor\'s own breach to reach the bank\'s loan-servicing data, looking like routine vendor administration for as long as you can.',
+    stages: [
+      {
+        id: 'initial-access',
+        label: 'Initial access',
+        tactic: 'Initial Access',
+        prompt: 'How do you get into the bank?',
+        choices: [
+          { id: 'phish-bank-staff', label: 'Phish the bank\'s own staff directly', stealth: 25, note: 'The bank\'s mail controls and trained staff are the best-defended door it has. Going through it means fighting the strongest part of the estate.' },
+          { id: 'stolen-msp-creds', label: 'Use technician credentials stolen in the vendor\'s own breach', stealth: 60, canonical: true, note: 'The session arrives through a tool the bank trusts, under a vendor account it approved. Nearly every check it has is designed to wave this through.' },
+          { id: 'exploit-rmm', label: 'Exploit an unpatched flaw in the remote-management console itself', stealth: 35, note: 'A working exploit against an internet-facing console is noisy, and the vendor may be patching it right now.' },
+        ],
+      },
+      {
+        id: 'discovery',
+        label: 'Discovery',
+        tactic: 'Discovery',
+        prompt: 'How do you learn what the bank looks like from inside?',
+        choices: [
+          { id: 'full-enum', label: 'Enumerate the domain and its admin groups from a jump server', stealth: 25, canonical: true, note: 'Thorough, and a vendor technician has no reason to ask who the Domain Admins are. It is the first thing here that does not look like patching.' },
+          { id: 'inventory-only', label: 'Read only the remote-management inventory, the same asset list the vendor sees every day', stealth: 65, note: 'You learn the host list without running a single command on any of them. The data comes from the tool\'s own screens, so nothing new is logged.' },
+          { id: 'port-scan', label: 'Scan the server subnets', stealth: 15, note: 'Network scanning from a management host is one of the most heavily monitored behaviors there is.' },
+        ],
+      },
+      {
+        id: 'persistence',
+        label: 'Persistence',
+        tactic: 'Persistence',
+        prompt: 'How do you keep access after this session ends?',
+        choices: [
+          { id: 'fake-monitor-task', label: 'A scheduled task named to look like the vendor\'s own health check', stealth: 40, canonical: true, note: 'A believable name buys a little cover, but a new SYSTEM task appearing overnight on an application server is still something people look for.' },
+          { id: 'reuse-rmm-agent', label: 'Create nothing: keep using the vendor\'s existing management agent as the way in', stealth: 70, note: 'Nothing new on any host, and the agent is already trusted and allow-listed. The catch is that access ends the moment someone suspends the account.' },
+          { id: 'local-admin', label: 'Create a new local administrator account', stealth: 20, note: 'A new admin account is among the most reliably flagged changes on any Windows host.' },
+        ],
+      },
+      {
+        id: 'collection',
+        label: 'Collection',
+        tactic: 'Collection',
+        prompt: 'What do you do with the loan-servicing share?',
+        choices: [
+          { id: 'browse-share', label: 'Open the loan-servicing share interactively and look around', stealth: 30, canonical: true, note: 'A walk of a sensitive share by an account with no business there is what file-access monitoring is built for, even when nothing is copied.' },
+          { id: 'index-only', label: 'List file names and metadata only and take nothing', stealth: 60, note: 'You learn what is there and where, and leave a much smaller trail than any read. Whatever you take later can be targeted.' },
+          { id: 'bulk-archive', label: 'Archive the whole share to stage it for removal', stealth: 15, note: 'A very large archive built on a file server is close to unmissable, and staging is exactly what analysts look for.' },
+        ],
+      },
+    ],
+  },
 };
 
 export function redOpsFor(scenarioId) {

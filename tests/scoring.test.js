@@ -115,6 +115,12 @@ const IDEAL = {
     remediation:
       'Escalate to incident response and page Network Engineering and Mobile Platform on a P1 bridge. Open a case with the scrubbing provider, repoint the record at the CDN and restrict origin ingress to the scrubbing provider ranges. Do not null-route the origin, and preserve the flow and load balancer logs.',
   },
+  'vendor-rmm-compromise': {
+    summary:
+      'This is not the vendor doing its normal work. Session RMM-88214 on the np-tech07 technician account came from a new source address, 154.13.25.77 at a hosting provider, at 02:10 with no change ticket, while every legitimate NorthPoint session comes from the contracted NOC address in office hours. The vendor sent an advisory two days ago about a technician portal breach and stolen credentials, and it sat unread in a shared mailbox. The session ran domain reconnaissance, created a scheduled task named NPHealthCheck for persistence, and walked the loan-servicing share. There is no evidence yet of credential dumping or files copied, so this is a foothold rather than a confirmed loss, and there was an earlier off-hours session on 23 August.',
+    remediation:
+      'Suspend the np-tech07 account and end its session, keeping the rest of the vendor access running, and verify with the vendor by phone on the number in the contract rather than the advisory link. Preserve the RMM and EDR logs and hand to Tier 2 to hunt the vendor session history and the earlier visit. Do not uninstall the agents or block the vendor range.',
+  },
 };
 
 function idealSubmission(scenario) {
