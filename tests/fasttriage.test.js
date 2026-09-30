@@ -147,3 +147,50 @@ test('review groups mistakes by theme, most common first', () => {
     assert.ok(r.byTheme[i - 1].count >= r.byTheme[i].count);
   }
 });
+
+// ── saved runs and "Reset everything" ───────────────────────────────────────
+
+function withFakeStorage(fn) {
+  const data = new Map();
+  const previous = globalThis.window;
+  globalThis.window = {
+    localStorage: {
+      getItem: (k) => (data.has(k) ? data.get(k) : null),
+      setItem: (k, v) => { data.set(k, String(v)); },
+      removeItem: (k) => { data.delete(k); },
+    },
+  };
+  try { fn(data); } finally { globalThis.window = previous; }
+}
+
+test('saved runs round-trip and keep only the most recent', async () => {
+  const store = await import('../src/engine/fasttriageStore.js');
+  withFakeStorage(() => {
+    const runs = Array.from({ length: store.KEEP_RUNS + 5 }, (_, i) => ({ at: i, score: i }));
+    store.saveFastTriageRuns(runs);
+    const loaded = store.loadFastTriageRuns();
+    assert.equal(loaded.length, store.KEEP_RUNS);
+    assert.equal(loaded.at(-1).score, runs.at(-1).score);
+  });
+});
+
+test('clearing the runs is what Reset everything relies on', async () => {
+  const store = await import('../src/engine/fasttriageStore.js');
+  withFakeStorage((data) => {
+    store.saveFastTriageRuns([{ at: 1, score: 80 }]);
+    assert.equal(store.loadFastTriageRuns().length, 1);
+    store.clearFastTriageRuns();
+    assert.equal(store.loadFastTriageRuns().length, 0);
+    assert.ok(!data.has(store.FASTTRIAGE_KEY));
+  });
+});
+
+test('unreadable or corrupt storage loads as an empty history', async () => {
+  const store = await import('../src/engine/fasttriageStore.js');
+  withFakeStorage((data) => {
+    data.set(store.FASTTRIAGE_KEY, '{not json');
+    assert.deepEqual(store.loadFastTriageRuns(), []);
+    data.set(store.FASTTRIAGE_KEY, JSON.stringify([{ at: 1, score: 'x' }, { at: 2, score: 70 }]));
+    assert.equal(store.loadFastTriageRuns().length, 1);
+  });
+});

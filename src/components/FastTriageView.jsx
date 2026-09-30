@@ -7,30 +7,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DISPOSITIONS } from '../data/fasttriage.js';
+import { KEEP_RUNS, loadFastTriageRuns as loadRuns, saveFastTriageRuns as saveRuns } from '../engine/fasttriageStore.js';
 import { RUN_SECONDS, RUN_SIZE, dealRun, scoreRun } from '../engine/fasttriage.js';
 import { C, MONO, TONE, severityTone } from '../theme.js';
 import { Badge, Button, Callout, Card, Metric, SectionLabel } from '../ui/primitives.jsx';
 import { IconAlertOctagon, IconCheck, IconClock, IconListChecks, IconX } from '../ui/icons.jsx';
-
-const STORAGE_KEY = 'soc-analyst-sim:fasttriage:v1';
-const KEEP_RUNS = 20;
-
-function loadRuns() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null');
-    return Array.isArray(parsed) ? parsed.filter((r) => Number.isFinite(r.score)) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveRuns(runs) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(runs.slice(-KEEP_RUNS)));
-  } catch {
-    // Storage unavailable: history lasts for this session only.
-  }
-}
 
 const clock = (seconds) => {
   const s = Math.max(0, Math.ceil(seconds));

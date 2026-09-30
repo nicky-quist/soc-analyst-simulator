@@ -173,7 +173,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
           ) : (
             <>
               <span style={{ fontSize: 12, color: C.textSecondary }}>
-                Clears this queue and your whole skill/career history — start over completely?
+                Clears this queue, your whole skill/career history and your Fast triage runs — start over completely?
               </span>
               <Button variant="danger" onClick={() => { onFullReset(); setConfirmingReset(false); }}>
                 Reset everything

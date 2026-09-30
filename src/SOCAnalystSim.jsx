@@ -10,6 +10,7 @@ import ProgressView from './components/ProgressView.jsx';
 import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
 import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
+import { clearFastTriageRuns } from './engine/fasttriageStore.js';
 import { withRedOpsTarget } from './engine/redops.js';
 import { instantiateScenario } from './engine/scenarioVariants.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
@@ -603,6 +604,8 @@ export default function SOCAnalystSim() {
     const freshProgress = { ...emptyProgress(), adaptive: progress.adaptive, checkpointRankIndex: progress.checkpointRankIndex ?? 0 };
     saveProgress(freshProgress);
     setProgress(freshProgress);
+    // Fast triage keeps its own record; forgetting it here keeps "everything" true.
+    clearFastTriageRuns();
     const freshShift = {
       ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1, previousHandIds: queue.map((s) => s.id) }, freshProgress),
       theme: shift.theme,
