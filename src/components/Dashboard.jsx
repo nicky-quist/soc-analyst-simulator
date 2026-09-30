@@ -408,7 +408,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
                 <span style={{ fontSize: 11, color: C.textSecondary, minWidth: 92 }}>{entry.source}</span>
                 <span style={{ color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.text}</span>
                 <span style={{ marginLeft: 'auto' }}>
-                  <Badge label={entry.level} tone={entry.level === 'medium' ? TONE.coaching : TONE.neutral} />
+                  <Badge label={entry.level} tone={severityTone(entry.level)} />
                 </span>
               </div>
             ))}

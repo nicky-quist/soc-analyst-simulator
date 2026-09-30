@@ -18,9 +18,9 @@ function formatHour12(hourStr) {
   return `${twelve}${period}`;
 }
 
-// currentIndex marks the bar for the present moment: a tinted column behind it,
-// its time on the axis like every other label, and a "Now" tag beneath, so the
-// chart reads as a full day ending at the hour you are in.
+// currentIndex marks the bar for the present moment: its time on the axis like
+// every other label, emphasized, with a "Now" tag beneath, so the chart reads as
+// a full day ending at the hour you are in.
 export function StackedBars({ data, keys, height = 150, xKey = 'hour', currentIndex = null }) {
   const width = 720;
   const padBottom = currentIndex === null ? 18 : 30;
@@ -36,9 +36,6 @@ export function StackedBars({ data, keys, height = 150, xKey = 'hour', currentIn
         let y = plot;
         return (
           <g key={row[xKey]}>
-            {i === currentIndex && (
-              <rect x={x - barGap / 2} y={0} width={barWidth + barGap} height={plot} fill={C.primarySoft} rx="2" />
-            )}
             {keys.map((key) => {
               const value = row[key] || 0;
               const h = (value / max) * (plot - 4);
