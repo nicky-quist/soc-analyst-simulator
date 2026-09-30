@@ -33,6 +33,7 @@ import cryptoMiningBuildAgent from './crypto-mining-build-agent.js';
 import oauthConsentGrant from './oauth-consent-grant.js';
 import dnsTunnelSuspected from './dns-tunnel-suspected.js';
 import cloudPublicBucket from './cloud-public-bucket.js';
+import ddosOriginBypass from './ddos-origin-bypass.js';
 import warroomRansomwareDetonation from './warroom-ransomware-detonation.js';
 
 // The security org chart, drawn only as deep as it's actually relevant to a
@@ -92,6 +93,7 @@ export const SCENARIOS = [
   oauthConsentGrant,
   dnsTunnelSuspected,
   cloudPublicBucket,
+  ddosOriginBypass,
 ];
 
 // War Room follow-ons — deliberately not part of SCENARIOS/the deal pool.

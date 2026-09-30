@@ -109,6 +109,12 @@ const IDEAL = {
     remediation:
       'Restore Block Public Access and remove the public bucket policy, preserve the CloudTrail and S3 access logs before they age out, and hand to Tier 2 with Privacy to assess notification for the three customers. Make the policy check blocking and require a reviewer to read the plan.',
   },
+  'ddos-origin-bypass': {
+    summary:
+      'The flood is real and the mitigation is working, but only for www and login, which are proxied and blocking over 99%. api-legacy is not proxied: a five-year-old DNS A record points straight at the origin address and the origin firewall accepts traffic from anywhere, so the same flood bypasses the CDN and hits it directly. The origin is at 46,800 requests a second with one of four backends healthy and 71% 5xx, so mobile members are failing to sign in now. The traffic is a distributed botnet of about 41,000 sources across forty countries with cache-busting strings, so blocking IPs or countries would not help.',
+    remediation:
+      'Escalate to incident response and page Network Engineering and Mobile Platform on a P1 bridge. Open a case with the scrubbing provider, repoint the record at the CDN and restrict origin ingress to the scrubbing provider ranges. Do not null-route the origin, and preserve the flow and load balancer logs.',
+  },
 };
 
 function idealSubmission(scenario) {
