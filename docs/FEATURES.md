@@ -58,6 +58,7 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 - **The SOC's alertness compounds.** Each caught move raises it one step (Unaware, Alert queued, Analyst investigating), and every later move is 8 stealth points louder per step. The third catch burns the operation.
 - **Go dark, once.** Lie low for a day to make the SOC lose a step, at a flat 5-point cost. It only helps once you've been noticed.
 - **Abort and bank it.** Ending early scores what you played, scaled by how far you got, so finishing has to pay more than quitting.
+- **Hands-on, after the right call.** Pick the move that matches what really happened and a simulated console unlocks: type the command the way it would appear in telemetry, and it prints the authored output plus the exact line the SOC logs. Nothing you type is executed — it's matched against authored expected tokens, the same way the Investigate search returns canned results — and every sample is defanged (`<encoded_blob>`, `<payload_path>`). Available on the command-natural stages of all six operations.
 - **A SOC console** beside the stage shows what the defenders would see after each move.
 
 Then defend the same incident from the blue side and see a head-to-head comparison on the debrief screen.

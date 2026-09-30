@@ -14,6 +14,7 @@ import {
   abortRun, canGoDark, currentStageIndex, goDark, playStage, scoreRun, startRun,
 } from '../engine/redopsRun.js';
 import { announce, matchRedRun } from '../engine/easterEggs.js';
+import { hasHandsOn, matchHandsOn } from '../engine/redHandsOn.js';
 import { RED_BAR, redStatus } from '../engine/redProgress.js';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
@@ -190,6 +191,68 @@ function SocConsole({ log }) {
   );
 }
 
+// The hands-on step, unlocked only after the canonical move. This is a
+// SIMULATION: nothing typed here runs. The typed command is matched against the
+// stage's authored `expect` tokens, and a match prints authored telemetry plus
+// the "what the SOC logs" line. The lesson is defensive — see the shape, then
+// see the trail it leaves.
+function HandsOnConsole({ handsOn }) {
+  const [input, setInput] = useState('');
+  const [result, setResult] = useState(null);
+
+  function run() {
+    setResult(matchHandsOn(handsOn, input));
+  }
+
+  const matched = result?.status === 'match';
+
+  return (
+    <Card style={{ padding: 18, marginBottom: 16, border: `1px solid ${C.primary}` }}>
+      <SectionLabel icon={<IconCrosshair size={13} />}>Hands-on: run it yourself</SectionLabel>
+      <div style={{ fontSize: 12.5, color: C.textSecondary, lineHeight: 1.55, marginBottom: 4 }}>{handsOn.prompt}</div>
+      <div style={{ fontSize: 11.5, color: C.textMuted, lineHeight: 1.5, marginBottom: 10 }}>
+        Simulated console — nothing you type is executed. {handsOn.hint}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: MONO, fontSize: 13, color: C.textMuted, alignSelf: 'center' }}>&gt;</span>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') run(); }}
+          disabled={matched}
+          aria-label="Type the command for this stage"
+          placeholder="type the command, then Enter"
+          style={{
+            flex: '1 1 260px', minWidth: 0, fontFamily: MONO, fontSize: 13, padding: '9px 11px',
+            background: C.surfaceAlt, color: C.text, border: `1px solid ${C.border}`, borderRadius: 7,
+          }}
+        />
+        <Button variant="primary" onClick={run} disabled={matched}>Run</Button>
+      </div>
+
+      {result?.status === 'empty' && (
+        <div style={{ fontSize: 12.5, color: C.warning, marginTop: 10 }}>Type a command first.</div>
+      )}
+      {result?.status === 'miss' && (
+        <Callout tone={TONE.coaching} style={{ marginTop: 12 }}>{result.miss}</Callout>
+      )}
+      {matched && (
+        <div style={{ marginTop: 12 }}>
+          <pre style={{
+            fontFamily: MONO, fontSize: 12, color: C.text, background: C.surfaceAlt, border: `1px solid ${C.border}`,
+            borderRadius: 7, padding: '11px 13px', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}>
+            {result.sample && `> ${result.sample}\n`}
+            {result.output.join('\n')}
+          </pre>
+          <Callout tone={TONE.concerned} title="What the SOC logs" style={{ marginTop: 12 }}>{result.soc}</Callout>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function Operation({ scenario, ops, onFinish }) {
   const [run, setRun] = useState(startRun);
   const [selected, setSelected] = useState(null);
@@ -309,6 +372,8 @@ function Operation({ scenario, ops, onFinish }) {
                   {lastPick.canonical && ' This is what really happened in the incident.'}
                 </div>
               </Card>
+
+              {lastPick.canonical && hasHandsOn(stage) && <HandsOnConsole key={stage.id} handsOn={stage.handsOn} />}
 
               {run.status === 'burned' && (
                 <Callout tone={TONE.concerned} title="Burned" style={{ marginBottom: 16 }}>
