@@ -11,13 +11,16 @@ import TriageView from './components/TriageView.jsx';
 import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
 import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
 import { clearFastTriageRuns } from './engine/fasttriageStore.js';
+import { RED_OPS } from './data/redops.js';
+import { advanceRedCheckpoint, buildRedRecord, recordRedRun, redStatus, resetRedProgress } from './engine/redProgress.js';
+import { loadRedProgress, saveRedProgress } from './engine/redProgressStore.js';
 import { withRedOpsTarget } from './engine/redops.js';
 import { instantiateScenario } from './engine/scenarioVariants.js';
 import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconListChecks, IconMoon, IconRotate, IconSettings, IconShield, IconSparkles, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
+  IconClipboardPulse, IconCrosshair, IconDashboard, IconGraduationCap, IconInbox, IconLogOut, IconSettings, IconShield, IconSparkles, IconStopwatch, IconThemeHalf, IconTrendingUp, IconUser, IconUsers,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -213,6 +216,8 @@ function openShift(loaded, progress) {
 
 export default function SOCAnalystSim() {
   const [progress, setProgress] = useState(loadProgress);
+  // The attacker-side career: its own record and its own checkpoint rank.
+  const [redProgress, setRedProgress] = useState(loadRedProgress);
   const [shift, setShift] = useState(() => {
     const opened = openShift(loadShift(), loadProgress());
     const linked = viewFromHash();
@@ -606,6 +611,10 @@ export default function SOCAnalystSim() {
     setProgress(freshProgress);
     // Fast triage keeps its own record; forgetting it here keeps "everything" true.
     clearFastTriageRuns();
+    // Red Ops runs go too; the Red Ops rank is a checkpoint and stays, like the analyst's.
+    const freshRed = resetRedProgress(redProgress);
+    saveRedProgress(freshRed);
+    setRedProgress(freshRed);
     const freshShift = {
       ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1, previousHandIds: queue.map((s) => s.id) }, freshProgress),
       theme: shift.theme,
@@ -615,7 +624,19 @@ export default function SOCAnalystSim() {
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme, shift.deal, progress.adaptive, progress.checkpointRankIndex, queue]);
+  }, [shift.theme, shift.deal, progress.adaptive, progress.checkpointRankIndex, queue, redProgress]);
+
+  // A finished operation goes on the Red Ops record. Returns the new rank's
+  // name when the run earned a promotion, so the debrief can say so.
+  function handleRedRunFinished(operationId, result) {
+    const ids = Object.keys(RED_OPS);
+    const before = redStatus(redProgress.history, ids, redProgress.checkpointRankIndex);
+    const next = advanceRedCheckpoint(recordRedRun(redProgress, buildRedRecord(operationId, result)), ids);
+    saveRedProgress(next);
+    setRedProgress(next);
+    const after = redStatus(next.history, ids, next.checkpointRankIndex);
+    return after.rankIndex > before.rankIndex ? after.rank : null;
+  }
 
   function setView(view) {
     update((prev) => ({ ...prev, view }));
@@ -646,6 +667,10 @@ export default function SOCAnalystSim() {
     [queue, shift.cases]
   );
 
+  const redRank = useMemo(
+    () => redStatus(redProgress.history, Object.keys(RED_OPS), redProgress.checkpointRankIndex),
+    [redProgress]
+  );
   // Your title is earned, not a fixed label — see engine/progress.js's
   // careerStatus() for the promotion bar.
   const career = useMemo(
@@ -783,7 +808,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'triage' ? 'page' : undefined}
               title="Alert triage"
             >
-              <IconActivity size={19} />
+              <IconClipboardPulse size={19} />
             </button>
             <button
               type="button"
@@ -793,7 +818,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'fasttriage' ? 'page' : undefined}
               title="Fast triage"
             >
-              <IconListChecks size={19} />
+              <IconStopwatch size={19} />
             </button>
             <button
               type="button"
@@ -803,7 +828,7 @@ export default function SOCAnalystSim() {
               aria-current={shift.view === 'redops' ? 'page' : undefined}
               title="Red Ops"
             >
-              <IconZap size={19} />
+              <IconCrosshair size={19} />
             </button>
             <button
               type="button"
@@ -840,11 +865,11 @@ export default function SOCAnalystSim() {
           <div style={{ flex: 1 }} />
 
           <IconButton
-            icon={shift.theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+            icon={<IconThemeHalf size={18} />}
             title="Toggle color theme"
             onClick={toggleTheme}
           />
-          <IconButton icon={<IconRotate size={17} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />
+          <IconButton icon={<IconLogOut size={17} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />
         </aside>
 
         <div className="app-content">
@@ -885,7 +910,8 @@ export default function SOCAnalystSim() {
             </div>
             <div style={{ lineHeight: 1.25 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{COMPANY.analyst.name}</div>
-              <div style={{ fontSize: 10.5, color: C.textMuted }}>{career.rank}</div>
+              <div style={{ fontSize: 10.5, color: C.textMuted }}>Blue: {career.rank}</div>
+              <div style={{ fontSize: 10.5, color: C.textMuted }}>Red: {redRank.rank}</div>
             </div>
           </div>
         </div>
@@ -921,7 +947,7 @@ export default function SOCAnalystSim() {
 
       {shift.view === 'redops' && (
         <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-          <RedOpsView onDefend={handleDefendFromRedOps} />
+          <RedOpsView onDefend={handleDefendFromRedOps} progress={redProgress} onRunFinished={handleRedRunFinished} />
         </main>
       )}
 

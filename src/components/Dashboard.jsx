@@ -173,7 +173,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
           ) : (
             <>
               <span style={{ fontSize: 12, color: C.textSecondary }}>
-                Clears this queue, your whole skill/career history and your Fast triage runs — start over completely?
+                Clears this queue, your whole skill/career history, your Red Ops runs and your Fast triage runs. Earned ranks stay. Start over completely?
               </span>
               <Button variant="danger" onClick={() => { onFullReset(); setConfirmingReset(false); }}>
                 Reset everything
