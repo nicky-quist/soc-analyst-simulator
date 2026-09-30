@@ -13,6 +13,7 @@ import {
   ALERTNESS_LABELS, BURN_LEVEL, DWELL_PENALTY, PENALTY_PER_LEVEL,
   abortRun, canGoDark, currentStageIndex, goDark, playStage, scoreRun, startRun,
 } from '../engine/redopsRun.js';
+import { announce, matchRedRun } from '../engine/easterEggs.js';
 import { RED_BAR, redStatus } from '../engine/redProgress.js';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
@@ -429,6 +430,8 @@ export default function RedOpsView({ onDefend, progress, onRunFinished }) {
         ops={ops}
         onFinish={(run) => {
           const scored = scoreRun(ops, run);
+          const egg = matchRedRun(scored);
+          if (egg) announce(egg);
           setPromotedTo(onRunFinished(scenarioId, scored));
           setResult(scored);
         }}

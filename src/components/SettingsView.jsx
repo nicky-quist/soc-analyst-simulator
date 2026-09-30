@@ -4,10 +4,59 @@
 
 import { useState } from 'react';
 import { C, TONE } from '../theme.js';
-import { Callout, SectionLabel } from '../ui/primitives.jsx';
+import { Badge, Button, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
 import { IconSparkles } from '../ui/icons.jsx';
+import { EGGS } from '../data/easterEggs.js';
+import { announce } from '../engine/easterEggs.js';
+import { clearFound, loadFound } from '../engine/easterEggsStore.js';
 import { loadAiSettings, PROVIDERS, saveAiSettings } from '../engine/ai/provider.js';
 import { SettingsPanel } from './AiCoach.jsx';
+
+// Found secrets, with the rest shown as ??? and never explained. Reset
+// everything does not touch these; this button is the only way to forget them.
+function Secrets() {
+  const [found, setFound] = useState(loadFound);
+  const [confirming, setConfirming] = useState(false);
+
+  function forget() {
+    clearFound();
+    setFound([]);
+    setConfirming(false);
+    announce(null, 'reset');
+  }
+
+  return (
+    <div style={{ marginTop: 28 }}>
+      <SectionLabel icon={<IconSparkles size={13} />}>Secrets</SectionLabel>
+      <p style={{ fontSize: 12.5, color: C.textSecondary, margin: '0 0 12px', lineHeight: 1.55, maxWidth: 700 }}>
+        There are things hidden in this console. Found {found.length} of {EGGS.length}. They never affect a grade, a rank or
+        your history, and Reset everything leaves them alone.
+      </p>
+      <Card style={{ padding: 14, marginBottom: 12 }}>
+        {EGGS.map((egg) => {
+          const isFound = found.includes(egg.id);
+          return (
+            <div key={egg.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '5px 0', fontSize: 12.5, flexWrap: 'wrap' }}>
+              <Badge label={isFound ? 'Found' : '???'} tone={isFound ? TONE.positive : TONE.neutral} />
+              <span style={{ color: isFound ? C.text : C.textMuted, fontWeight: isFound ? 600 : 400 }}>
+                {isFound ? egg.title : 'Not found yet'}
+              </span>
+            </div>
+          );
+        })}
+      </Card>
+      {!confirming ? (
+        <Button variant="ghost" onClick={() => setConfirming(true)} disabled={!found.length}>Forget found secrets</Button>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: C.textSecondary }}>Forget all {found.length} you have found?</span>
+          <Button variant="danger" onClick={forget}>Forget them</Button>
+          <Button variant="ghost" onClick={() => setConfirming(false)}>Cancel</Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsView() {
   const [settings, setSettings] = useState(loadAiSettings);
@@ -46,6 +95,8 @@ export default function SettingsView() {
           Close a case and open its Debrief tab to get a debrief from it.
         </Callout>
       )}
+
+      <Secrets />
     </div>
   );
 }

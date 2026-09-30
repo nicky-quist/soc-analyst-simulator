@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DISPOSITIONS } from '../data/fasttriage.js';
 import { KEEP_RUNS, loadFastTriageRuns as loadRuns, saveFastTriageRuns as saveRuns } from '../engine/fasttriageStore.js';
+import { announce, matchFastTriage } from '../engine/easterEggs.js';
 import { RUN_SECONDS, RUN_SIZE, dealRun, scoreRun } from '../engine/fasttriage.js';
 import { C, MONO, TONE, severityTone } from '../theme.js';
 import { Badge, Button, Callout, Card, Metric, SectionLabel } from '../ui/primitives.jsx';
@@ -276,6 +277,8 @@ export default function FastTriageView() {
 
   const finish = useCallback((answers) => {
     const scored = scoreRun(alerts, answers);
+    const egg = matchFastTriage(scored);
+    if (egg) announce(egg);
     const record = {
       at: Date.now(), score: scored.score, grade: scored.grade, correct: scored.correct, total: scored.total,
       closedLive: scored.closedLive, avgSeconds: scored.avgSeconds,
