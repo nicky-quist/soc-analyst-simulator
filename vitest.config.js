@@ -13,5 +13,9 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['tests-ui/**/*.test.jsx'],
     setupFiles: ['tests-ui/setup.js'],
+    // The end-to-end cases work a whole case through a real render, which takes
+    // about four seconds on a healthy machine. Vitest's default of five left no
+    // headroom, so a busy laptop or CI runner failed them at random.
+    testTimeout: 20_000,
   },
 });

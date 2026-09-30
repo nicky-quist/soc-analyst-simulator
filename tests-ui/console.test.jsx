@@ -10,7 +10,10 @@ import { describe, expect, it } from 'vitest';
 
 import SOCAnalystSim from '../src/SOCAnalystSim.jsx';
 import { NAV_GROUPS } from '../src/app/nav.js';
+import { RED_OPS } from '../src/data/redops.js';
 import { SCENARIOS } from '../src/data/scenarios/index.js';
+import { RED_PROGRESS_KEY } from '../src/engine/redProgressStore.js';
+import { RUN_SIZE } from '../src/engine/fasttriage.js';
 import { instantiateScenario } from '../src/engine/scenarioVariants.js';
 
 const SHIFT_KEY = 'soc-analyst-sim:shift:v2';
@@ -214,5 +217,93 @@ describe('a secret', () => {
 
     expect(await screen.findByText(/Secret found: Not in the sudoers file/)).toBeTruthy();
     expect(JSON.parse(window.localStorage.getItem(EGGS_KEY))).toEqual(['sudoers']);
+  });
+});
+
+describe('the dashboard', () => {
+  it('marks the current hour on the alert volume chart and colors the estate feed by severity', () => {
+    render(<SOCAnalystSim />);
+    goTo('Dashboard');
+
+    // The clock is fixed at 10:00, so the last bar is 10AM and it is called out.
+    const chart = screen.getByRole('img', { name: /last bar is the current hour/ });
+    const labels = [...chart.querySelectorAll('text')].map((t) => t.textContent.trim());
+    expect(labels.slice(-2)).toEqual(['10AM', 'NOW']);
+
+    // The live tail's level badges use the severity palette, not a one-off tone.
+    const badges = screen.getAllByText(/^(low|medium)$/);
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) expect(badge.style.color).toContain(`--sev-${badge.textContent}`);
+  });
+});
+
+describe('Red Ops', () => {
+  // Opens the first operation and returns its data, found by the crew on screen.
+  function startFirstOperation() {
+    goTo('Red Ops');
+    fireEvent.click(screen.getAllByRole('button', { name: /Start operation/ })[0]);
+    const ops = Object.values(RED_OPS).find((o) => screen.queryByText(o.crew));
+    expect(ops, 'an operation opened').toBeTruthy();
+    return ops;
+  }
+
+  async function playMove(choice) {
+    fireEvent.click(await screen.findByRole('button', { name: choice.label }));
+    fireEvent.click(screen.getByRole('button', { name: 'Commit move' }));
+  }
+
+  const advance = () => fireEvent.click(screen.getByRole('button', { name: /^(Next stage|See the debrief)$/ }));
+
+  it('plays an operation quietly to the end, scores it, and records the run toward a rank', async () => {
+    render(<SOCAnalystSim />);
+    const ops = startFirstOperation();
+
+    for (const stage of ops.stages) {
+      await playMove([...stage.choices].sort((a, b) => b.stealth - a.stealth)[0]);
+      expect(await screen.findByText('Slipped past')).toBeTruthy();
+      advance();
+    }
+
+    // The debrief offers the other side of the same incident, and the run is on record.
+    expect(await screen.findByRole('button', { name: /Defend this incident now/ })).toBeTruthy();
+    const saved = JSON.parse(window.localStorage.getItem(RED_PROGRESS_KEY));
+    expect(saved.history).toHaveLength(1);
+    expect(saved.history[0]).toMatchObject({ outcome: 'complete', ghost: true });
+  });
+
+  it('burns the operation when every move is loud', async () => {
+    render(<SOCAnalystSim />);
+    const ops = startFirstOperation();
+
+    for (const stage of ops.stages) {
+      await playMove([...stage.choices].sort((a, b) => a.stealth - b.stealth)[0]);
+      expect(await screen.findByText('Caught')).toBeTruthy();
+      // The ladder always lists Burned as a level; the callout only appears once it happens.
+      const burned = screen.queryByText(/Three of your moves were caught/);
+      advance();
+      if (burned) break;
+    }
+
+    await screen.findByRole('button', { name: /Defend this incident now/ });
+    expect(JSON.parse(window.localStorage.getItem(RED_PROGRESS_KEY)).history[0].outcome).toBe('burned');
+  });
+});
+
+describe('Fast Triage', () => {
+  it('runs a full set of alerts to a graded review, and lets you go again', async () => {
+    render(<SOCAnalystSim />);
+    goTo('Fast triage');
+    fireEvent.click(screen.getByRole('button', { name: /Start run/ }));
+
+    // Every card takes one answer; the first disposition is enough to get through them all.
+    for (let i = 0; i < RUN_SIZE; i += 1) {
+      expect(await screen.findByText(`Alert ${i + 1} of ${RUN_SIZE}`)).toBeTruthy();
+      fireEvent.click(screen.getAllByRole('button', { name: /^1 / })[0]);
+    }
+
+    expect(await screen.findByText('Run review')).toBeTruthy();
+    expect(screen.getByText(/^Grade [A-F]$/)).toBeTruthy();
+    expect(screen.getByText('Traps fell for')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /New run/ })).toBeTruthy();
   });
 });
