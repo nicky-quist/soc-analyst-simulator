@@ -32,7 +32,7 @@ function trendText(trend) {
   return ` · ${points > 0 ? '▲' : '▼'} ${Math.abs(points)} pts recently`;
 }
 
-export default function ProgressView({ progress, currentFocus, onToggleAdaptive, onClearHistory }) {
+export default function ProgressView({ progress, currentFocus, onToggleAdaptive, onClearHistory, hasLastReport, onOpenLastReport }) {
   const { history, adaptive } = progress;
   const summary = useMemo(() => skillSummary(history), [history]);
   const weak = useMemo(() => weakestSkill(summary), [summary]);
@@ -69,6 +69,11 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
         has shown you the answer. Rates are smoothed, and a skill needs {MIN_ATTEMPTS} scored cases before it can be
         called a weak spot, so one bad case won't reshape your next shift.
       </p>
+      {hasLastReport && (
+        <div style={{ marginBottom: 14 }}>
+          <Button variant="secondary" onClick={onOpenLastReport}>Open last shift report</Button>
+        </div>
+      )}
 
       {/* Always shown, even with no history — a rank is a checkpoint, so it
           has to survive a reset the same way the header title does. */}

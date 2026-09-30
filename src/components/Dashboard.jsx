@@ -92,7 +92,7 @@ function Legend({ items }) {
   );
 }
 
-export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress, onFullReset }) {
+export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress, onFullReset, onPreviewReport }) {
   const [feedTick, setFeedTick] = useState(0);
   const [confirmingReset, setConfirmingReset] = useState(false);
 
@@ -167,13 +167,20 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
       {onFullReset && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           {!confirmingReset ? (
-            <Button variant="ghost" onClick={() => setConfirmingReset(true)}>
-              <IconRotate size={13} /> Reset everything
-            </Button>
+            <>
+              {onPreviewReport && (
+                <Button variant="ghost" onClick={onPreviewReport}>
+                  <IconFileCheck size={13} /> Preview shift report
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setConfirmingReset(true)}>
+                <IconRotate size={13} /> Reset everything
+              </Button>
+            </>
           ) : (
             <>
               <span style={{ fontSize: 12, color: C.textSecondary }}>
-                Clears this queue, your whole skill/career history, your Red Ops runs and your Fast triage runs. Earned ranks stay. Start over completely?
+                Clears this queue, your whole skill/career history, your Red Ops runs, your Fast triage runs and your saved shift report. Earned ranks and found secrets stay. Start over completely?
               </span>
               <Button variant="danger" onClick={() => { onFullReset(); setConfirmingReset(false); }}>
                 Reset everything

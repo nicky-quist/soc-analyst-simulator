@@ -86,6 +86,15 @@ The Red Ops tab shows your rank, what the next promotion needs, your record (run
 
 **Shift handoff** — a Dashboard panel that's always current, not generated once at shift end: any case that's still open or was escalated shows up with its findings, evidence, and what's still needed. **End shift** turns this into an actual moment instead of a silent reset — if anything needs a handoff, it stops to show exactly who picks it up (Jordan Reyes for Tier 2, Marcus Bell for IR, or the next shift's analyst for anything nobody escalated) before dealing the next hand.
 
+**Shift report card** — the page that says how the shift actually went. **End shift** (after the handoff review, if there is one) opens it, the **Preview shift report** button on the Dashboard shows it mid-shift without ending anything, and the last one stays reopenable from **Your progress**. It is a full-screen page rather than a tab, because it belongs to a moment and not to a place. It shows:
+
+- the team lead's note (and it says so when part of the queue was never worked, instead of praising a mostly untouched shift), with closed, resolved, average score, time to decision, SLA and harmful actions;
+- all seven cases: the tool's severity against yours (and the answer when you were off), where you sent it, the score, and whether you beat the clock;
+- this shift's skills, each marked held, slipped or not tested, with your escalation lean and any harmful actions called out;
+- what was handed off and to whom, what the next shift will practice, and your four leaderboard ranks.
+
+**Print or save as PDF** uses a print layout that shows only the report, and **Copy summary** puts the same content on the clipboard as plain text. It grades nothing new: every number is one the case grader, the progress engine or the handoff builder already computed, gathered for one shift by a pure function (`engine/shiftReport.js`). Reset everything clears the saved report along with the rest of the record.
+
 Dark by default, with a light toggle.
 
 ## Ways to get it wrong
@@ -256,7 +265,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          345 tests across 21 files (triage/ holds the Triage engine's)
+tests/          359 tests across 21 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:

@@ -13,6 +13,13 @@ import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } fr
 import { clearFastTriageRuns } from './engine/fasttriageStore.js';
 import { RED_OPS } from './data/redops.js';
 import EggHost from './components/EggHost.jsx';
+import ShiftReportCard from './components/ShiftReportCard.jsx';
+import { EGGS } from './data/easterEggs.js';
+import { loadFound } from './engine/easterEggsStore.js';
+import { loadFastTriageRuns } from './engine/fasttriageStore.js';
+import { buildBoards } from './engine/leaderboard.js';
+import { buildShiftReport, standingFromBoards } from './engine/shiftReport.js';
+import { clearLastReport, loadLastReport, saveLastReport } from './engine/shiftReportStore.js';
 import {
   announce, createBurst, matchDeadEven, matchDecode, matchGhostwire, matchIntel, matchNightOwl,
   matchQuickClose, matchReport, matchSearch,
@@ -243,6 +250,9 @@ export default function SOCAnalystSim() {
   const [tab, setTab] = useState('overview');
   const [walkthrough, setWalkthrough] = useState(false);
   const [showEndShiftReview, setShowEndShiftReview] = useState(false);
+  // The shift report card: what is showing now (or null), and the last one saved.
+  const [reportView, setReportView] = useState(null);
+  const [lastReport, setLastReport] = useState(loadLastReport);
   const [now, setNow] = useState(() => Date.now());
 
   // The console header and the dashboard have to agree about which shift this
@@ -588,7 +598,7 @@ export default function SOCAnalystSim() {
   function handleEndShift() {
     const notes = buildShiftHandoff(queue, shift.cases);
     if (notes.length === 0) {
-      handleReset();
+      endShiftNow();
       return;
     }
     setShowEndShiftReview(true);
@@ -596,7 +606,41 @@ export default function SOCAnalystSim() {
 
   function confirmEndShift() {
     setShowEndShiftReview(false);
+    endShiftNow();
+  }
+
+  // The report is built from the shift as it stands, before the next hand is
+  // dealt over it, then kept so it can be reopened from Your progress.
+  function makeReport() {
+    const boards = buildBoards({
+      progress,
+      redProgress,
+      found: loadFound(),
+      fastRuns: loadFastTriageRuns(),
+      library: SCENARIOS,
+      operationIds: Object.keys(RED_OPS),
+      secretsTotal: EGGS.length,
+    });
+    return buildShiftReport({
+      scenarios: queue,
+      cases: shift.cases,
+      header: shiftHeader,
+      nextFocus: focusFor(progress),
+      standing: standingFromBoards(boards),
+    });
+  }
+
+  function endShiftNow() {
+    const report = makeReport();
+    saveLastReport(report);
+    setLastReport(report);
     handleReset();
+    setReportView({ report, mode: 'ended' });
+  }
+
+  // A look at the report mid-shift, without ending anything.
+  function previewReport() {
+    setReportView({ report: makeReport(), mode: 'preview' });
   }
 
   // Takes effect from the next shift: the current hand was dealt with the
@@ -632,6 +676,10 @@ export default function SOCAnalystSim() {
     setProgress(freshProgress);
     // Fast triage keeps its own record; forgetting it here keeps "everything" true.
     clearFastTriageRuns();
+    // The saved shift report is history too.
+    clearLastReport();
+    setLastReport(null);
+    setReportView(null);
     // Red Ops runs go too; the Red Ops rank is a checkpoint and stays, like the analyst's.
     const freshRed = resetRedProgress(redProgress);
     saveRedProgress(freshRed);
@@ -808,7 +856,14 @@ export default function SOCAnalystSim() {
         }
         /* Touch: give in-page buttons a comfortable target. */
         @media (pointer: coarse) {
-          main button, [role="tab"] { min-height: 40px; }
+          main button, [role="tab"], .report-overlay button { min-height: 40px; }
+        }
+        /* The shift report prints as a page of its own. */
+        @media print {
+          .app-shell, .skip-link { display: none !important; }
+          body { background: #fff !important; }
+          .report-overlay { position: static !important; overflow: visible !important; background: #fff !important; }
+          .report-actions { display: none !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           .live-dot { animation: none; }
@@ -1001,6 +1056,7 @@ export default function SOCAnalystSim() {
             onOpenAlert={selectScenario}
             progress={progress}
             onFullReset={handleFullReset}
+            onPreviewReport={previewReport}
           />
         </main>
       )}
@@ -1036,6 +1092,8 @@ export default function SOCAnalystSim() {
             currentFocus={shift.focus}
             onToggleAdaptive={toggleAdaptive}
             onClearHistory={clearHistory}
+            hasLastReport={!!lastReport}
+            onOpenLastReport={() => lastReport && setReportView({ report: lastReport, mode: 'last' })}
           />
         </main>
       )}
@@ -1074,7 +1132,7 @@ export default function SOCAnalystSim() {
             </Card>
           )}
 
-          {shiftSummary && <ShiftSummary summary={shiftSummary} onReset={handleReset} />}
+          {shiftSummary && <ShiftSummary summary={shiftSummary} onReset={handleEndShift} />}
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 14 }}>
             <div style={{ minWidth: 0 }}>
@@ -1169,6 +1227,10 @@ export default function SOCAnalystSim() {
       )}
         </div>
       </div>
+
+      {reportView && (
+        <ShiftReportCard report={reportView.report} mode={reportView.mode} onClose={() => setReportView(null)} />
+      )}
 
       <EggHost stats={{ blueRank: career.rank, redRank: redRank.rank, closed: closedCases.length }} />
 

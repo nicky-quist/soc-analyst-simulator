@@ -194,7 +194,7 @@ export function ShiftSummary({ summary, onReset }) {
       <Callout tone={TONE.neutral} style={{ marginBottom: 14 }}>
         Alerts stay reopenable — the point of a second pass is to work the evidence properly, not to hunt for the score.
       </Callout>
-      <Button onClick={onReset} style={{ width: '100%' }}>Start a fresh shift (clears saved progress)</Button>
+      <Button onClick={onReset} style={{ width: '100%' }}>End shift and open the report card</Button>
     </Card>
   );
 }
