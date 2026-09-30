@@ -121,6 +121,12 @@ const IDEAL = {
     remediation:
       'Suspend the np-tech07 account and end its session, keeping the rest of the vendor access running, and verify with the vendor by phone on the number in the contract rather than the advisory link. Preserve the RMM and EDR logs and hand to Tier 2 to hunt the vendor session history and the earlier visit. Do not uninstall the agents or block the vendor range.',
   },
+  'github-action-tag-hijack': {
+    summary:
+      'The step that made the request is the third-party Action cachelane/setup-build-cache: its v3 tag was repointed at commit 9d41e07 on 8 September, and every run that resolved the tag copied the runner environment variables to cdn-analytics-hub.net, so the secrets were exfiltrated rather than merely exposed. The stolen svc-gha-deploy AWS key was already used from 91.240.118.6, which called GetCallerIdentity, listed the buckets and read a production configuration file. Six repositories and fourteen runs resolved the bad tag, so every secret those workflows could read has to be treated as compromised.',
+    remediation:
+      'Escalate to incident response. Deactivate the deploy key, rotate every secret in scope, and pin the Action to a full commit hash so a moved tag cannot change what the pipelines run. Preserve the workflow run logs and the proxy logs, and have CloudTrail reviewed from 14:41.',
+  },
   'backup-vendor-migration': {
     summary:
       'This is the nightly offsite backup job on BKP-SRV-01, not exfiltration. It has sent about 410 GB starting at 01:00 every night for 30 nights, and tonight is the same job with the same size and the same start. Only the destination changed: the backup vendor Riverbend migrated to a new address range, announced on 14 August, approved under change ticket CHG-4534 and confirmed complete last night, and the destination is registered to them. The detection fired because the allow-list was never updated for the new range. This is benign, expected activity with no incident.',

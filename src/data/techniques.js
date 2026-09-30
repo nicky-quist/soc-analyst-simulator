@@ -17,6 +17,7 @@ export const TECHNIQUES = [
   { id: 'T1071.004', name: 'Application Layer Protocol: DNS', tactic: 'Command and Control' },
   { id: 'T1074.001', name: 'Local Data Staging', tactic: 'Collection' },
   { id: 'T1078', name: 'Valid Accounts', tactic: 'Defense Evasion' },
+  { id: 'T1195.002', name: 'Supply Chain Compromise: Compromise Software Supply Chain', tactic: 'Initial Access' },
   { id: 'T1199', name: 'Trusted Relationship', tactic: 'Initial Access' },
   { id: 'T1219', name: 'Remote Access Software', tactic: 'Command and Control' },
   { id: 'T1078.004', name: 'Valid Accounts: Cloud Accounts', tactic: 'Initial Access / Persistence' },
