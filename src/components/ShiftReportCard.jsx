@@ -4,7 +4,7 @@
 // and not to a place. The numbers all come from engine/shiftReport.js.
 
 import { useRef, useState } from 'react';
-import { formatReportText } from '../engine/shiftReport.js';
+import { formatReportText, handoffEmptyText } from '../engine/shiftReport.js';
 import { C, MONO, TONE, severityTone } from '../theme.js';
 import { formatDuration } from '../ui/helpers.js';
 import { Badge, Button, Callout, Card, Metric, PersonaMessage, SectionLabel } from '../ui/primitives.jsx';
@@ -36,7 +36,7 @@ function CaseRow({ c }) {
       {closed ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 12, color: C.textSecondary }}>
           <Badge label={ESCALATION_TEXT[c.escalation]} tone={ESCALATION_TONE[c.escalation]} />
-          <span>Sent to {c.escalatedTo}</span>
+          <span>{c.escalatedTo.startsWith('Closed') ? c.escalatedTo : `Sent to ${c.escalatedTo}`}</span>
           <span>·</span>
           <span>
             Severity: tool said <Badge label={c.reportedSeverity} tone={severityTone(c.reportedSeverity)} />
@@ -121,7 +121,7 @@ export default function ShiftReportCard({ report, mode = 'last', onClose }) {
           </Callout>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10, marginBottom: 18 }}>
+        <div className="report-metrics">
           <Metric label="Closed" value={`${counts.closed} of ${counts.total}`} />
           <Metric label="Resolved correctly" value={anyClosed ? `${counts.resolved} of ${counts.closed}` : 'n/a'}
             tone={anyClosed && counts.resolved === counts.closed ? TONE.positive : undefined} />
@@ -175,7 +175,7 @@ export default function ShiftReportCard({ report, mode = 'last', onClose }) {
         <Card style={{ padding: 16, marginBottom: 16 }}>
           <SectionLabel>Handed off</SectionLabel>
           {report.handoff.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: C.textSecondary }}>Nothing to hand off. Every case was closed out cleanly.</div>
+            <div style={{ fontSize: 12.5, color: C.textSecondary }}>{handoffEmptyText(report)}</div>
           ) : report.handoff.map((h) => (
             <div key={h.ref} style={{ padding: '6px 0', fontSize: 12.5, color: C.text }}>
               <code style={{ fontFamily: MONO, fontSize: 11.5, color: C.textMuted }}>{h.ref}</code>{' '}

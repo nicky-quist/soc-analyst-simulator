@@ -14,7 +14,7 @@ import { emptyProgress } from '../src/engine/progress.js';
 import { emptyRedProgress } from '../src/engine/redProgress.js';
 import { buildBoards } from '../src/engine/leaderboard.js';
 import {
-  buildShiftReport, escalationLabel, formatReportText, standingFromBoards,
+  buildShiftReport, escalationLabel, formatReportText, handoffEmptyText, standingFromBoards,
 } from '../src/engine/shiftReport.js';
 import { REPORT_KEY, clearLastReport, loadLastReport, saveLastReport } from '../src/engine/shiftReportStore.js';
 
@@ -232,4 +232,24 @@ test('the team lead note admits when part of the queue was never worked', () => 
   assert.match(partial.teamLead.message, /2 of 3 alerts were still open, and they carry into the next shift\./);
   const full = build([ir], { [ir.id]: closedCase(ir) });
   assert.ok(!/still open/.test(full.teamLead.message), 'a fully closed shift gets the plain note');
+});
+
+// ── what a shift nobody worked reads like (caught by reading a saved PDF) ───
+
+test('an untouched shift does not claim its cases were closed out cleanly', () => {
+  const untouched = build(SCENARIOS.slice(0, 7), {});
+  assert.ok(!/closed out cleanly/.test(handoffEmptyText(untouched)), handoffEmptyText(untouched));
+  assert.match(handoffEmptyText(untouched), /7 cases you did not start carry into the next shift as they are/);
+  const one = build([ir, tier2], { [ir.id]: closedCase(ir, { escalation: 'close_no_escalation' }) });
+  assert.match(handoffEmptyText(one), /1 case you did not start carries into the next shift as it is/);
+  const allClosed = build([benign], { [benign.id]: closedCase(benign) });
+  assert.match(handoffEmptyText(allClosed), /Every case was closed out cleanly/);
+});
+
+test('the text has no empty Skills heading when no skill was tested, and always says what was handed off', () => {
+  const untouched = formatReportText(build(SCENARIOS.slice(0, 7), {}));
+  assert.ok(!untouched.includes('Skills this shift'), untouched);
+  assert.match(untouched, /Handed off\nNothing to hand off\. The 7 cases/);
+  const worked = formatReportText(build([ir], { [ir.id]: closedCase(ir) }));
+  assert.ok(worked.includes('Skills this shift'));
 });

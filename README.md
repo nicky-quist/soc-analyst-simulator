@@ -265,7 +265,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          359 tests across 21 files (triage/ holds the Triage engine's)
+tests/          361 tests across 21 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:

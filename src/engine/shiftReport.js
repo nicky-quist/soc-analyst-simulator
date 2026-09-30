@@ -139,6 +139,11 @@ export function standingFromBoards(boards) {
   };
 }
 
+export function handoffEmptyText(report) {
+  if (report.counts.open === 0) return 'Nothing to hand off. Every case was closed out cleanly.';
+  return `Nothing to hand off. The ${report.counts.open} case${report.counts.open === 1 ? '' : 's'} you did not start carr${report.counts.open === 1 ? 'ies' : 'y'} into the next shift as ${report.counts.open === 1 ? 'it is' : 'they are'}.`;
+}
+
 const minutes = (ms) => (ms == null ? 'n/a' : `${Math.max(0, Math.round(ms / 60_000))}m`);
 
 // Plain text for a clipboard or a message.
@@ -156,16 +161,17 @@ export function formatReportText(report) {
     ...report.cases.map((c) => (c.status === 'closed'
       ? `- ${c.ref} ${c.label}: ${c.score}/100, ${c.escalatedTo}${c.resolved ? '' : ' (needs improvement)'}`
       : `- ${c.ref} ${c.label}: still open`)),
-    '',
-    'Skills this shift',
-    ...report.skills.filter((s) => s.verdict !== 'n/a').map((s) => `- ${s.label}: ${s.correct} of ${s.attempts} (${s.verdict})`),
   ];
+  const tested = report.skills.filter((s) => s.verdict !== 'n/a');
+  if (tested.length) {
+    lines.push('', 'Skills this shift', ...tested.map((s) => `- ${s.label}: ${s.correct} of ${s.attempts} (${s.verdict})`));
+  }
   if (report.lean.direction) {
     lines.push('', `Escalation lean: you ${report.lean.direction}-escalated ${report.lean[report.lean.direction]} of ${report.lean.total} closed cases.`);
   }
-  if (report.handoff.length) {
-    lines.push('', 'Handed off', ...report.handoff.map((h) => `- ${h.ref}: ${h.status}`));
-  }
+  lines.push('', 'Handed off', ...(report.handoff.length
+    ? report.handoff.map((h) => `- ${h.ref}: ${h.status}`)
+    : [handoffEmptyText(report)]));
   if (report.practiceNext) lines.push('', `Practice next: ${report.practiceNext.summary}`);
   if (report.standing) {
     const s = report.standing;

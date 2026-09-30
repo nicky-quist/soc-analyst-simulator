@@ -858,12 +858,17 @@ export default function SOCAnalystSim() {
         @media (pointer: coarse) {
           main button, [role="tab"], .report-overlay button { min-height: 40px; }
         }
+        /* Six report metrics: one row on a wide screen, two rows of three on a page or a tablet, two columns on a phone. */
+        .report-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+        @media (max-width: 820px) { .report-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 420px) { .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         /* The shift report prints as a page of its own. */
         @media print {
           .app-shell, .skip-link { display: none !important; }
           body { background: #fff !important; }
           .report-overlay { position: static !important; overflow: visible !important; background: #fff !important; }
           .report-actions { display: none !important; }
+          .report-overlay .sim-card, .report-overlay > div > div { break-inside: avoid; }
         }
         @media (prefers-reduced-motion: reduce) {
           .live-dot { animation: none; }
