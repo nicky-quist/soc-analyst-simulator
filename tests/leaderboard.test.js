@@ -11,13 +11,13 @@ import { RED_OPS } from '../src/data/redops.js';
 import { SCENARIOS } from '../src/data/scenarios/index.js';
 import { PROMOTION_SCORE_BAR, SKILLS, advanceCheckpoint, emptyProgress } from '../src/engine/progress.js';
 import { advanceRedCheckpoint, emptyRedProgress, resetRedProgress } from '../src/engine/redProgress.js';
-import { buildBoards, rankEntries, standingText } from '../src/engine/leaderboard.js';
+import { buildBoards, fastStanding, rankEntries, standingText } from '../src/engine/leaderboard.js';
 
 const IDS = Object.keys(RED_OPS);
 
-function boardsFor({ progress = emptyProgress(), redProgress = emptyRedProgress(), found = [] } = {}) {
+function boardsFor({ progress = emptyProgress(), redProgress = emptyRedProgress(), found = [], fastRuns = [] } = {}) {
   return buildBoards({
-    progress, redProgress, found, library: SCENARIOS, operationIds: IDS, secretsTotal: EGGS.length,
+    progress, redProgress, found, fastRuns, library: SCENARIOS, operationIds: IDS, secretsTotal: EGGS.length,
   });
 }
 
@@ -67,7 +67,7 @@ test('roster standings stay true as the library grows', () => {
 
 test('each board lists the whole roster plus you, exactly once', () => {
   const boards = boardsFor();
-  for (const key of ['blue', 'red', 'secrets']) {
+  for (const key of ['blue', 'red', 'fast', 'secrets']) {
     assert.equal(boards[key].length, ROSTER.length + 1, key);
     assert.equal(boards[key].filter((r) => r.isYou).length, 1, key);
   }
@@ -90,7 +90,7 @@ test('ranking shares a rank on ties, skips the next, and lists you first among e
 
 test('a brand-new player is on every board, and not near the top of any', () => {
   const boards = boardsFor();
-  for (const key of ['blue', 'red', 'secrets']) {
+  for (const key of ['blue', 'red', 'fast', 'secrets']) {
     assert.ok(you(boards[key]).rank > 1, `${key}: a new player should not lead`);
   }
   assert.equal(you(boards.secrets).count, 0);
@@ -104,8 +104,9 @@ test('a perfect player takes first place on every board', () => {
     progress,
     redProgress: perfectRed(),
     found: EGGS.map((e) => e.id),
+    fastRuns: [{ at: 1, score: 100, grade: 'A', correct: 20, total: 20, closedLive: 0, avgSeconds: 12 }],
   });
-  for (const key of ['blue', 'red', 'secrets']) {
+  for (const key of ['blue', 'red', 'fast', 'secrets']) {
     assert.equal(you(boards[key]).rank, 1, `${key}: the top is reachable`);
   }
   assert.equal(you(boards.blue).cleared, SCENARIOS.length);
@@ -150,6 +151,95 @@ test('the copied standing names all three boards and the live link', () => {
   assert.match(text, /Blue: Trainee, #\d+ of 11/);
   assert.match(text, /Red: Recruit, #\d+ of 11/);
   assert.match(text, new RegExp(`Secrets: 3 of ${EGGS.length}, #\\d+ of 11`));
+  assert.match(text, /Fast Triage: no runs yet, #\d+ of 11/);
+  const withRun = standingText(boardsFor({ fastRuns: [{ score: 88, grade: 'B', avgSeconds: 20 }] }));
+  assert.match(withRun, /Fast Triage: best 88, #\d+ of 11/);
   assert.match(text, /^SEA SOC Analyst Console/);
   assert.match(text, /https:\/\/nicky-quist\.github\.io\/soc-analyst-simulator\//);
+});
+
+// ── the roster reads the way the org chart does ─────────────────────────────
+
+const order = (rows) => rows.filter((r) => !r.isYou).map((r) => r.id);
+
+test('analyst-judgment boards put the most experienced analysts first', () => {
+  const expected = [
+    'jordan-reyes', 'priya-anand', 'marcus-bell', 'marcus-ibe', 'tom-alvarez',
+    'sarah-okafor', 'kenji-watanabe', 'dev-malhotra', 'aisha-rahman', 'david-reyes',
+  ];
+  const boards = boardsFor();
+  assert.deepEqual(order(boards.blue), expected, 'Blue Team');
+  assert.deepEqual(order(boards.fast), expected, 'Fast Triage');
+});
+
+test('the Red Team board puts adversary-savvy roles first', () => {
+  assert.deepEqual(order(boardsFor().red), [
+    'marcus-bell', 'marcus-ibe', 'jordan-reyes', 'tom-alvarez', 'priya-anand',
+    'dev-malhotra', 'kenji-watanabe', 'sarah-okafor', 'aisha-rahman', 'david-reyes',
+  ]);
+});
+
+test('the Secrets board favors the engineers who poke at tools', () => {
+  assert.deepEqual(order(boardsFor().secrets), [
+    'marcus-ibe', 'jordan-reyes', 'dev-malhotra', 'marcus-bell', 'tom-alvarez',
+    'kenji-watanabe', 'priya-anand', 'sarah-okafor', 'aisha-rahman', 'david-reyes',
+  ]);
+});
+
+test('on every board the technical security roles outrank the business roles, and the CEO is last', () => {
+  const security = ['jordan-reyes', 'priya-anand', 'marcus-bell', 'marcus-ibe', 'tom-alvarez'];
+  const business = ['aisha-rahman', 'david-reyes'];
+  const boards = boardsFor();
+  for (const key of ['blue', 'red', 'fast', 'secrets']) {
+    const ids = order(boards[key]);
+    for (const a of security) {
+      for (const b of business) assert.ok(ids.indexOf(a) < ids.indexOf(b), `${key}: ${a} should outrank ${b}`);
+    }
+    assert.equal(ids.at(-1), 'david-reyes', `${key}: the CEO is last`);
+  }
+});
+
+test('the Tier 2 analyst outranks the team lead on the judgment boards', () => {
+  const boards = boardsFor();
+  for (const key of ['blue', 'fast']) {
+    const ids = order(boards[key]);
+    assert.ok(ids.indexOf('jordan-reyes') < ids.indexOf('priya-anand'), key);
+  }
+});
+
+// ── Fast Triage board ───────────────────────────────────────────────────────
+
+test('your Fast Triage standing is your best run and the pace of that run', () => {
+  assert.deepEqual(fastStanding([]), { best: null, grade: null, avgSeconds: null, runs: 0 });
+  const runs = [
+    { score: 70, grade: 'C', avgSeconds: 30 },
+    { score: 91, grade: 'A', avgSeconds: 25 },
+    { score: 80, grade: 'B', avgSeconds: 15 },
+  ];
+  assert.deepEqual(fastStanding(runs), { best: 91, grade: 'A', avgSeconds: 25, runs: 3 });
+  const tied = fastStanding([{ score: 90, grade: 'A', avgSeconds: 30 }, { score: 90, grade: 'A', avgSeconds: 18 }]);
+  assert.equal(tied.avgSeconds, 18, 'among equal scores, the faster run represents you');
+});
+
+test('Fast Triage ranks by score, then by faster pace', () => {
+  const jordan = ROSTER.find((p) => p.id === 'jordan-reyes').fast;
+  const same = boardsFor({ fastRuns: [{ score: jordan.best, grade: 'A', avgSeconds: jordan.avgSeconds - 5 }] }).fast;
+  assert.equal(same[0].isYou, true, 'the same score at a faster pace ranks above');
+  const slower = boardsFor({ fastRuns: [{ score: jordan.best, grade: 'A', avgSeconds: jordan.avgSeconds + 5 }] }).fast;
+  assert.equal(slower[0].id, 'jordan-reyes');
+  assert.equal(slower[1].isYou, true);
+});
+
+test('a new player with no runs sorts below everyone who has one', () => {
+  const fast = boardsFor().fast;
+  assert.equal(fast.at(-1).isYou, true);
+  assert.equal(fast.at(-1).best, null);
+});
+
+test('Reset everything clears Fast Triage runs, so the board shows no runs again', () => {
+  const played = you(boardsFor({ fastRuns: [{ score: 88, grade: 'B', avgSeconds: 20 }] }).fast);
+  assert.equal(played.best, 88);
+  const afterReset = you(boardsFor({ fastRuns: [] }).fast);
+  assert.equal(afterReset.best, null);
+  assert.equal(afterReset.runs, 0);
 });

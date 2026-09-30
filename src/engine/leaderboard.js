@@ -1,4 +1,4 @@
-// Three separate leaderboards, Blue, Red and Secrets, each ranking you against
+// Four separate leaderboards, Blue, Red, Fast Triage and Secrets, each ranking you against
 // the fictional SEA SOC roster. Pure functions: hand them the same records the
 // rest of the console keeps and get back sorted, ranked rows.
 //
@@ -12,10 +12,13 @@ import {
 import { RED_RANKS, redStatus } from './redProgress.js';
 
 const desc = (a, b) => (b ?? -1) - (a ?? -1);
+// Smaller is better; no value sorts last.
+const asc = (a, b) => (a ?? Infinity) === (b ?? Infinity) ? 0 : (a ?? Infinity) < (b ?? Infinity) ? -1 : 1;
 
 const COMPARE = {
   blue: (a, b) => desc(a.rankIndex, b.rankIndex) || desc(a.cleared, b.cleared) || desc(a.avg, b.avg),
   red: (a, b) => desc(a.rankIndex, b.rankIndex) || desc(a.cleared, b.cleared) || desc(a.ghosts, b.ghosts) || desc(a.best, b.best),
+  fast: (a, b) => desc(a.best, b.best) || asc(a.avgSeconds, b.avgSeconds),
   secrets: (a, b) => desc(a.count, b.count),
 };
 
@@ -23,6 +26,7 @@ const COMPARE = {
 export const RULES = {
   blue: 'Ranked by career rank, then case types cleared at 80%+, then average best score.',
   red: 'Ranked by Red Ops rank, then operations cleared, then ghost runs, then best completed score.',
+  fast: 'Ranked by best Fast Triage score, then faster average pace per alert.',
   secrets: 'Ranked by how many secrets have been found.',
 };
 
@@ -38,6 +42,14 @@ export function rankEntries(entries, compare) {
 }
 
 // ── your standing, from the same engines that show it elsewhere ─────────────
+
+// runs: the saved Fast Triage runs ({ score, grade, avgSeconds, ... }). Your
+// standing is your best run, and the pace of that same run.
+export function fastStanding(runs) {
+  if (!runs.length) return { best: null, grade: null, avgSeconds: null, runs: 0 };
+  const top = runs.reduce((a, b) => (b.score > a.score || (b.score === a.score && (b.avgSeconds ?? Infinity) < (a.avgSeconds ?? Infinity)) ? b : a));
+  return { best: top.score, grade: top.grade ?? null, avgSeconds: top.avgSeconds ?? null, runs: runs.length };
+}
 
 export function blueStanding(progress, library) {
   const career = careerStatus(progress.history, library, progress.checkpointRankIndex);
@@ -61,7 +73,12 @@ export function redStanding(redProgress, operationIds) {
   };
 }
 
-// ── the three boards ────────────────────────────────────────────────────────
+// ── the four boards ────────────────────────────────────────────────────────
+
+// The same grade bands Fast Triage itself uses, so a roster score reads like yours.
+function gradeOf(score) {
+  return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 55 ? 'D' : 'F';
+}
 
 function rosterBlue(person, total) {
   const { rankIndex, avg } = person.blue;
@@ -78,7 +95,7 @@ function rosterRed(person, total) {
   };
 }
 
-export function buildBoards({ progress, redProgress, found, library, operationIds, secretsTotal }) {
+export function buildBoards({ progress, redProgress, found, library, operationIds, secretsTotal, fastRuns = [] }) {
   const blueTotal = library.length;
   const redTotal = operationIds.length;
 
@@ -92,13 +109,21 @@ export function buildBoards({ progress, redProgress, found, library, operationId
     { id: 'you', name: 'You', role: 'Analyst', isYou: true, ...redStanding(redProgress, operationIds) },
   ], COMPARE.red);
 
+  const fast = rankEntries([
+    ...ROSTER.map((p) => ({
+      id: p.id, name: p.name, role: p.role,
+      best: p.fast.best, grade: gradeOf(p.fast.best), avgSeconds: p.fast.avgSeconds, runs: p.fast.runs,
+    })),
+    { id: 'you', name: 'You', role: 'Analyst', isYou: true, ...fastStanding(fastRuns) },
+  ], COMPARE.fast);
+
   const secrets = rankEntries([
     ...ROSTER.map((p) => ({ id: p.id, name: p.name, role: p.role, count: Math.min(p.secrets, secretsTotal) })),
     { id: 'you', name: 'You', role: 'Analyst', isYou: true, count: found.length },
   ], COMPARE.secrets);
 
   return {
-    blue, red, secrets,
+    blue, red, fast, secrets,
     totals: { blue: blueTotal, red: redTotal, secrets: secretsTotal },
   };
 }
@@ -108,12 +133,14 @@ export function standingText(boards) {
   const you = (rows) => rows.find((r) => r.isYou);
   const b = you(boards.blue);
   const r = you(boards.red);
+  const f = you(boards.fast);
   const s = you(boards.secrets);
   const n = boards.blue.length;
   return [
     `SEA SOC Analyst Console`,
     `Blue: ${b.rankLabel}, #${b.rank} of ${n}`,
     `Red: ${r.rankLabel}, #${r.rank} of ${n}`,
+    `Fast Triage: ${f.best === null ? 'no runs yet' : `best ${f.best}`}, #${f.rank} of ${n}`,
     `Secrets: ${s.count} of ${boards.totals.secrets}, #${s.rank} of ${n}`,
     LIVE_URL,
   ].join('\n');

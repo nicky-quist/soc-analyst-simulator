@@ -14,7 +14,7 @@ Nine destinations in the side rail, grouped the way an analyst uses them: the sh
 | **Fast triage** | Twenty noise-heavy alert cards against a 12-minute clock: close, send to Tier 2, or page IR, with no feedback until the run ends |
 | **Red Ops** | Run the attacker side of four scenarios as a live operation while the SOC reacts to each move, then defend the same incident and see who won |
 | **Your progress** | Your record across shifts, your career rank, and what the next shift will practice |
-| **Leaderboard** | Three separate boards, Blue Team, Red Team and Secrets, ranking you against the fictional SEA SOC roster |
+| **Leaderboard** | Four separate boards, Blue Team, Red Team, Fast Triage and Secrets, ranking you against the fictional SEA SOC roster |
 | **Security org** | The org chart as a Teams-style contact grid — who's online, their role, and a live presence status derived from real shift state |
 | **Settings** | Configure the AI Coach (local Ollama or your own cloud key) without needing to close a case first |
 
@@ -182,15 +182,18 @@ A run deals 20 alert cards from a pool of 36 and gives you 12 minutes. Each card
 
 ## Leaderboard
 
-Three separate boards, each ranking you against the fictional SEA SOC roster (the people the console already puts in front of you, like the Team Lead, the IR Lead and the CISO). Their standings are fixed, so a board looks the same every time and you climb it by playing. It is you against the sim's own people: nothing is uploaded or shared.
+Four separate boards, each ranking you against the fictional SEA SOC roster (the people the console already puts in front of you, like the Team Lead, the IR Lead and the CISO). Their standings are fixed, so a board looks the same every time and you climb it by playing. It is you against the sim's own people: nothing is uploaded or shared.
 
 | Board | Ranked by |
 |---|---|
 | **Blue Team** | career rank, then case types cleared at 80%+, then average best score |
 | **Red Team** | Red Ops rank, then operations cleared, then ghost runs, then best completed score |
+| **Fast Triage** | best Fast Triage score, then faster average pace per alert |
 | **Secrets** | how many hidden secrets you have found |
 
-Ties share a rank (1, 2, 2, 4) and you are listed first among them. **Copy my standing** puts a short summary of all three ranks on the clipboard. Reset everything keeps ranks and found secrets and clears the record behind them, so the boards show the same rank with the progress bars back at zero. Every roster standing is beatable: a test builds a perfect player and checks they take first place on all three boards, and that a new player leads none of them. Roster standings also stay true as the library grows (a senior analyst has cleared every case type by definition).
+**The roster reads the way the org chart does.** Standings follow what each person's job would give them. On the analyst-judgment boards (Blue and Fast Triage) the Tier 2 analyst who does this all day leads, then the team lead, the IR lead, detection and security engineering, then the CISO, then the IT and business roles. On Red Team, IR and detection engineering lead, because they know adversary behavior best. On Secrets, the engineers who poke at tools find the most. The CEO is last on every board, and tests pin all of these orders so the roster can't drift.
+
+Ties share a rank (1, 2, 2, 4) and you are listed first among them. **Copy my standing** puts a short summary of all four ranks on the clipboard. Reset everything keeps ranks and found secrets and clears the record behind them, so the Blue and Red boards show the same rank with progress back at zero, and the Fast Triage board goes back to "no runs yet", since Fast Triage has no rank to keep. Every roster standing is beatable: a test builds a perfect player and checks they take first place on all four boards, and that a new player leads none of them. Roster standings also stay true as the library grows (a senior analyst has cleared every case type by definition).
 
 ## Secrets
 
@@ -252,7 +255,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          330 tests across 20 files (triage/ holds the Triage engine's)
+tests/          339 tests across 20 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:

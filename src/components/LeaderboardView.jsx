@@ -1,4 +1,4 @@
-// Three separate leaderboards, Blue, Red and Secrets, each ranking you against
+// Four separate leaderboards, Blue, Red, Fast Triage and Secrets, each ranking you against
 // the fictional SEA SOC roster. It is you against the sim's own people: the
 // standings are fixed, so a board looks the same every time and you climb it by
 // playing. Nothing here is shared or uploaded.
@@ -8,12 +8,14 @@ import { EGGS } from '../data/easterEggs.js';
 import { RED_OPS } from '../data/redops.js';
 import { SCENARIOS } from '../data/scenarios/index.js';
 import { loadFound } from '../engine/easterEggsStore.js';
+import { loadFastTriageRuns } from '../engine/fasttriageStore.js';
 import { RULES, buildBoards, standingText } from '../engine/leaderboard.js';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Card, Tabs } from '../ui/primitives.jsx';
 import { IconTrophy } from '../ui/icons.jsx';
 
 const RANK_TONE = [TONE.neutral, TONE.business, TONE.positive];
+const GRADE_TONE = { A: TONE.positive, B: TONE.positive, C: TONE.coaching, D: TONE.coaching, F: TONE.concerned };
 
 function Place({ rank }) {
   const medal = rank <= 3;
@@ -73,9 +75,14 @@ function SecretsLine({ entry, total }) {
   );
 }
 
+function gradeLabel(score) {
+  return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 55 ? 'D' : 'F';
+}
+
 const TABS = [
   { id: 'blue', label: 'Blue Team' },
   { id: 'red', label: 'Red Team' },
+  { id: 'fast', label: 'Fast Triage' },
   { id: 'secrets', label: 'Secrets' },
 ];
 
@@ -83,6 +90,7 @@ export default function LeaderboardView({ progress, redProgress }) {
   const [board, setBoard] = useState('blue');
   const [copied, setCopied] = useState(false);
   const [found] = useState(loadFound);
+  const [fastRuns] = useState(loadFastTriageRuns);
 
   const boards = useMemo(() => buildBoards({
     progress,
@@ -91,7 +99,8 @@ export default function LeaderboardView({ progress, redProgress }) {
     library: SCENARIOS,
     operationIds: Object.keys(RED_OPS),
     secretsTotal: EGGS.length,
-  }), [progress, redProgress, found]);
+    fastRuns,
+  }), [progress, redProgress, found, fastRuns]);
 
   const rows = boards[board];
   const you = rows.find((r) => r.isYou);
@@ -114,7 +123,7 @@ export default function LeaderboardView({ progress, redProgress }) {
         <span style={{ fontSize: 12.5, color: C.textSecondary }}>you against the SEA SOC roster</span>
       </div>
       <p style={{ fontSize: 12.5, color: C.textMuted, margin: '0 0 16px', lineHeight: 1.55, maxWidth: 760 }}>
-        Three separate boards. The people on them are fictional and their standings are fixed, so you climb by playing,
+        Four separate boards. The people on them are fictional and their standings are fixed, so you climb by playing,
         and nothing here is uploaded or shared. Ties share a rank, and you are listed first among them.
       </p>
 
@@ -144,6 +153,20 @@ export default function LeaderboardView({ progress, redProgress }) {
                   entry={entry}
                   detail={`ops ${entry.cleared}/${boards.totals.red} · ghost ${entry.ghosts} · best ${entry.best ?? 'n/a'}`}
                 />
+              )}
+              {board === 'fast' && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {entry.best === null ? (
+                    <Badge label="No runs yet" tone={TONE.neutral} />
+                  ) : (
+                    <Badge label={`${entry.grade ?? gradeLabel(entry.best)} · ${entry.best}`} tone={GRADE_TONE[entry.grade ?? gradeLabel(entry.best)]} />
+                  )}
+                  <span style={{ fontSize: 12, color: C.textSecondary, fontFamily: MONO }}>
+                    {entry.best === null
+                      ? 'run one in Fast Triage'
+                      : `${entry.avgSeconds === null ? 'n/a' : `${Math.round(entry.avgSeconds)}s`} per alert · ${entry.runs} run${entry.runs === 1 ? '' : 's'}`}
+                  </span>
+                </div>
               )}
               {board === 'secrets' && <SecretsLine entry={entry} total={boards.totals.secrets} />}
             </Row>
