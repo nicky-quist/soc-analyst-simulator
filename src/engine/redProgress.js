@@ -14,11 +14,16 @@
 //
 // Pure functions only. Storage lives in redProgressStore.js.
 
-export const RED_BAR = 50;
+// Set so the Operator rung asks for about the same share of the content as the
+// analyst's Tier 1 (half the operations, as it is half the case types), at a
+// score the best runs of every operation can still reach (they top out in the 60s).
+export const RED_BAR = 55;
+export const OPERATOR_CLEARED = 3;
+export const SENIOR_GHOST_OPERATIONS = 2;
 export const HISTORY_LIMIT = 60;
 // The senior rank looks at how you have been finishing lately, not forever.
 export const RECENT_RUNS = 6;
-export const MAX_RECENT_FAILURES = 2;
+export const MAX_RECENT_FAILURES = 1;
 
 export const RED_RANKS = [
   { id: 'recruit', label: 'Recruit' },
@@ -75,6 +80,8 @@ export function redStats(history, operationIds) {
     burned: history.filter((r) => r.outcome === 'burned').length,
     aborted: history.filter((r) => r.outcome === 'aborted').length,
     ghosts: history.filter((r) => r.ghost).length,
+    // Ghosting one operation shows you found its quiet route; two shows it was not luck.
+    ghostOperations: new Set(history.filter((r) => r.ghost && ids.has(r.operationId)).map((r) => r.operationId)).size,
     cleared,
     total: ids.size,
     best,
@@ -87,10 +94,10 @@ export function redStatus(history, operationIds, checkpointRankIndex = 0) {
   const recentFailures = recent.filter((r) => r.outcome !== 'complete').length;
 
   const operatorCriteria = [{
-    label: `Reach the objective at ${RED_BAR}+ on 2 different operations`,
-    met: stats.cleared >= 2,
+    label: `Reach the objective at ${RED_BAR}+ on ${OPERATOR_CLEARED} different operations`,
+    met: stats.cleared >= OPERATOR_CLEARED,
     current: `${stats.cleared}`,
-    target: '2',
+    target: `${OPERATOR_CLEARED}`,
   }];
 
   const seniorCriteria = [
@@ -101,10 +108,10 @@ export function redStatus(history, operationIds, checkpointRankIndex = 0) {
       target: `${stats.total}`,
     },
     {
-      label: 'At least one ghost run (objective reached, no move caught)',
-      met: stats.ghosts >= 1,
-      current: `${stats.ghosts}`,
-      target: '1',
+      label: `Ghost runs on ${SENIOR_GHOST_OPERATIONS} different operations (objective reached, no move caught)`,
+      met: stats.ghostOperations >= SENIOR_GHOST_OPERATIONS,
+      current: `${stats.ghostOperations}`,
+      target: `${SENIOR_GHOST_OPERATIONS}`,
     },
     {
       label: `No more than ${MAX_RECENT_FAILURES} burned or aborted in your last ${RECENT_RUNS} runs`,

@@ -5,9 +5,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { RED_OPS } from '../src/data/redops.js';
+import { SCENARIOS } from '../src/data/scenarios/index.js';
 import { playStage, scoreRun, startRun, abortRun } from '../src/engine/redopsRun.js';
 import {
-  HISTORY_LIMIT, MAX_RECENT_FAILURES, RECENT_RUNS, RED_BAR, RED_RANKS,
+  HISTORY_LIMIT, MAX_RECENT_FAILURES, OPERATOR_CLEARED, RECENT_RUNS, RED_BAR, RED_RANKS, SENIOR_GHOST_OPERATIONS,
   advanceRedCheckpoint, bestCompleted, buildRedRecord, emptyRedProgress, recordRedRun,
   redStats, redStatus, resetRedProgress,
 } from '../src/engine/redProgress.js';
@@ -50,13 +51,23 @@ test('a fresh operator starts as a Recruit with the Operator criteria showing', 
   assert.equal(s.viaCheckpoint, false);
 });
 
-test('one cleared operation is not enough for Operator, two different ones are', () => {
+test('Operator asks for OPERATOR_CLEARED different operations, and replaying one is padding', () => {
+  assert.equal(OPERATOR_CLEARED, 3);
   const one = progressWith([record(IDS[0], quietest)]);
   assert.equal(redStatus(one.history, IDS).rankIndex, 0);
-  const same = progressWith([record(IDS[0], quietest), record(IDS[0], quietest)]);
+  const same = progressWith(Array.from({ length: 5 }, () => record(IDS[0], quietest)));
   assert.equal(redStatus(same.history, IDS).rankIndex, 0, 'replaying the same operation is padding');
   const two = progressWith([record(IDS[0], quietest), record(IDS[1], quietest)]);
-  assert.equal(redStatus(two.history, IDS).rankIndex, 1);
+  assert.equal(redStatus(two.history, IDS).rankIndex, 0, 'two operations are one short');
+  const three = progressWith(IDS.slice(0, OPERATOR_CLEARED).map((id) => record(id, quietest)));
+  assert.equal(redStatus(three.history, IDS).rankIndex, 1);
+});
+
+test('the Operator rung asks for about the same share of the content as the analyst Tier 1', () => {
+  // Blue asks for 10 of the library; Red should ask for a similar fraction of its operations.
+  const blueShare = 10 / SCENARIOS.length;
+  const redShare = OPERATOR_CLEARED / IDS.length;
+  assert.ok(Math.abs(blueShare - redShare) <= 0.1, `blue ${blueShare.toFixed(2)} vs red ${redShare.toFixed(2)}`);
 });
 
 test('a burned or aborted run is recorded but can never clear an operation', () => {
@@ -80,7 +91,7 @@ test('best score counts, so a worse later run does not lower it', () => {
   assert.equal(bestCompleted([worse, good])[IDS[0]], good.score);
 });
 
-test('Senior needs every operation, a ghost run, and a clean recent record', () => {
+test('Senior needs every operation, ghost runs on two operations, and a clean recent record', () => {
   const allClean = progressWith(IDS.map((id) => record(id, quietest)));
   const s = redStatus(allClean.history, IDS);
   assert.equal(s.rankIndex, 2);
@@ -93,6 +104,24 @@ test('Senior needs every operation, a ghost run, and a clean recent record', () 
     return { ...r, ghost: false, caught: 1 };
   }));
   assert.equal(redStatus(noGhost.history, IDS).rankIndex, 1, 'operator, not senior, without a ghost run');
+
+  // A ghost run on a single operation is not enough, and repeating it does not add a second.
+  const oneGhost = progressWith(IDS.map((id, i) => {
+    const r = record(id, quietest);
+    return i === 0 ? r : { ...r, ghost: false, caught: 1 };
+  }));
+  const once = redStatus(oneGhost.history, IDS);
+  assert.equal(once.rankIndex, 1, 'one ghosted operation is not enough');
+  assert.equal(once.stats.ghostOperations, 1);
+  const repeated = progressWith([...oneGhost.history, record(IDS[0], quietest), record(IDS[0], quietest)]);
+  assert.equal(redStatus(repeated.history, IDS).stats.ghostOperations, 1, 'repeating the same operation adds nothing');
+
+  // Ghosts on two different operations are.
+  const twoGhosts = progressWith(IDS.map((id, i) => {
+    const r = record(id, quietest);
+    return i < SENIOR_GHOST_OPERATIONS ? r : { ...r, ghost: false, caught: 1 };
+  }));
+  assert.equal(redStatus(twoGhosts.history, IDS).rankIndex, 2);
 });
 
 test('too many recent burns hold Senior back even with everything else met', () => {

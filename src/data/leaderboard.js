@@ -35,7 +35,7 @@ export const ROSTER = [
   {
     id: 'priya-anand', name: 'Priya Anand', role: 'SOC Team Lead',
     blue: { rankIndex: 2, avg: 90 },
-    red: { rankIndex: 1, cleared: 2, ghosts: 0, best: 58 },
+    red: { rankIndex: 1, cleared: 3, ghosts: 0, best: 58 },
     secrets: 9,
     fast: { best: 93, avgSeconds: 25, runs: 24 },
   },
@@ -56,7 +56,7 @@ export const ROSTER = [
   {
     id: 'tom-alvarez', name: 'Tom Alvarez', role: 'Security Engineering Manager',
     blue: { rankIndex: 1, cleared: 10, avg: 82 },
-    red: { rankIndex: 1, cleared: 2, ghosts: 1, best: 60 },
+    red: { rankIndex: 1, cleared: 3, ghosts: 1, best: 60 },
     secrets: 12,
     fast: { best: 84, avgSeconds: 33, runs: 11 },
   },
@@ -70,14 +70,14 @@ export const ROSTER = [
   {
     id: 'kenji-watanabe', name: 'Kenji Watanabe', role: 'IT Operations Lead',
     blue: { rankIndex: 0, cleared: 4, avg: 72 },
-    red: { rankIndex: 0, cleared: 1, ghosts: 0, best: 52 },
+    red: { rankIndex: 0, cleared: 1, ghosts: 0, best: 56 },
     secrets: 10,
     fast: { best: 71, avgSeconds: 38, runs: 7 },
   },
   {
     id: 'dev-malhotra', name: 'Dev Malhotra', role: 'Platform Engineering Lead',
     blue: { rankIndex: 0, cleared: 3, avg: 70 },
-    red: { rankIndex: 0, cleared: 1, ghosts: 0, best: 55 },
+    red: { rankIndex: 0, cleared: 1, ghosts: 0, best: 58 },
     secrets: 15,
     fast: { best: 68, avgSeconds: 42, runs: 5 },
   },

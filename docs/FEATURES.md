@@ -62,13 +62,13 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 
 Then defend the same incident from the blue side and see a head-to-head comparison on the debrief screen.
 
-**Red Ops career** — the attacker-side mirror of the analyst career, built on the same three rules. Breadth at a standard: a rank needs different operations cleared, using your best completed run of each, so replaying the easiest one gets you nowhere. Finishing counts: only a run that reaches the objective clears an operation, and a burned or aborted run is recorded but can't promote you. A rank is a checkpoint: **Reset everything** wipes the runs and never takes a rank back.
+**Red Ops career** — the attacker-side mirror of the analyst career, built on the same three rules. Breadth at a standard: a rank needs different operations cleared, using your best completed run of each, so replaying the easiest one gets you nowhere. Finishing counts: only a run that reaches the objective clears an operation, and a burned or aborted run is recorded but can't promote you. The ladder is sized to match the analyst's: Operator asks for half of the operations, as Tier 1 asks for about half of the case types. A rank is a checkpoint: **Reset everything** wipes the runs and never takes a rank back.
 
 | Rank | Needs |
 |---|---|
 | Recruit | where everyone starts |
-| Red Team Operator | reach the objective at 50+ on 2 different operations |
-| Senior Operator — Team Lead ready | every operation cleared at 50+, at least one **ghost run** (objective reached with no move caught), and no more than 2 burned or aborted in your last 6 runs |
+| Red Team Operator | reach the objective at 55+ on 3 different operations |
+| Senior Operator — Team Lead ready | every operation cleared at 55+, **ghost runs** (objective reached with no move caught) on 2 different operations, and no more than 1 burned or aborted in your last 6 runs |
 
 The Red Ops tab shows your rank, what the next promotion needs, your record (runs, completed, ghost, burned, aborted) and your best completed score per operation. The header shows both ranks, and a promotion is announced on the debrief the moment a run earns it.
 

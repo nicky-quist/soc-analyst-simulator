@@ -60,7 +60,7 @@ function RedCareer({ status }) {
         </div>
       ) : (
         <div style={{ fontSize: 12.5, color: C.textSecondary }}>
-          Every operation cleared at {RED_BAR}+, a ghost run on record, and a clean recent streak.
+          Every operation cleared at {RED_BAR}+, ghost runs on two different operations, and a clean recent streak.
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
