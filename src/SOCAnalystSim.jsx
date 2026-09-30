@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { COMPANY, SCENARIOS } from './data/scenarios/index.js';
+import { APP_CSS } from './app/appCss.js';
+import {
+  EMPTY_CASE, EMPTY_SHIFT, SHIFT_RESET_MS, focusFor, loadProgress, loadShift, openShift, saveProgress, saveShift,
+  startClock, viewFromHash,
+} from './app/storage.js';
+import { SCENARIOS } from './data/scenarios/index.js';
 import { buildShift } from './data/estate.js';
+import { RED_OPS } from './data/redops.js';
+import { EGGS } from './data/easterEggs.js';
 import { dealShift } from './engine/deal.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
-import { advanceCheckpoint, buildRecord, careerStatus, emptyProgress, planFocus, recordCase } from './engine/progress.js';
-import ProgressView from './components/ProgressView.jsx';
-import TriageView from './components/TriageView.jsx';
-import { generateShiftSummary, generateWarRoomAlert } from './engine/personas.js';
-import { warRoomTriggered, followOnFor, withWarRoom, resolveWarRoomScenario } from './engine/warroom.js';
-import { clearFastTriageRuns } from './engine/fasttriageStore.js';
-import { RED_OPS } from './data/redops.js';
-import EggHost from './components/EggHost.jsx';
-import ShiftReportCard from './components/ShiftReportCard.jsx';
-import { EGGS } from './data/easterEggs.js';
+import { advanceCheckpoint, buildRecord, careerStatus, emptyProgress, recordCase } from './engine/progress.js';
+import { generateShiftSummary } from './engine/personas.js';
+import { warRoomTriggered, followOnFor, withWarRoom } from './engine/warroom.js';
+import { clearFastTriageRuns, loadFastTriageRuns } from './engine/fasttriageStore.js';
 import { loadFound } from './engine/easterEggsStore.js';
-import { loadFastTriageRuns } from './engine/fasttriageStore.js';
 import { buildBoards } from './engine/leaderboard.js';
 import { buildShiftReport, standingFromBoards } from './engine/shiftReport.js';
 import { clearLastReport, loadLastReport, saveLastReport } from './engine/shiftReportStore.js';
@@ -28,209 +28,32 @@ import { advanceRedCheckpoint, buildRedRecord, recordRedRun, redStatus, resetRed
 import { loadRedProgress, saveRedProgress } from './engine/redProgressStore.js';
 import { withRedOpsTarget } from './engine/redops.js';
 import { instantiateScenario } from './engine/scenarioVariants.js';
-import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
-import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
-import { formatDuration } from './ui/helpers.js';
-import {
-  IconClipboardPulse, IconCrosshair, IconDashboard, IconGraduationCap, IconInbox, IconLogOut, IconSettings, IconShield, IconSparkles, IconStopwatch, IconThemeHalf, IconTrendingUp, IconTrophy, IconUser, IconUsers,
-} from './ui/icons.jsx';
-import AlertQueue from './components/AlertQueue.jsx';
-import { caseStatus, slaState } from './engine/case.js';
+import { slaState } from './engine/case.js';
 import { decodeBase64 } from './engine/decode.js';
-import CaseTimeline from './components/CaseTimeline.jsx';
-import OverviewTab from './components/OverviewTab.jsx';
-import InvestigateTab from './components/InvestigateTab.jsx';
-import IntelTab from './components/IntelTab.jsx';
-import RespondTab from './components/RespondTab.jsx';
-import ReportTab from './components/ReportTab.jsx';
-import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
-import Dashboard from './components/Dashboard.jsx';
-import TeamTab from './components/TeamTab.jsx';
-import RedOpsView from './components/RedOpsView.jsx';
-import LeaderboardView from './components/LeaderboardView.jsx';
-import FastTriageView from './components/FastTriageView.jsx';
-import SettingsView from './components/SettingsView.jsx';
-import EndShiftModal from './components/EndShiftModal.jsx';
 import { buildShiftHandoff } from './engine/handoff.js';
+import { C, FONT } from './theme.js';
+import AppHeader from './components/AppHeader.jsx';
+import AppRail from './components/AppRail.jsx';
+import CaseWorkspace from './components/CaseWorkspace.jsx';
+import Dashboard from './components/Dashboard.jsx';
+import EggHost from './components/EggHost.jsx';
+import EndShiftModal from './components/EndShiftModal.jsx';
+import FastTriageView from './components/FastTriageView.jsx';
+import LeaderboardView from './components/LeaderboardView.jsx';
+import ProgressView from './components/ProgressView.jsx';
+import RedOpsView from './components/RedOpsView.jsx';
+import SettingsView from './components/SettingsView.jsx';
+import ShiftReportCard from './components/ShiftReportCard.jsx';
+import TeamTab from './components/TeamTab.jsx';
+import TriageView from './components/TriageView.jsx';
 
 // Announce a secret if there is one; matchers return null when nothing matched.
 function announceEgg(id) {
   if (id) announce(id);
 }
 
-const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
-
-// The console's sections, in rail order. Each also answers to a URL hash
-// (#triage and so on), so a link can open straight onto a tab.
-const VIEWS = ['dashboard', 'queue', 'triage', 'fasttriage', 'redops', 'progress', 'leaderboard', 'team', 'settings'];
-
 // The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
-
-function viewFromHash() {
-  const hash = typeof window === 'undefined' ? '' : window.location.hash.slice(1);
-  return VIEWS.includes(hash) ? hash : null;
-}
-
-// Separate from the shift, because it has to outlive every shift reset.
-const PROGRESS_KEY = 'soc-analyst-sim:progress:v1';
-
-function loadProgress() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(PROGRESS_KEY) || 'null');
-    if (!parsed || !Array.isArray(parsed.history)) return emptyProgress();
-    return {
-      history: parsed.history,
-      adaptive: parsed.adaptive !== false,
-      // A rank is a checkpoint, not a reflection of live history — it has to
-      // survive the same round-trip as everything else or a reload silently
-      // demotes an earned rank back to Trainee.
-      checkpointRankIndex: Number.isInteger(parsed.checkpointRankIndex) ? parsed.checkpointRankIndex : 0,
-    };
-  } catch {
-    return emptyProgress();
-  }
-}
-
-function saveProgress(progress) {
-  try {
-    window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-  } catch {
-    // Storage unavailable: progress lasts for this session only.
-  }
-}
-
-// The focus is decided once, when a shift is dealt, and stored on the shift.
-// The hand is re-derived from the shift on every load, so reading live history
-// instead would re-deal a different hand the moment a case closed, and drop
-// the analyst's open cases.
-function focusFor(progress) {
-  return progress?.adaptive ? planFocus(progress.history, SCENARIOS) : null;
-}
-
-function validFocus(focus) {
-  return focus && typeof focus === 'object' && focus.weights && typeof focus.weights === 'object' ? focus : null;
-}
-
-const EMPTY_FORM = {
-  classification: '',
-  severity: '',
-  mitreTechnique: '',
-  summary: '',
-  remediation: '',
-  escalation: '',
-};
-
-const EMPTY_CASE = {
-  startedAt: null,
-  searches: [],
-  searchKeys: [],
-  intel: [],
-  intelChecked: [],
-  actions: [],
-  decodes: [],
-  timeline: [],
-  form: EMPTY_FORM,
-  result: null,
-  assisted: false,
-  attempts: 0,
-  lastRange: '15m',
-  noiseSearches: 0,
-  nudgeAsks: {},
-};
-
-// `deal` is the hand counter, not the hand: the seven alerts are re-derived
-// from (shiftStartedAt, deal) on every load, so a reload restores the queue you
-// were working and "Reset shift" — same clock, next counter — deals a new one.
-const EMPTY_SHIFT = {
-  theme: 'light', view: 'dashboard', cases: {}, shiftStartedAt: null, deal: 0, focus: null,
-  warRoom: null, redOpsTarget: null, redOps: null, previousHandIds: [],
-};
-
-// A shift board that just keeps counting is not what a SOC dashboard is for —
-// after this long the queue, SLA clocks, and estate feed should look like a
-// new shift walked in, not a stale tab someone forgot to close.
-const SHIFT_RESET_MS = 12 * 60 * 60 * 1000;
-
-function loadShift() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_SHIFT;
-    const parsed = JSON.parse(raw);
-    const theme = parsed.theme === 'dark' ? 'dark' : 'light';
-    const stale = !parsed.shiftStartedAt || Date.now() - parsed.shiftStartedAt > SHIFT_RESET_MS;
-    if (stale) return { ...EMPTY_SHIFT, theme };
-
-    // Cases for alerts that are not in this hand are dropped rather than kept
-    // invisibly: the board has to agree with the queue it is counting. A War
-    // Room alert isn't part of the dealt hand, so its id has to be added to
-    // the valid set by hand or its case (and the alert itself) would vanish
-    // on reload.
-    const deal = Number.isInteger(parsed.deal) ? parsed.deal : 0;
-    const focus = validFocus(parsed.focus);
-    const warRoom = resolveWarRoomScenario(parsed.warRoom) ? parsed.warRoom : null;
-    // Same reasoning as War Room: a Red Ops target alert isn't part of the
-    // dealt hand either, so it needs the same manual add to the valid set.
-    const redOpsTarget = typeof parsed.redOpsTarget === 'string' && SCENARIOS.some((s) => s.id === parsed.redOpsTarget)
-      ? parsed.redOpsTarget
-      : null;
-    const redOps = parsed.redOps && typeof parsed.redOps.scenarioId === 'string' ? parsed.redOps : null;
-    const previousHandIds = Array.isArray(parsed.previousHandIds)
-      ? parsed.previousHandIds.filter((id) => typeof id === 'string')
-      : [];
-    const valid = new Set(
-      dealShift(parsed.shiftStartedAt, deal, undefined, focus, new Set(previousHandIds)).map((s) => s.id)
-    );
-    if (warRoom) valid.add(warRoom.scenarioId);
-    if (redOpsTarget) valid.add(redOpsTarget);
-    const cases = Object.fromEntries(
-      Object.entries(parsed.cases || {})
-        .filter(([id]) => valid.has(id))
-        .map(([id, value]) => [id, { ...EMPTY_CASE, ...value }])
-    );
-    return {
-      theme,
-      view: VIEWS.includes(parsed.view) ? parsed.view : 'dashboard',
-      cases,
-      shiftStartedAt: parsed.shiftStartedAt,
-      deal,
-      focus,
-      warRoom,
-      redOpsTarget,
-      redOps,
-      previousHandIds,
-    };
-  } catch {
-    return EMPTY_SHIFT;
-  }
-}
-
-function saveShift(shift) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(shift));
-  } catch {
-    // Storage unavailable (private mode / quota) — the sim still works in-memory.
-  }
-}
-
-// The clock starts when an open alert is first put on screen, which is every
-// path that makes one current: first render, queue click, or reopen.
-function startClock(shift, scenarioId) {
-  const existing = shift.cases[scenarioId] || EMPTY_CASE;
-  const withShiftStamp = shift.shiftStartedAt ? shift : { ...shift, shiftStartedAt: Date.now() };
-  if (existing.startedAt || existing.result) return withShiftStamp;
-  return { ...withShiftStamp, cases: { ...withShiftStamp.cases, [scenarioId]: { ...existing, startedAt: Date.now() } } };
-}
-
-// A shift has to have a start before it can have a queue, so the stamp comes
-// first and the hand is dealt from it.
-function openShift(loaded, progress) {
-  const stamped = loaded.shiftStartedAt
-    ? loaded
-    : { ...loaded, shiftStartedAt: Date.now(), focus: focusFor(progress) };
-  const recentIds = new Set(stamped.previousHandIds || []);
-  return startClock(stamped, dealShift(stamped.shiftStartedAt, stamped.deal, undefined, stamped.focus, recentIds)[0].id);
-}
 
 export default function SOCAnalystSim() {
   const [progress, setProgress] = useState(loadProgress);
@@ -330,10 +153,6 @@ export default function SOCAnalystSim() {
       return { ...prev, cases: { ...prev.cases, [scenario.id]: fn(current) } };
     });
   }
-
-  const elapsed = closed
-    ? result.score.elapsedMs
-    : caseFile.startedAt ? now - caseFile.startedAt : 0;
 
   function stamp() {
     return caseFile.startedAt ? Date.now() - caseFile.startedAt : 0;
@@ -756,18 +575,6 @@ export default function SOCAnalystSim() {
     ? generateShiftSummary(queue.map((s) => shift.cases[s.id].result))
     : null;
 
-  const sla = slaState(scenario, caseFile, now);
-  const status = caseStatus(caseFile);
-
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'investigate', label: 'Investigate', count: caseFile.searches.length || undefined },
-    { id: 'intel', label: 'Intel', count: caseFile.intel.length || undefined },
-    { id: 'respond', label: 'Respond', count: caseFile.actions.length || undefined },
-    { id: 'report', label: 'Report' },
-    ...(closed ? [{ id: 'debrief', label: 'Debrief' }] : []),
-  ];
-
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: FONT, color: C.text }}>
       <a
@@ -782,272 +589,28 @@ export default function SOCAnalystSim() {
       >
         Skip to main content
       </a>
-      <style>{`
-        ${THEME_CSS}
-        * { box-sizing: border-box; }
-        body { background: var(--bg); margin: 0; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--surface-alt); }
-        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
-        select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px var(--primary-soft); }
-        button:focus-visible, a:focus-visible, [role="tab"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-        .skip-link { position: absolute; left: -9999px; top: 8px; z-index: 1000; padding: 8px 14px; border-radius: 6px; background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 13px; text-decoration: none; }
-        .skip-link:focus { left: 8px; }
-        .app-shell { display: flex; align-items: stretch; min-height: 100vh; }
-        .app-rail {
-          width: 60px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
-          display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0 12px;
-          position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden;
-        }
-        .app-content { flex: 1; min-width: 0; }
-        .rail-nav-btn {
-          position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-          border-radius: 9px; cursor: pointer; font-family: inherit; border: 1px solid transparent; background: transparent;
-          color: var(--text-secondary);
-        }
-        .rail-nav-btn[data-active="true"] { background: var(--primary-soft); color: var(--primary-strong); border-color: var(--primary); }
-        .rail-nav-btn:hover:not([data-active="true"]) { background: var(--surface-alt); color: var(--text); }
-        .rail-count {
-          position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px;
-          background: var(--primary); color: var(--on-primary); font-size: 9.5px; font-weight: 800; line-height: 15px;
-          text-align: center; border: 1.5px solid var(--surface);
-        }
-        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; animation: live-pulse 2s ease-in-out infinite; }
-        @keyframes live-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,211,153,0.5); } 50% { opacity: 0.55; box-shadow: 0 0 0 3px rgba(52,211,153,0); } }
-        .sim-btn:hover:not(:disabled) { filter: brightness(1.12); }
-        .sim-btn-primary:hover:not(:disabled) { box-shadow: var(--glow-primary); }
-        .sim-tile { transition: transform 0.15s, box-shadow 0.15s; }
-        .sim-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg) !important; }
-        table tbody tr:hover { background: var(--surface-hover) !important; }
-        .sim-alert-row { transition: background 0.1s; }
-        .sim-body { display: grid; grid-template-columns: 272px minmax(0, 1fr) 300px; align-items: start; }
-        .sim-queue { background: var(--surface); border-right: 1px solid var(--border); position: sticky; top: 0; max-height: 100vh; overflow-y: auto; }
-        .sim-main { padding: 20px 24px 60px; min-width: 0; }
-        .sim-rail { border-left: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 16px; }
-        .sim-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .sim-dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
-        .sim-dash-grid > * { display: flex; flex-direction: column; }
-        .sim-tile-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-        @media (max-width: 1240px) { .sim-tile-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-        @media (max-width: 1000px) {
-          .sim-dash-grid { grid-template-columns: minmax(0, 1fr); }
-          .sim-dash-grid > * { grid-column: span 1 !important; }
-        }
-        @media (max-width: 620px) { .sim-tile-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        table tbody tr:hover { background: var(--surface-alt); }
-        @media (max-width: 1200px) {
-          .sim-body { grid-template-columns: 250px minmax(0, 1fr); }
-          .sim-rail { grid-column: 1 / -1; border-left: none; border-top: 1px solid var(--border); position: static; max-height: none; }
-        }
-        @media (max-width: 900px) {
-          .sim-body { display: block; }
-          .sim-queue { position: static; max-height: 250px; border-right: none; border-bottom: 1px solid var(--border); }
-          .sim-main { padding: 16px 14px 48px; }
-          .sim-form-grid { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 480px) {
-          .app-rail { width: 48px; }
-          .rail-nav-btn { width: 38px; height: 38px; }
-        }
-        /* Tab strips wrap on phones so no tab is hidden behind a sideways scroll. */
-        @media (max-width: 640px) {
-          .sim-tabs { flex-wrap: wrap !important; overflow-x: visible !important; }
-        }
-        /* Touch: give in-page buttons a comfortable target. */
-        @media (pointer: coarse) {
-          main button, [role="tab"], .report-overlay button { min-height: 40px; }
-        }
-        /* Six report metrics: one row on a wide screen, two rows of three on a page or a tablet, two columns on a phone. */
-        .report-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
-        @media (max-width: 820px) { .report-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-        @media (max-width: 420px) { .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        /* The shift report prints as a page of its own. */
-        @media print {
-          .app-shell, .skip-link { display: none !important; }
-          body { background: #fff !important; }
-          .report-overlay { position: static !important; overflow: visible !important; background: #fff !important; }
-          .report-actions { display: none !important; }
-          .report-overlay .sim-card, .report-overlay > div > div { break-inside: avoid; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .live-dot { animation: none; }
-          .sim-tile, .sim-alert-row { transition: none; }
-          .sim-tile:hover { transform: none; }
-        }
-      `}</style>
+      <style>{APP_CSS}</style>
 
       <div className="app-shell">
-        <aside className="app-rail" aria-label="Primary navigation">
-          <div style={{
-            width: 34, height: 34, borderRadius: 9, background: C.primary, color: C.onPrimary,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-          }} onClick={() => { if (logoBurst()) announce('credits'); }}>
-            <IconShield size={18} strokeWidth={2} />
-          </div>
-
-          <nav aria-label="Console sections" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'dashboard'}
-              onClick={() => setView('dashboard')}
-              aria-current={shift.view === 'dashboard' ? 'page' : undefined}
-              title="Dashboard"
-              aria-label="Dashboard"
-            >
-              <IconDashboard size={19} />
-            </button>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'queue'}
-              onClick={() => setView('queue')}
-              aria-current={shift.view === 'queue' ? 'page' : undefined}
-              title="Alert queue"
-              aria-label="Alert queue"
-            >
-              <IconInbox size={19} />
-              {queue.length - closedCases.length > 0 && (
-                <span className="rail-count">{queue.length - closedCases.length}</span>
-              )}
-            </button>
-            <div role="separator" aria-hidden="true" style={{ height: 1, background: C.border, margin: '4px 6px' }} />
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'triage'}
-              onClick={() => setView('triage')}
-              aria-current={shift.view === 'triage' ? 'page' : undefined}
-              title="Alert triage"
-              aria-label="Alert triage"
-            >
-              <IconClipboardPulse size={19} />
-            </button>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'fasttriage'}
-              onClick={() => setView('fasttriage')}
-              aria-current={shift.view === 'fasttriage' ? 'page' : undefined}
-              title="Fast triage"
-              aria-label="Fast triage"
-            >
-              <IconStopwatch size={19} />
-            </button>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'redops'}
-              onClick={() => setView('redops')}
-              aria-current={shift.view === 'redops' ? 'page' : undefined}
-              title="Red Ops"
-              aria-label="Red Ops"
-            >
-              <IconCrosshair size={19} />
-            </button>
-            <div role="separator" aria-hidden="true" style={{ height: 1, background: C.border, margin: '4px 6px' }} />
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'progress'}
-              onClick={() => setView('progress')}
-              aria-current={shift.view === 'progress' ? 'page' : undefined}
-              title="Your progress"
-              aria-label="Your progress"
-            >
-              <IconTrendingUp size={19} />
-            </button>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'leaderboard'}
-              onClick={() => setView('leaderboard')}
-              aria-current={shift.view === 'leaderboard' ? 'page' : undefined}
-              title="Leaderboard"
-              aria-label="Leaderboard"
-            >
-              <IconTrophy size={19} />
-            </button>
-            <div role="separator" aria-hidden="true" style={{ height: 1, background: C.border, margin: '4px 6px' }} />
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'team'}
-              onClick={() => setView('team')}
-              aria-current={shift.view === 'team' ? 'page' : undefined}
-              title="Security org"
-              aria-label="Security org"
-            >
-              <IconUsers size={19} />
-            </button>
-            <button
-              type="button"
-              className="rail-nav-btn"
-              data-active={shift.view === 'settings'}
-              onClick={() => setView('settings')}
-              aria-current={shift.view === 'settings' ? 'page' : undefined}
-              title="Settings"
-              aria-label="Settings"
-            >
-              <IconSettings size={19} />
-            </button>
-          </nav>
-
-          <div style={{ flex: 1 }} />
-
-          <IconButton
-            icon={<IconThemeHalf size={18} />}
-            title="Toggle color theme"
-            onClick={toggleTheme}
-          />
-          <IconButton icon={<IconLogOut size={17} />} title="End shift — review any handoff first (also auto-resets every 12h)" onClick={handleEndShift} />
-        </aside>
+        <AppRail
+          view={shift.view}
+          onSelectView={setView}
+          openCount={queue.length - closedCases.length}
+          onToggleTheme={toggleTheme}
+          onEndShift={handleEndShift}
+          onLogoClick={() => { if (logoBurst()) announce('credits'); }}
+        />
 
         <div className="app-content">
-      {/* Accent bar: the one piece of chrome that says "this is a console",
-          now that the shield and the nav both live in the rail. */}
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${C.primary} 0%, ${C.info} 60%, transparent 100%)` }} />
-      <header style={{
-        borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center',
-        gap: 14, background: C.surface, flexWrap: 'wrap',
-      }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 14, fontWeight: 700 }}>{COMPANY.soc} — Analyst Console</span>
-            <span className="live-dot" title="Live" />
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.success, letterSpacing: 0.5 }}>LIVE</span>
-          </div>
-          <div style={{ fontSize: 11.5, color: C.textSecondary, marginTop: 1 }}>
-            {career.rank} · {shiftHeader.window}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Badge label={`${queue.length - closedCases.length} open`} tone={TONE.primary} />
-          <Badge label={`${closedCases.length} closed`} tone={TONE.neutral} />
-          {avgScore !== null && (
-            <Badge label={`Avg ${avgScore}`} tone={avgScore >= 70 ? TONE.positive : TONE.coaching} />
-          )}
-          <Badge label={`${slaBreaches} SLA breach${slaBreaches === 1 ? '' : 'es'}`} tone={slaBreaches ? TONE.concerned : TONE.neutral} />
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 7, marginLeft: 6, paddingLeft: 12,
-            borderLeft: `1px solid ${C.border}`,
-          }}>
-            <div style={{
-              width: 26, height: 26, borderRadius: '50%', background: C.surfaceAlt, border: `1px solid ${C.border}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textSecondary,
-            }}>
-              <IconUser size={14} />
-            </div>
-            <div style={{ lineHeight: 1.25 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{COMPANY.analyst.name}</div>
-              <div style={{ fontSize: 10.5, color: C.textMuted }}>Blue: {career.rank}</div>
-              <div style={{ fontSize: 10.5, color: C.textMuted }}>Red: {redRank.rank}</div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        blueRank={career.rank}
+        redRank={redRank.rank}
+        shiftWindow={shiftHeader.window}
+        openCount={queue.length - closedCases.length}
+        closedCount={closedCases.length}
+        avgScore={avgScore}
+        slaBreaches={slaBreaches}
+      />
 
       {shift.view === 'dashboard' && (
         <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
@@ -1116,119 +679,31 @@ export default function SOCAnalystSim() {
       )}
 
       {shift.view === 'queue' && (
-      <div className="sim-body">
-        <AlertQueue
-          scenarios={queue}
-          currentId={scenario.id}
+        <CaseWorkspace
+          queue={queue}
+          scenario={scenario}
+          caseFile={caseFile}
           cases={shift.cases}
           now={now}
-          onSelect={selectScenario}
+          warRoom={shift.warRoom}
+          shiftSummary={shiftSummary}
+          redOps={shift.redOps}
+          walkthrough={walkthrough}
+          tab={tab}
+          onSelectScenario={selectScenario}
+          onEndShift={handleEndShift}
+          onSkipToDebrief={handleSkipToDebrief}
+          onToggleWalkthrough={toggleWalkthrough}
+          onSetTab={setTab}
+          onAskTier2={handleAskTier2}
+          onSearch={handleSearch}
+          onDecode={handleDecode}
+          onLookup={handleLookup}
+          onAct={handleAct}
+          onFormChange={handleForm}
+          onSubmit={handleSubmit}
+          onRetry={handleRetry}
         />
-
-        <main className="sim-main">
-          {shift.warRoom && !shift.cases[shift.warRoom.scenarioId]?.result && (
-            <Card tone={TONE.concerned} style={{ padding: '14px 18px', marginBottom: 20 }}>
-              <SectionLabel style={{ marginBottom: 10 }}>War room — this shift just escalated</SectionLabel>
-              <PersonaMessage
-                persona={generateWarRoomAlert(
-                  SCENARIOS.find((s) => s.id === shift.warRoom.sourceId) || scenario
-                )}
-              />
-            </Card>
-          )}
-
-          {shiftSummary && <ShiftSummary summary={shiftSummary} onReset={handleEndShift} />}
-
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 14 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-                <code style={{ fontFamily: MONO, fontSize: 11.5, color: C.textMuted }}>{scenario.alert.ref}</code>
-                <Badge label={scenario.alert.reportedSeverity} tone={severityTone(scenario.alert.reportedSeverity)} />
-                <Badge
-                  label={closed ? 'Closed' : status === 'in_progress' ? 'In progress' : 'New'}
-                  tone={closed ? TONE.neutral : status === 'in_progress' ? TONE.coaching : TONE.primary}
-                />
-                <span style={{ fontFamily: MONO, fontSize: 11.5, color: sla.breached ? C.danger : C.textMuted }}>
-                  {formatDuration(elapsed)} {closed ? 'to decision' : 'open'} · SLA {scenario.alert.slaMinutes}m
-                </span>
-              </div>
-              <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.35 }}>{scenario.queueLabel}</h1>
-              <div style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>{scenario.alert.rule}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-              {!closed && (
-                <Button
-                  variant="ghost"
-                  onClick={handleSkipToDebrief}
-                  title="Demo shortcut — auto-fills the correct answer and jumps to Debrief. Doesn't count toward your stats."
-                >
-                  <IconSparkles size={14} /> Skip to debrief
-                </Button>
-              )}
-              <Button
-                variant={walkthrough ? 'primary' : 'secondary'}
-                onClick={toggleWalkthrough}
-                aria-expanded={walkthrough}
-              >
-                {walkthrough ? <><IconGraduationCap size={14} /> Hide walkthrough</> : <><IconGraduationCap size={14} /> Learn mode</>}
-              </Button>
-            </div>
-          </div>
-
-          <Tabs tabs={tabs} active={tab} onSelect={setTab} />
-
-          <div style={{ marginTop: 20 }}>
-            {tab === 'overview' && (
-              <OverviewTab
-                key={scenario.id}
-                scenario={scenario}
-                showWalkthrough={walkthrough}
-                caseFile={caseFile}
-                closed={closed}
-                onAskTier2={handleAskTier2}
-              />
-            )}
-            {tab === 'investigate' && (
-              <InvestigateTab
-                scenario={scenario}
-                caseFile={caseFile}
-                onSearch={handleSearch}
-                onDecode={handleDecode}
-                readOnly={closed}
-              />
-            )}
-            {tab === 'intel' && <IntelTab caseFile={caseFile} onLookup={handleLookup} readOnly={closed} />}
-            {tab === 'respond' && (
-              <RespondTab scenario={scenario} caseFile={caseFile} onAct={handleAct} readOnly={closed} />
-            )}
-            {tab === 'report' && (
-              <ReportTab
-                scenario={scenario}
-                caseFile={caseFile}
-                form={caseFile.form}
-                onChange={handleForm}
-                onSubmit={handleSubmit}
-                disabled={closed}
-              />
-            )}
-            {tab === 'debrief' && closed && (
-              <DebriefTab scenario={scenario} result={result} onRetry={handleRetry} timeline={caseFile.timeline} actions={caseFile.actions} redOps={shift.redOps} />
-            )}
-          </div>
-        </main>
-
-        <aside className="sim-rail" aria-label="Case timeline">
-          <SectionLabel>Case notes · {scenario.alert.ref}</SectionLabel>
-          <CaseTimeline entries={caseFile.timeline} />
-          {closed && (
-            <Card style={{ padding: 12, marginTop: 16 }} tone={isResolvedCorrectly(result.score) ? TONE.positive : TONE.coaching}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: isResolvedCorrectly(result.score) ? C.success : C.warning }}>
-                {isResolvedCorrectly(result.score) ? 'Resolved correctly' : 'Needs improvement'} · {result.score.overallScore}/100
-              </div>
-            </Card>
-          )}
-        </aside>
-      </div>
       )}
         </div>
       </div>
