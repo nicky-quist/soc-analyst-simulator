@@ -2,7 +2,7 @@
 
 A working replica of a Tier-1 analyst console, built to practice the whole shift rather than a quiz about it: a shift dashboard shows you what the estate is doing, alerts arrive in a queue with SLA clocks running, you investigate by typing your own searches against simulated data sources, enrich indicators you pull out of the evidence yourself, take real response actions that can help or make things worse, and write the incident report — at a fictional bank, Coastal Trust Bank, with a CISO, a CEO, an IR lead and an employment lawyer who react to what you actually did.
 
-Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 searches over 240 events, 94 response actions of which 38 are mistakes.
+Fourteen alert scenarios dealt seven to a shift, 25 searchable data sources, 69 searches over 261 events, 102 response actions of which 41 are mistakes.
 
 Eight destinations in the side rail, in the order an analyst uses them:
 
@@ -39,7 +39,7 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 
 **Alert queue** — seven alerts with status (New / In progress / Closed), the tool's reported severity, and a live SLA countdown that goes red when breached. Shift KPIs sit in the header too, so the numbers follow you out of the dashboard.
 
-**A dealt hand, not a fixed list.** The library holds thirteen scenarios and a shift deals seven of them, seeded from when the shift started, so a second sitting is a different queue in a different order. The deal is not a straight random draw: every hand is guaranteed at least one alert that should be closed rather than escalated, at least one that has to reach IR tonight, at least two that belong with Tier 2, and a spread of difficulty — because a queue of seven true positives quietly teaches an analyst to escalate everything. Scenarios you were just dealt are also weighted down (not excluded) the next time around, so back-to-back shifts don't keep landing on the same handful of alerts the way an unweighted shuffle does in a library this size.
+**A dealt hand, not a fixed list.** The library holds fourteen scenarios and a shift deals seven of them, seeded from when the shift started, so a second sitting is a different queue in a different order. The deal is not a straight random draw: every hand is guaranteed at least one alert that should be closed rather than escalated, at least one that has to reach IR tonight, at least two that belong with Tier 2, and a spread of difficulty — because a queue of seven true positives quietly teaches an analyst to escalate everything. Scenarios you were just dealt are also weighted down (not excluded) the next time around, so back-to-back shifts don't keep landing on the same handful of alerts the way an unweighted shuffle does in a library this size.
 
 **The same case doesn't play the same twice.** Every scenario also re-rolls its cosmetic identifiers each shift — the attacker's IP, the compromised hostname, a service account name, a phishing domain — deterministically, so reloading mid-shift never changes them out from under you, but the ssh-brute-force case you solved last week has a different address and host this time. Only pure labels move; nothing the report rubric or the narrative actually reasons about (byte counts, record counts, a key's age) ever changes. **End shift** (the rail's rotate icon) deals the next hand — if anything is still open or escalated, it stops first for a review of exactly who that goes to (Tier 2, IR, or just the next shift) before dealing.
 
@@ -63,7 +63,7 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 
 **Red Ops** — play the attacker side of three scenarios (a choice-driven walkthrough of the attack's real decision points, never freeform commands or payloads), get an evasion score against the same `TACTIC_COVERAGE` numbers the Dashboard uses, then defend the same incident from the blue side and see a head-to-head comparison on the debrief screen.
 
-**War Room** — a hidden fourteenth alert that is never dealt. If you close the ransomware-precursor case with a required containment step missing, or with a harmful action taken, the shift escalates mid-flight: a 5-minute CRITICAL alert for mass file encryption on the finance file server is injected into your live queue, correlated back to the case that caused it (same C2 address, same host). Only one War Room can be active per shift, and a War Room alert can't trigger another, so a bad night gets one escalation rather than a chain reaction. The trigger is deterministic — exactly "did the response leave the threat live" — with no dice roll.
+**War Room** — an extra alert outside the dealt library, never dealt directly. If you close the ransomware-precursor case with a required containment step missing, or with a harmful action taken, the shift escalates mid-flight: a 5-minute CRITICAL alert for mass file encryption on the finance file server is injected into your live queue, correlated back to the case that caused it (same C2 address, same host). Only one War Room can be active per shift, and a War Room alert can't trigger another, so a bad night gets one escalation rather than a chain reaction. The trigger is deterministic — exactly "did the response leave the threat live" — with no dice roll.
 
 **Shift handoff** — a Dashboard panel that's always current, not generated once at shift end: any case that's still open or was escalated shows up with its findings, evidence, and what's still needed. **End shift** turns this into an actual moment instead of a silent reset — if anything needs a handoff, it stops to show exactly who picks it up (Jordan Reyes for Tier 2, Marcus Bell for IR, or the next shift's analyst for anything nobody escalated) before dealing the next hand.
 
@@ -91,6 +91,8 @@ This is the part the sim is actually about. All of these are live:
 | Delete the IAM user instead of the key | Production ETL breaks and the audit trail stops resolving, for no extra containment. |
 | Restore a quarantined credential dumper because the admin says it is approved | The request they cite is still unapproved — you can see that in the ticket. |
 | Close a blocked detection because "the EDR handled it" | The block is not the finding. Two other hosts ran the same tool unblocked. |
+| Delete the exposed statements to stop a public bucket being read | Privacy counsel: they are records under a seven-year retention obligation, and the evidence of which three were taken is gone. Turning Block Public Access back on stopped it. |
+| Delete the deployment role that made the bad change | Platform Engineering: every pipeline, including the emergency failover, now fails, and the bucket was fixable in one click. |
 | Isolate a laptop over a file that never executed | Disruption without benefit, on the one host where nothing happened. |
 
 Harmful actions fail the case outright, whatever the report says. A correct classification followed by a damaging response is not a resolved alert.
@@ -99,7 +101,7 @@ Harmful actions fail the case outright, whatever the report says. A correct clas
 
 Every scenario has a **📖 Learn mode** walkthrough of how a senior analyst works that specific alert — which search to run and why, how to read the result, why the response order is isolate → preserve → remediate. Use it either way: study it first, or attempt the alert cold and check your reasoning afterward. Opening it before you submit tags that attempt **Assisted** in the shift record — not a penalty, just an honest label.
 
-## Scenarios (13)
+## Scenarios (14)
 
 - **SSH brute force that succeeded** — true positive, critical. Tests whether you notice the single `Accepted password` line buried after the failures, widen the time range to find the post-login activity, and connect `/etc/shadow` plus a `tar` of the MySQL directory to credential theft and data staging. The asset record also shows configuration drift: root SSH login enabled on a host that was never meant to accept SSH from the internet.
 - **Vulnerability scanner flagged as reconnaissance** — false positive. Tests whether you identify an internal source through asset inventory and the change calendar before acting, and whether you resist quarantining your own department's scanner mid-window.
@@ -114,6 +116,7 @@ Every scenario has a **📖 Learn mode** walkthrough of how a senior analyst wor
 - **Crypto miner on a CI build agent** — true positive, high, **Tier 2**. The IDS signature reads as a nuisance policy alert, but no human is in the execution chain: an npm postinstall script from a two-day-old package fetched the miner and added a SYSTEM scheduled task on a machine holding a deployment token and a signing key. The miner is the visible part; the supply-chain exposure is the case.
 - **OAuth consent phishing** — true positive, high, **Tier 2**. No malware, no failed sign-ins, no impossible travel: the user approved a real Microsoft consent screen for an unverified app, and a second user did the same nine minutes later. The access lives in a grant and a refresh token, so resetting passwords does nothing, and the audit trail (mail access, searches for "wire" and "invoice") is what shows it's real.
 - **Possible DNS tunnel from signed marketing software** — the case that should *not* be resolved. Fourteen thousand TXT queries with near-unique 48-character labels to a domain first seen three days ago is data being encoded, but the binary is signed and the domain has no reporting. The right classification is "suspicious, needs more investigation", with a precise statement of what is known and what would settle it; closing it either way is the mistake.
+- **Public S3 bucket from a Terraform change** — true positive, high, **Tier 2**, and the mirror image of the leaked-key case. The CSPM says CRITICAL, confidential data, publicly accessible; the access log says one scanner listed the bucket, downloaded three 2019 statements, and was refused on newer years. The bucket policy opens `ListBucket` on everything but `GetObject` only on one prefix, so the exposure is real and narrow. The cause was a reviewed plan nobody read and a policy check set to warn instead of block. The traps are overreactions: deleting the exposed statements breaks a retention obligation, deleting the deploy role stops every deployment, and emailing customers first commits the bank before Privacy has chosen a position.
 
 ## Grading
 
@@ -128,7 +131,7 @@ A case is scored on four things, because a shift is judged on four things:
 | Written report rubric | 25 |
 | Response actions taken | 15 |
 
-**"✓ Resolved correctly"** requires the right classification and escalation — and the correct escalation is not always upward: across the thirteen scenarios the right answer is IR seven times, Tier 2 four times, and close-without-escalating twice, so over-escalating is a scored error too. It also requires a severity that isn't wildly off, a report complete enough to hand over, and no harmful action. **Investigation coverage**, **time to decision**, and **search efficiency** are reported next to the score but deliberately excluded from it — the score grades the case, and folding process into it hides which one you actually got wrong. The CISO covers the process instead: getting the right answer without running the checks earns "right answer, wrong process."
+**"✓ Resolved correctly"** requires the right classification and escalation — and the correct escalation is not always upward: across the fourteen scenarios the right answer is IR seven times, Tier 2 five times, and close-without-escalating twice, so over-escalating is a scored error too. It also requires a severity that isn't wildly off, a report complete enough to hand over, and no harmful action. **Investigation coverage**, **time to decision**, and **search efficiency** are reported next to the score but deliberately excluded from it — the score grades the case, and folding process into it hides which one you actually got wrong. The CISO covers the process instead: getting the right answer without running the checks earns "right answer, wrong process."
 
 ## Progress across shifts
 
@@ -140,9 +143,9 @@ The record is kept honest on purpose:
 - **Learn mode excludes a case.** Opening the walkthrough means the evidence was pointed out, not found.
 - **One bad case is not a weakness.** Rates are smoothed, and a skill needs four scored cases before it can be named.
 
-**The adaptive deal.** Once a skill is consistently weak, the next shift is weighted toward scenarios that exercise it, and the dashboard says so. Each rule targets what trips that skill rather than anything related to it. Most of the library needs escalating, so an under-escalator is dealt the cases whose alert *undersells* them (reported MEDIUM, really CRITICAL), not simply cases that need escalating. For severity, it's the alerts reported two or more steps off. Where the library doesn't vary on anything that predicts a skill (ten of thirteen scenarios need exactly four checks, for example), the only signal used is which scenarios you slipped on before. It's a weighting, not a filter, so the mix quotas still hold on every focused shift, and the tests check that each rule moves its main target's chance of being dealt by at least 0.10.
+**The adaptive deal.** Once a skill is consistently weak, the next shift is weighted toward scenarios that exercise it, and the dashboard says so. Each rule targets what trips that skill rather than anything related to it. Most of the library needs escalating, so an under-escalator is dealt the cases whose alert *undersells* them (reported MEDIUM, really CRITICAL), not simply cases that need escalating. For severity, it's the alerts reported two or more steps off. Where the library doesn't vary on anything that predicts a skill (eleven of fourteen scenarios need exactly four checks, for example), the only signal used is which scenarios you slipped on before. It's a weighting, not a filter, so the mix quotas still hold on every focused shift, and the tests check that each rule moves its main target's chance of being dealt by at least 0.10.
 
-The focus is decided when a shift is dealt and stored with it. The queue is re-derived from the shift on every load, so reading live history instead would re-deal a different hand the moment you closed a case, and drop your open ones. A golden file of 900 hands pins the unfocused deal, so a shift saved before this feature existed re-deals to exactly the same queue.
+The focus is decided when a shift is dealt and stored with it. The queue is re-derived from the shift on every load, so reading live history instead would re-deal a different hand the moment you closed a case, and drop your open ones. A golden file of 900 hands pins the unfocused deal so it can't drift unnoticed. It is regenerated, deliberately, whenever the library grows, which re-deals any shift saved before that change.
 
 ## Fast triage
 
@@ -153,7 +156,7 @@ A run deals 20 alert cards from a pool of 36 and gives you 12 minutes. Each card
 - **Guaranteed mix.** Every run has 9 closes, 7 Tier 2 and 4 IR, so it can't turn into a queue of true positives. It also always includes at least two alerts that *read scary but are benign* (an authorized scanner, a VPN egress, a live red-team engagement) and two that *read routine but are real* (a hidden inbox rule, a web shell rated MEDIUM). Those are the two ways triage goes wrong.
 - **Cost-weighted score, not a percent.** The costs aren't symmetric: closing an IR-worthy alert costs 3, sending a benign one to Tier 2 costs 0.5. The score is 100 minus the share of the worst possible cost. Alerts you never reached count as a backlog, not as correct.
 - **Closing a live threat caps the grade at C**, whatever the rest of the run looked like, the same rule the main sim applies to a damaging response after a correct report.
-- **Kept honest.** Runs are seeded, so the deal is reproducible from its seed and varies across seeds; only finished runs are saved (last 20, in local storage); refreshing mid-run abandons it.
+- **Kept honest.** Runs are seeded, so the deal is reproducible from its seed and varies across seeds; only finished runs are saved (last 20, in local storage); refreshing mid-run abandons it; **Reset everything** on the Dashboard clears them along with the rest.
 
 ## Alert triage
 
@@ -207,7 +210,7 @@ src/
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          276 tests across 15 files (triage/ holds the Triage engine's)
+tests/          279 tests across 15 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
@@ -216,8 +219,8 @@ The engines are unit-tested with Node's built-in test runner — no test framewo
 npm test
 ```
 
-The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually. The progress suite checks that the record only counts first, unassisted attempts, that no weakness is named from too few cases, that a focused shift still keeps every quota, that each focus rule lifts its target's chance of being dealt by at least 0.10, and that the unfocused deal still matches the golden file of hands from before the feature existed.
+The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually. The progress suite checks that the record only counts first, unassisted attempts, that no weakness is named from too few cases, that a focused shift still keeps every quota, that each focus rule lifts its target's chance of being dealt by at least 0.10, and that the unfocused deal still matches its golden file of 900 hands.
 
-Fast triage has 15 tests: the pool is well-formed, every one of 300 seeded runs keeps its mix and both trap types, every alert is eventually dealt, a perfect run scores 100, closing everything scores worse than escalating everything, and one missed IR page caps an otherwise clean run at C.
+Fast triage has 18 tests: the pool is well-formed, every one of 300 seeded runs keeps its mix and both trap types, every alert is eventually dealt, a perfect run scores 100, closing everything scores worse than escalating everything, one missed IR page caps an otherwise clean run at C, and saved runs round-trip and are cleared by Reset everything.
 
 The Triage engine has 126 tests of its own. They check each format's verdicts and the relative ordering of severities, the input-rejection rules, and a contract that must hold for every input: every field present, values in range, the same verdict every time, no crash on hostile input, and no network call.

@@ -103,6 +103,12 @@ const IDEAL = {
     remediation:
       'Sinkhole the domain at the resolver so the channel stops while the host and the sample stay intact, and preserve the three days of query labels with the case. Tier 2 to decode a sample and contact the vendor before any decision to remove the software.',
   },
+  'cloud-public-bucket': {
+    summary:
+      'A Terraform change under CHG-4507 was meant for the marketing bucket ctb-public-assets but ran against ctb-statements-archive, removing Block Public Access and adding a public bucket policy. The whole bucket was listable, but only the 2019 legacy prefix was readable. One external address, 193.32.162.11, a bucket scanner, listed it and downloaded three 2019 statements before newer years returned 403, so the PII of three customers left the bucket and nothing else did. The plan was approved without anyone opening the resource list, and the OPA policy check was warn-only so it did not block the change.',
+    remediation:
+      'Restore Block Public Access and remove the public bucket policy, preserve the CloudTrail and S3 access logs before they age out, and hand to Tier 2 with Privacy to assess notification for the three customers. Make the policy check blocking and require a reviewer to read the plan.',
+  },
 };
 
 function idealSubmission(scenario) {
