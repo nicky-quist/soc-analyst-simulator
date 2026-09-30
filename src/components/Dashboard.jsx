@@ -232,7 +232,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
         </Panel>
 
         <Panel title="Alert volume — last 24 hours" icon={<IconActivity size={13} />} hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
-          <StackedBars data={hourlyVolume} keys={['low', 'medium', 'high', 'critical']} height={150} />
+          <StackedBars data={hourlyVolume} keys={['low', 'medium', 'high', 'critical']} height={150} currentIndex={hourlyVolume.length - 1} />
           <Legend items={[
             { label: 'Critical', color: CHART_COLORS.critical, value: hourlyVolume.reduce((s, h) => s + h.critical, 0) },
             { label: 'High', color: CHART_COLORS.high, value: hourlyVolume.reduce((s, h) => s + h.high, 0) },

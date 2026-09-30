@@ -18,30 +18,49 @@ function formatHour12(hourStr) {
   return `${twelve}${period}`;
 }
 
-export function StackedBars({ data, keys, height = 150, xKey = 'hour' }) {
+// currentIndex marks the bar for the present moment: a tinted column behind it,
+// its time on the axis like every other label, and a "Now" tag beneath, so the
+// chart reads as a full day ending at the hour you are in.
+export function StackedBars({ data, keys, height = 150, xKey = 'hour', currentIndex = null }) {
   const width = 720;
-  const padBottom = 18;
+  const padBottom = currentIndex === null ? 18 : 30;
   const barGap = 3;
   const barWidth = (width - (data.length - 1) * barGap) / data.length;
   const max = Math.max(...data.map((d) => keys.reduce((sum, k) => sum + (d[k] || 0), 0)), 1);
   const plot = height - padBottom;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label="Alert volume by hour">
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label={currentIndex === null ? 'Alert volume by hour' : 'Alert volume by hour, the last bar is the current hour'}>
       {data.map((row, i) => {
         const x = i * (barWidth + barGap);
         let y = plot;
         return (
           <g key={row[xKey]}>
+            {i === currentIndex && (
+              <rect x={x - barGap / 2} y={0} width={barWidth + barGap} height={plot} fill={C.primarySoft} rx="2" />
+            )}
             {keys.map((key) => {
               const value = row[key] || 0;
               const h = (value / max) * (plot - 4);
               y -= h;
               return <rect key={key} x={x} y={y} width={barWidth} height={h} fill={CHART_COLORS[key]} rx="1" />;
             })}
-            {i % 3 === 0 && (
-              <text x={x + barWidth / 2} y={height - 5} textAnchor="middle" fontSize="10" fill={C.textMuted} fontFamily={MONO}>
+            {(i % 3 === 0 || i === currentIndex) && (
+              <text
+                x={x + barWidth / 2}
+                y={currentIndex === null ? height - 5 : height - 17}
+                textAnchor="middle"
+                fontSize="10"
+                fontWeight={i === currentIndex ? 700 : 400}
+                fill={i === currentIndex ? C.primaryStrong : C.textMuted}
+                fontFamily={MONO}
+              >
                 {xKey === 'hour' ? formatHour12(row[xKey]) : row[xKey]}
+              </text>
+            )}
+            {i === currentIndex && (
+              <text x={x + barWidth / 2} y={height - 5} textAnchor="middle" fontSize="9" fontWeight="700" fill={C.primaryStrong} fontFamily={MONO}>
+                NOW
               </text>
             )}
           </g>
