@@ -29,3 +29,8 @@ dist-ssr
 
 # Working frames the README clip is built from (regenerate with scripts/capture-docs.mjs)
 docs/img/frames/
+
+# Loose exports in the project root: printed shift reports and a copy of the
+# preview image that public/social-preview.jpg already ships.
+/SEA SOC*.pdf
+/social-preview.jpg
