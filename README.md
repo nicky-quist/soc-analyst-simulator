@@ -28,7 +28,7 @@ Short on time? **Skip to debrief** on any case shows a fully graded example.
 - **You find the evidence.** Nothing is clickable. You type the search, choose the index and widen the window. A mistyped octet, the wrong index and the default time range each return "0 events" with a specific, different diagnosis.
 - **Response actions can hurt.** There are 125 of them across the library and 51 are mistakes: rebooting a compromised host, isolating your own scanner, deleting the evidence, blackholing your own origin. The people affected reply in character, and a harmful action fails the case whatever the report says.
 - **Grading you can audit.** It's rubric-based and deterministic, with no LLM in the loop. A test builds a textbook-perfect report for every scenario and requires exactly 100, which catches any rubric point that has quietly become unreachable.
-- **Both sides of the table, and a career.** Seventeen Blue Team scenarios, four Red Ops operations you play from the attacker's chair, a timed volume-triage mode, ranks you earn by breadth and not by volume, and four leaderboards against a fictional SOC roster.
+- **Both sides of the table, and a career.** Seventeen Blue Team scenarios, six Red Ops operations you play from the attacker's chair, a timed volume-triage mode, ranks you earn by breadth and not by volume, and four leaderboards against a fictional SOC roster.
 
 ## A look around
 
@@ -45,7 +45,7 @@ It also works on a phone (checked at 375px wide and on a short landscape screen)
 
 ## By the numbers
 
-17 scenarios · 31 searchable data sources · 82 searches over 317 events · 125 response actions · 4 Red Ops operations · 36 Fast Triage cards · 20 hidden secrets · 383 automated tests
+17 scenarios · 31 searchable data sources · 82 searches over 317 events · 125 response actions · 6 Red Ops operations · 36 Fast Triage cards · 20 hidden secrets · 383 automated tests
 
 ## Run it
 

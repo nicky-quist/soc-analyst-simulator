@@ -12,7 +12,7 @@ The side rail is grouped the way an analyst uses it: the shift itself, practice,
 | **Alert queue** | Work the shift's seven cases: investigate, enrich, respond, write the report, get graded |
 | **Alert triage** | Paste any alert or log line and get a first-pass read: format, severity, ATT&CK, indicators, next step |
 | **Fast triage** | Twenty noise-heavy alert cards against a 12-minute clock: close, send to Tier 2, or page IR, with no feedback until the run ends |
-| **Red Ops** | Run the attacker side of four scenarios as a live operation while the SOC reacts to each move, then defend the same incident and see who won |
+| **Red Ops** | Run the attacker side of six scenarios as a live operation while the SOC reacts to each move, then defend the same incident and see who won |
 | **Your progress** | Your record across shifts, your career rank, and what the next shift will practice |
 | **Leaderboard** | Four separate boards, Blue Team, Red Team, Fast Triage and Secrets, ranking you against the fictional SEA SOC roster |
 | **Security org** | The org chart as a Teams-style contact grid — who's online, their role, and a live presence status derived from real shift state |
@@ -52,7 +52,7 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 
 **Fast triage** — the volume half of the job. See [Fast triage](#fast-triage) below.
 
-**Red Ops** — run the attacker side of four scenarios as a live operation (choices at the attack's real decision points, never freeform commands or payloads). The SOC reacts to every move as you make it:
+**Red Ops** — run the attacker side of six scenarios as a live operation (choices at the attack's real decision points, never freeform commands or payloads). The SOC reacts to every move as you make it:
 
 - **Caught or slipped past, revealed immediately.** A move is caught when it is quieter than 60% of that tactic's real detection coverage (the same `TACTIC_COVERAGE` numbers the Dashboard shows). It's a comparison, not a dice roll, and a meter shows your stealth against the detection line.
 - **The SOC's alertness compounds.** Each caught move raises it one step (Unaware, Alert queued, Analyst investigating), and every later move is 8 stealth points louder per step. The third catch burns the operation.

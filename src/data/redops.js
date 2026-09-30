@@ -218,6 +218,108 @@ export const RED_OPS = {
       },
     ],
   },
+
+  'cloud-public-bucket': {
+    crew: 'Bucket sweeper (opportunistic scanner, no named affiliation)',
+    objective: 'Find a cloud storage bucket that someone made public by mistake, and take whatever it lets you read before the owner notices the exposure.',
+    stages: [
+      {
+        id: 'initial-access',
+        label: 'Initial access',
+        tactic: 'Initial Access',
+        prompt: 'How do you find an exposed bucket?',
+        choices: [
+          { id: 'brute-names', label: 'Hammer thousands of guessed bucket names from one address', stealth: 20, note: 'Every miss is an AccessDenied or NoSuchBucket line in someone\'s access logs, all from one source. It is the loudest way to look.' },
+          { id: 'low-rate-sweep', label: 'Sweep many organizations\' likely bucket names at a low rate and list whichever answers', stealth: 45, canonical: true, note: 'This is what actually happened: one hosting-provider address listed the bucket. Slow enough to look like background noise, but the bank\'s own CSPM caught the exposure on its next three-hourly evaluation, whatever the sweep looked like.' },
+          { id: 'public-index', label: 'Query a public index of exposed buckets that someone else already built', stealth: 70, note: 'You never touch the target until you already know it is open, so the first request it sees looks like an ordinary read. The catch is that everyone else with the same index is racing you to the same bucket.' },
+        ],
+      },
+      {
+        id: 'discovery',
+        label: 'Discovery',
+        tactic: 'Discovery',
+        prompt: 'What do you learn about the bucket once you are in?',
+        choices: [
+          { id: 'probe-writes', label: 'Test whether you can write, delete or read the ACLs', stealth: 15, note: 'Write and permission calls are the ones that get alerts. Here they would also fail, because the policy only opens list and one read prefix.' },
+          { id: 'list-all', label: 'Page through the full listing (14 pages of keys)', stealth: 40, canonical: true, note: 'One anonymous ListBucket, fully logged, and it hands you a customer ID in every object key. It is the most useful read-only call you can make.' },
+          { id: 'guess-keys', label: 'Skip the listing and request keys you can guess from the naming pattern', stealth: 65, note: 'No list call ever shows up in the access log. You will miss whatever does not follow the pattern.' },
+        ],
+      },
+      {
+        id: 'collection',
+        label: 'Collection',
+        tactic: 'Collection',
+        prompt: 'What do you pull?',
+        choices: [
+          { id: 'crawl-2019', label: 'Download every object under the readable 2019 prefix (214 files)', stealth: 25, note: 'A burst of a couple of hundred GETs from one anonymous address is a volume pattern any S3 log alert is written for.' },
+          { id: 'sample-three', label: 'Pull three statements from the 2019 prefix to see what they are', stealth: 50, canonical: true, note: 'Three GETs in ten seconds. Small enough to hide in the noise of the bucket\'s traffic, and enough to know whether the data is worth more effort.' },
+          { id: 'head-only', label: 'Send HEAD requests only, to read sizes and dates without taking anything', stealth: 65, note: 'You learn what is readable without a single byte leaving. Nothing is copied that anyone could later say was stolen.' },
+        ],
+      },
+      {
+        id: 'exfiltration',
+        label: 'Exfiltration',
+        tactic: 'Exfiltration',
+        prompt: 'The 2019 prefix is readable. What do you do about the newer years?',
+        choices: [
+          { id: 'hammer-prefixes', label: 'Try every prefix and year, hundreds of guesses, until something opens', stealth: 15, note: 'A run of 403s from one anonymous address is a clear signal that someone is testing the edges of a policy.' },
+          { id: 'try-newer-years', label: 'Try a couple of newer years directly, then stop when they refuse', stealth: 35, canonical: true, note: 'Two 403s in one minute. The refusals are logged and anyone reading the log sees exactly what you tried. The rest of the bucket stays private, so the exposure is three files, not 41,880.' },
+          { id: 'stop-with-sample', label: 'Stop here with what you already have', stealth: 70, note: 'Nothing else is requested, so nothing else looks unusual. You leave with a small sample and no way back in once the policy is fixed.' },
+        ],
+      },
+    ],
+  },
+
+  'ddos-origin-bypass': {
+    crew: 'Stresser-for-hire customer (rented botnet, no named crew)',
+    objective: 'Take a bank\'s mobile API offline by flooding it, and find the hostname its DDoS mitigation was never set up to cover.',
+    stages: [
+      {
+        id: 'discovery',
+        label: 'Discovery',
+        tactic: 'Discovery',
+        prompt: 'How do you find where the bank\'s servers actually live?',
+        choices: [
+          { id: 'scan-netblocks', label: 'Scan the bank\'s published address ranges for open web ports', stealth: 15, note: 'Port scanning against a bank\'s ranges is one of the most monitored behaviors on the internet, and you would get noise from every scrubbed address as well.' },
+          { id: 'historical-dns', label: 'Look up old DNS records and certificate logs for hostnames that pre-date the CDN', stealth: 60, canonical: true, note: 'Entirely passive, and it works because api-legacy has had a record pointing straight at its origin for five years. The bank never sees the lookup.' },
+          { id: 'trigger-errors', label: 'Send malformed requests to the mobile app\'s API to make an error page leak a server address', stealth: 45, note: 'Cheaper than scanning, but each malformed request is a logged event on a hostname the bank does watch.' },
+        ],
+      },
+      {
+        id: 'defense-evasion',
+        label: 'Defense evasion',
+        tactic: 'Defense Evasion',
+        prompt: 'Where does the traffic come from?',
+        choices: [
+          { id: 'few-hosting-ips', label: 'A few hundred servers in one hosting provider', stealth: 15, note: 'One network block sending this much is what an edge blocklist is made for, and it removes the attack in one rule.' },
+          { id: 'wide-botnet', label: 'A rented botnet spread across residential addresses worldwide', stealth: 45, canonical: true, note: 'No source stands out in NetFlow. Blocking the top hundred, or a country, removes almost nothing and would catch real customers, so the defenders end up needing a structural fix.' },
+          { id: 'rotate-proxies', label: 'Rotate through a large pool of proxies, changing sources every few minutes', stealth: 60, note: 'Anything that gets blocked is gone within minutes, and it costs you far more than the botnet does.' },
+        ],
+      },
+      {
+        id: 'impact',
+        label: 'Impact',
+        tactic: 'Impact',
+        prompt: 'How hard do you hit the origin?',
+        choices: [
+          { id: 'full-burst', label: 'Everything at once, from the first minute', stealth: 20, note: 'A step change to a huge request rate is the signature every volumetric detection looks for.' },
+          { id: 'cache-bust-flood', label: 'A sustained flood with a unique query string on every request, so nothing can be cached', stealth: 30, canonical: true, note: 'It reached 2.7 million requests a minute, and the bank\'s tooling engaged automatically within minutes. The catch was real, but the tool only covered the hostnames it knew about.' },
+          { id: 'ramp-slowly', label: 'Ramp up over twenty minutes so it looks like a traffic surge', stealth: 55, note: 'Slower to hurt, but it stays under the anomaly baseline long enough for the origin to start failing before anything fires.' },
+        ],
+      },
+      {
+        id: 'persistence',
+        label: 'Persistence',
+        tactic: 'Persistence',
+        prompt: 'The defenders move the record behind the CDN. What do you do?',
+        choices: [
+          { id: 'keep-flooding', label: 'Keep flooding the old address as if nothing changed', stealth: 15, note: 'Traffic to an address that now blocks everything but the provider\'s ranges is just noise the mitigation absorbs. It also makes your source list an easy blocklist.' },
+          { id: 'watch-dns', label: 'Watch the record for a change and resolve it again the moment it moves', stealth: 55, canonical: true, note: 'Ordinary DNS lookups, which nobody watches. They tell you the moment the bypass is closed and the origin is no longer worth the rent.' },
+          { id: 'walk-away', label: 'Stop and leave the botnet idle', stealth: 70, note: 'Nothing left running means nothing to find, and the rental clock stops.' },
+        ],
+      },
+    ],
+  },
 };
 
 export function redOpsFor(scenarioId) {
