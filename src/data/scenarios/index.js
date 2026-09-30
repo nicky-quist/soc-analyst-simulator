@@ -35,6 +35,7 @@ import dnsTunnelSuspected from './dns-tunnel-suspected.js';
 import cloudPublicBucket from './cloud-public-bucket.js';
 import ddosOriginBypass from './ddos-origin-bypass.js';
 import vendorRmmCompromise from './vendor-rmm-compromise.js';
+import backupVendorMigration from './backup-vendor-migration.js';
 import warroomRansomwareDetonation from './warroom-ransomware-detonation.js';
 
 // The security org chart, drawn only as deep as it's actually relevant to a
@@ -96,6 +97,7 @@ export const SCENARIOS = [
   cloudPublicBucket,
   ddosOriginBypass,
   vendorRmmCompromise,
+  backupVendorMigration,
 ];
 
 // War Room follow-ons — deliberately not part of SCENARIOS/the deal pool.

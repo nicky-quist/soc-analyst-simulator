@@ -121,6 +121,12 @@ const IDEAL = {
     remediation:
       'Suspend the np-tech07 account and end its session, keeping the rest of the vendor access running, and verify with the vendor by phone on the number in the contract rather than the advisory link. Preserve the RMM and EDR logs and hand to Tier 2 to hunt the vendor session history and the earlier visit. Do not uninstall the agents or block the vendor range.',
   },
+  'backup-vendor-migration': {
+    summary:
+      'This is the nightly offsite backup job on BKP-SRV-01, not exfiltration. It has sent about 410 GB starting at 01:00 every night for 30 nights, and tonight is the same job with the same size and the same start. Only the destination changed: the backup vendor Riverbend migrated to a new address range, announced on 14 August, approved under change ticket CHG-4534 and confirmed complete last night, and the destination is registered to them. The detection fired because the allow-list was never updated for the new range. This is benign, expected activity with no incident.',
+    remediation:
+      'Close as benign and expected, and raise a request to Detection Engineering to update the allow-list for the vendor new range so it stops generating noise. Confirm with the backup owner if in doubt, and leave the transfer and the server alone.',
+  },
 };
 
 function idealSubmission(scenario) {
