@@ -4,19 +4,20 @@ A working replica of a Tier-1 analyst console, built to practice the whole shift
 
 Thirteen alert scenarios dealt seven to a shift, 24 searchable data sources, 65 searches over 240 events, 94 response actions of which 38 are mistakes.
 
-Seven destinations in the side rail, in the order an analyst uses them:
+Eight destinations in the side rail, in the order an analyst uses them:
 
 | Tab | What it's for |
 |---|---|
 | **Dashboard** | The shift at a glance: queue, SLA compliance, alert volume, the automation pipeline, ATT&CK coverage, and a live shift-handoff panel |
 | **Alert queue** | Work the shift's seven cases: investigate, enrich, respond, write the report, get graded |
 | **Triage** | Paste any alert or log line and get a first-pass read: format, severity, ATT&CK, indicators, next step |
+| **Fast triage** | Twenty noise-heavy alert cards against a 12-minute clock: close, send to Tier 2, or page IR, with no feedback until the run ends |
 | **Red Ops** | Play the attacker side of three of the scenarios, then defend the same incident you just ran and see who won |
 | **Security org** | The org chart as a Teams-style contact grid — who's online, their role, and a live presence status derived from real shift state |
 | **Your progress** | Your record across shifts, your career rank, and what the next shift will practice |
 | **Settings** | Configure the AI Coach (local Ollama or your own cloud key) without needing to close a case first |
 
-Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#redops`, `#team`, `#progress`, `#settings`), so a link can open straight onto one.
+Each tab has its own URL (`#dashboard`, `#queue`, `#triage`, `#fasttriage`, `#redops`, `#team`, `#progress`, `#settings`), so a link can open straight onto one.
 
 **[Live demo →](https://nicky-quist.github.io/soc-analyst-simulator/)**
 
@@ -58,7 +59,11 @@ The panel that matters most is the **alert pipeline**: 41.2M events → 1,284 al
 
 **Career progression** — the title in the header is earned, not a fixed label. Promotion to Tier 1 Analyst requires ten *distinct* scenario types closed at 80%+ — not raw close-count, so re-closing the same easy case across shifts doesn't count. Senior Analyst requires the full library at 80%+, no current weak skill, no escalation lean, and a clean response-action rate. A rank, once earned, is a permanent checkpoint: clearing your history or resetting everything wipes the stats that drive it but never takes the rank back.
 
+**Fast triage** — the volume half of the job. See [Fast triage](#fast-triage) below.
+
 **Red Ops** — play the attacker side of three scenarios (a choice-driven walkthrough of the attack's real decision points, never freeform commands or payloads), get an evasion score against the same `TACTIC_COVERAGE` numbers the Dashboard uses, then defend the same incident from the blue side and see a head-to-head comparison on the debrief screen.
+
+**War Room** — a hidden fourteenth alert that is never dealt. If you close the ransomware-precursor case with a required containment step missing, or with a harmful action taken, the shift escalates mid-flight: a 5-minute CRITICAL alert for mass file encryption on the finance file server is injected into your live queue, correlated back to the case that caused it (same C2 address, same host). Only one War Room can be active per shift, and a War Room alert can't trigger another, so a bad night gets one escalation rather than a chain reaction. The trigger is deterministic — exactly "did the response leave the threat live" — with no dice roll.
 
 **Shift handoff** — a Dashboard panel that's always current, not generated once at shift end: any case that's still open or was escalated shows up with its findings, evidence, and what's still needed. **End shift** turns this into an actual moment instead of a silent reset — if anything needs a handoff, it stops to show exactly who picks it up (Jordan Reyes for Tier 2, Marcus Bell for IR, or the next shift's analyst for anything nobody escalated) before dealing the next hand.
 
@@ -139,6 +144,17 @@ The record is kept honest on purpose:
 
 The focus is decided when a shift is dealt and stored with it. The queue is re-derived from the shift on every load, so reading live history instead would re-deal a different hand the moment you closed a case, and drop your open ones. A golden file of 900 hands pins the unfocused deal, so a shift saved before this feature existed re-deals to exactly the same queue.
 
+## Fast triage
+
+The seven-case shift trains depth: find the evidence, contain, write it up. **Fast triage** trains the volume side, where most alerts a human sees get about ninety seconds and the skill is reading the two lines that decide it.
+
+A run deals 20 alert cards from a pool of 36 and gives you 12 minutes. Each card shows only what a SIEM row would (source, rule, reported severity, four fields) and nothing to search. You answer **Close**, **Tier 2**, or **Page IR** (keys `1`, `2`, `3`), and you get no feedback until the run ends. Then a review lists every alert, mistakes first, with the one detail that decided it.
+
+- **Guaranteed mix.** Every run has 9 closes, 7 Tier 2 and 4 IR, so it can't turn into a queue of true positives. It also always includes at least two alerts that *read scary but are benign* (an authorized scanner, a VPN egress, a live red-team engagement) and two that *read routine but are real* (a hidden inbox rule, a web shell rated MEDIUM). Those are the two ways triage goes wrong.
+- **Cost-weighted score, not a percent.** The costs aren't symmetric: closing an IR-worthy alert costs 3, sending a benign one to Tier 2 costs 0.5. The score is 100 minus the share of the worst possible cost. Alerts you never reached count as a backlog, not as correct.
+- **Closing a live threat caps the grade at C**, whatever the rest of the run looked like, the same rule the main sim applies to a damaging response after a correct report.
+- **Kept honest.** Runs are seeded, so the deal is reproducible from its seed and varies across seeds; only finished runs are saved (last 20, in local storage); refreshing mid-run abandons it.
+
 ## Alert triage
 
 The **Triage** tab is a first-pass reader for an alert that isn't in the shift queue. Paste a raw log line or alert, and it identifies the format, scores severity with a confidence percentage, maps the activity to ATT&CK, extracts indicators, estimates how likely it is to be a false positive, and recommends a next step. The result can be exported as a `.txt` report, and the tab keeps a history of the session's analyses.
@@ -166,7 +182,7 @@ Input that's too thin to triage (a bare URL, a lone base64 blob, a fragment with
 - **Some report points are graded on what you didn't write.** The false-positive scenario checks you never recommended blocking your own scanner; the insider scenario checks you didn't state theft as established fact. Negation and hedging pass — "do not block this host" and "potential data theft pending review" are correct analyst writing; "the employee stole records" is the thing being caught.
 - **Personas are rule-based**, driven by harm caused, escalation direction, investigation coverage and severity distance rather than per-scenario scripts, so they generalize when scenarios are added. Stakeholder reactions to harmful actions live with the action itself, which is what lets a damaging click answer back immediately instead of at grading time.
 - **ATT&CK is kept because analysts really use it** — SIEM detections ship with technique IDs and case tools ask for one on every incident. It's a picker over plausible candidates rather than free text, since choosing between neighboring techniques is the actual difficulty.
-- **Roadmap**: fast-triage noise alerts alongside the seven-case deal (so volume is practiced, not just depth); a per-shift report card alongside the cross-shift progress view; extending cosmetic-identifier randomization's `variables` pattern to a couple of remaining edge cases (the C2 address baked into `malicious-powershell-precursor`'s base64 blob, a linked derived string in `mfa-push-fatigue`); an async, share-code two-player mode for Red Ops; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
+- **Roadmap**: a per-shift report card alongside the cross-shift progress view; extending cosmetic-identifier randomization's `variables` pattern to a couple of remaining edge cases (the C2 address baked into `malicious-powershell-precursor`'s base64 blob, a linked derived string in `mfa-push-fatigue`); an async, share-code two-player mode for Red Ops; more scenario categories (cloud misconfiguration, availability/DDoS); and a live-telemetry mode fed by an isolated VM lab (see `LAB_SETUP.md`) instead of static data.
 
 ## Tech
 
@@ -184,13 +200,14 @@ src/
     techniques  46-technique ATT&CK catalog for the picker
     estate      shift-wide dashboard data — seeded per shift: volume, funnel, sources, coverage, feed
     triage-samples  sample alerts and the format guide for the Triage tab
+    fasttriage  the 36-card Fast triage pool, with ground truth and the deciding detail for each
   engine/       query parser + executor, intel lookup, base64 decoder, scoring, personas, case state,
-                the shift deal, cross-shift progress and the adaptive focus, and the seeded PRNG
+                the shift deal, the Fast triage deal and scorer, cross-shift progress and the adaptive focus, and the seeded PRNG
                 everything shift-specific is drawn from
     triage/     the Triage tab's rule engine: format detection, analysis, input validation
   components/   dashboard, triage view, progress view, one module per case tab, queue, case timeline
   ui/           primitives, SVG charts, theme tokens
-tests/          261 tests across 14 files (triage/ holds the Triage engine's)
+tests/          276 tests across 15 files (triage/ holds the Triage engine's)
 ```
 
 The engines are unit-tested with Node's built-in test runner — no test framework dependency:
@@ -200,5 +217,7 @@ npm test
 ```
 
 The tests that matter most: a textbook-perfect case scores exactly 100 on every scenario (which catches a rubric point that has quietly stopped being reachable), every required search is reachable and every required intel lookup resolves (which catches a scenario whose investigation path has been broken by an edit), every scenario offers at least one way to make things worse, and each search failure mode returns its own distinguishable diagnostic. The deal has its own suite: every hand over hundreds of seeds holds its mix quotas, hands differ from each other but never mid-shift, and every scenario in the library gets dealt eventually. The progress suite checks that the record only counts first, unassisted attempts, that no weakness is named from too few cases, that a focused shift still keeps every quota, that each focus rule lifts its target's chance of being dealt by at least 0.10, and that the unfocused deal still matches the golden file of hands from before the feature existed.
+
+Fast triage has 15 tests: the pool is well-formed, every one of 300 seeded runs keeps its mix and both trap types, every alert is eventually dealt, a perfect run scores 100, closing everything scores worse than escalating everything, and one missed IR page caps an otherwise clean run at C.
 
 The Triage engine has 126 tests of its own. They check each format's verdicts and the relative ordering of severities, the input-rejection rules, and a contract that must hold for every input: every field present, values in range, the same verdict every time, no crash on hostile input, and no network call.

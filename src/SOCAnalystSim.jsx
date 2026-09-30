@@ -16,7 +16,7 @@ import { C, FONT, MONO, THEME_CSS, TONE, severityTone } from './theme.js';
 import { Badge, Button, Card, IconButton, PersonaMessage, SectionLabel, Tabs } from './ui/primitives.jsx';
 import { formatDuration } from './ui/helpers.js';
 import {
-  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconMoon, IconRotate, IconSettings, IconShield, IconSparkles, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
+  IconActivity, IconDashboard, IconGraduationCap, IconInbox, IconListChecks, IconMoon, IconRotate, IconSettings, IconShield, IconSparkles, IconSun, IconTrendingUp, IconUser, IconUsers, IconZap,
 } from './ui/icons.jsx';
 import AlertQueue from './components/AlertQueue.jsx';
 import { caseStatus, slaState } from './engine/case.js';
@@ -31,6 +31,7 @@ import DebriefTab, { ShiftSummary } from './components/DebriefTab.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import TeamTab from './components/TeamTab.jsx';
 import RedOpsView from './components/RedOpsView.jsx';
+import FastTriageView from './components/FastTriageView.jsx';
 import SettingsView from './components/SettingsView.jsx';
 import EndShiftModal from './components/EndShiftModal.jsx';
 import { buildShiftHandoff } from './engine/handoff.js';
@@ -39,7 +40,7 @@ const STORAGE_KEY = 'soc-analyst-sim:shift:v2';
 
 // The console's sections, in rail order. Each also answers to a URL hash
 // (#triage and so on), so a link can open straight onto a tab.
-const VIEWS = ['dashboard', 'queue', 'triage', 'redops', 'team', 'progress', 'settings'];
+const VIEWS = ['dashboard', 'queue', 'triage', 'fasttriage', 'redops', 'team', 'progress', 'settings'];
 
 // The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
@@ -784,6 +785,16 @@ export default function SOCAnalystSim() {
             <button
               type="button"
               className="rail-nav-btn"
+              data-active={shift.view === 'fasttriage'}
+              onClick={() => setView('fasttriage')}
+              aria-current={shift.view === 'fasttriage' ? 'page' : undefined}
+              title="Fast triage"
+            >
+              <IconListChecks size={19} />
+            </button>
+            <button
+              type="button"
+              className="rail-nav-btn"
               data-active={shift.view === 'redops'}
               onClick={() => setView('redops')}
               aria-current={shift.view === 'redops' ? 'page' : undefined}
@@ -896,6 +907,12 @@ export default function SOCAnalystSim() {
       {shift.view === 'triage' && (
         <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
           <TriageView state={triage} onChange={setTriage} />
+        </main>
+      )}
+
+      {shift.view === 'fasttriage' && (
+        <main className="sim-main" style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+          <FastTriageView />
         </main>
       )}
 
