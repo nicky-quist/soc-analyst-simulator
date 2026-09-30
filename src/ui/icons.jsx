@@ -192,8 +192,8 @@ export const IconX = (p) => (
 
 export const IconSettings = (p) => (
   <Svg {...p}>
-    <circle cx="12" cy="12" r="3.2" />
-    <path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2.1 2.1 0 1 1-3 3l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2a2.1 2.1 0 1 1-4.2 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2.1 2.1 0 1 1-3-3l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1h-.2a2.1 2.1 0 1 1 0-4.2h.1A1.7 1.7 0 0 0 4.6 8a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2.1 2.1 0 1 1 3-3l.1.1a1.7 1.7 0 0 0 1.9.3H9.4a1.7 1.7 0 0 0 1-1.6v-.2a2.1 2.1 0 1 1 4.2 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2.1 2.1 0 1 1 3 3l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1h.2a2.1 2.1 0 1 1 0 4.2h-.1a1.7 1.7 0 0 0-1.6 1z" />
+    <path d="M19.15 10.08 L21.48 10.50 L21.48 13.50 L19.15 13.92 L18.41 15.70 L19.77 17.64 L17.64 19.77 L15.70 18.41 L13.92 19.15 L13.50 21.48 L10.50 21.48 L10.08 19.15 L8.30 18.41 L6.36 19.77 L4.23 17.64 L5.59 15.70 L4.85 13.92 L2.52 13.50 L2.52 10.50 L4.85 10.08 L5.59 8.30 L4.23 6.36 L6.36 4.23 L8.30 5.59 L10.08 4.85 L10.50 2.52 L13.50 2.52 L13.92 4.85 L15.70 5.59 L17.64 4.23 L19.77 6.36 L18.41 8.30 Z" />
+    <circle cx="12" cy="12" r="3" />
   </Svg>
 );
 
@@ -201,5 +201,55 @@ export const IconSparkles = (p) => (
   <Svg {...p}>
     <path d="M12 3.5l1.6 4.2 4.2 1.6-4.2 1.6L12 15.1l-1.6-4.2-4.2-1.6 4.2-1.6L12 3.5z" />
     <path d="M19 14.5l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8.8-2.1z" />
+  </Svg>
+);
+
+// Light/dark toggle: the left half is a solid moon-side disc with a couple of
+// stars, the right half a sun with rays, so it reads as "both" and doesn't
+// flip between two icons as the theme changes.
+export const IconThemeHalf = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4.6" />
+    <path d="M12 7.4a4.6 4.6 0 0 0 0 9.2z" fill="currentColor" />
+    <path d="M16.13 6.10L17.45 4.22 M18.36 8.62L20.39 7.54 M19.20 12.00L21.50 12.00 M18.36 15.38L20.39 16.46 M16.13 17.90L17.45 19.78" />
+    <path d="M5.4 5.8v2.6M4.1 7.1h2.6" />
+    <path d="M6.2 17.6h.01" strokeWidth="2.4" />
+  </Svg>
+);
+
+// Fast triage: a stopwatch, because the whole point of the mode is the clock.
+export const IconStopwatch = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="13.5" r="7" />
+    <path d="M9.6 3h4.8M12 3v3.5" />
+    <path d="M12 13.5l3-3" />
+    <path d="M18.6 6.6l1.3-1.3" />
+  </Svg>
+);
+
+// Red Ops: crosshairs, the attacker's view of the same estate.
+export const IconCrosshair = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="6.5" />
+    <path d="M12 2.5V7M12 17v4.5M2.5 12H7M17 12h4.5" />
+    <circle cx="12" cy="12" r="0.7" fill="currentColor" />
+  </Svg>
+);
+
+// Alert triage: a clipboard with a pulse line, a first-pass read of one alert.
+export const IconClipboardPulse = (p) => (
+  <Svg {...p}>
+    <rect x="5" y="4.5" width="14" height="17" rx="2" />
+    <rect x="9" y="2.5" width="6" height="4" rx="1" />
+    <path d="M8 14h1.8l1.3-3 1.9 6 1.3-3H16" />
+  </Svg>
+);
+
+// End shift: out through the door, because that is what it is: a handoff.
+export const IconLogOut = (p) => (
+  <Svg {...p}>
+    <path d="M9.5 4H6a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 6 20h3.5" />
+    <path d="M15 8l4.5 4-4.5 4" />
+    <path d="M19.5 12H9.5" />
   </Svg>
 );
