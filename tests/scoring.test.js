@@ -127,6 +127,12 @@ const IDEAL = {
     remediation:
       'Escalate to incident response. Deactivate the deploy key, rotate every secret in scope, and pin the Action to a full commit hash so a moved tag cannot change what the pipelines run. Preserve the workflow run logs and the proxy logs, and have CloudTrail reviewed from 14:41.',
   },
+  'k8s-break-glass-debug': {
+    summary:
+      'This is a break-glass node debug session, not a container escape. The pod node-debugger-ip-10-20-41-17-x7k2p was created by an SRE, lmorales, who signed in with MFA and ran kubectl debug against the node under approved request BG-0912 for incident INC-5521, a P2 on payments-api memory growth, with the pod set to expire at 04:35. The session ran four read-only commands against one process, the payments-api container, with no outbound connections and no secret or token reads. The privileged flags are what the debug command produces, and the image is the approved netshoot with a matching digest.',
+    remediation:
+      'Close as a false positive citing INC-5521, BG-0912 and the audit trail, and leave the node and the session alone because it carries a fifth of card authorization. Ask Detection Engineering to tune the rule so a privileged pod that traces to an approved break-glass request is downgraded, while an unapproved one still pages at HIGH.',
+  },
   'backup-vendor-migration': {
     summary:
       'This is the nightly offsite backup job on BKP-SRV-01, not exfiltration. It has sent about 410 GB starting at 01:00 every night for 30 nights, and tonight is the same job with the same size and the same start. Only the destination changed: the backup vendor Riverbend migrated to a new address range, announced on 14 August, approved under change ticket CHG-4534 and confirmed complete last night, and the destination is registered to them. The detection fired because the allow-list was never updated for the new range. This is benign, expected activity with no incident.',

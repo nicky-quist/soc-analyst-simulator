@@ -55,6 +55,7 @@ export const TECHNIQUES = [
   { id: 'T1588.002', name: 'Obtain Capabilities: Tool', tactic: 'Resource Development' },
   { id: 'T1595', name: 'Active Scanning', tactic: 'Reconnaissance' },
   { id: 'T1595.001', name: 'Active Scanning: Scanning IP Blocks', tactic: 'Reconnaissance' },
+  { id: 'T1611', name: 'Escape to Host', tactic: 'Privilege Escalation' },
   { id: 'T1621', name: 'Multi-Factor Authentication Request Generation', tactic: 'Credential Access' },
   { id: 'T1656', name: 'Impersonation', tactic: 'Defense Evasion' },
   { id: 'T1657', name: 'Financial Theft', tactic: 'Impact' },

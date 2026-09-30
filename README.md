@@ -26,9 +26,9 @@ Short on time? **Skip to debrief** on any case shows a fully graded example.
 ## What makes it different
 
 - **You find the evidence.** Nothing is clickable. You type the search, choose the index and widen the window. A mistyped octet, the wrong index and the default time range each return "0 events" with a specific, different diagnosis.
-- **Response actions can hurt.** There are 134 of them across the library and 55 are mistakes: rebooting a compromised host, isolating your own scanner, deleting the evidence, blackholing your own origin. The people affected reply in character, and a harmful action fails the case whatever the report says.
+- **Response actions can hurt.** There are 141 of them across the library and 59 are mistakes: rebooting a compromised host, isolating your own scanner, deleting the evidence, blackholing your own origin. The people affected reply in character, and a harmful action fails the case whatever the report says.
 - **Grading you can audit.** It's rubric-based and deterministic, with no LLM in the loop. A test builds a textbook-perfect report for every scenario and requires exactly 100, which catches any rubric point that has quietly become unreachable.
-- **Both sides of the table, and a career.** Eighteen Blue Team scenarios, six Red Ops operations you play from the attacker's chair, a timed volume-triage mode, ranks you earn by breadth and not by volume, and four leaderboards against a fictional SOC roster.
+- **Both sides of the table, and a career.** Nineteen Blue Team scenarios, six Red Ops operations you play from the attacker's chair, a timed volume-triage mode, ranks you earn by breadth and not by volume, and four leaderboards against a fictional SOC roster.
 
 ## A look around
 
@@ -45,7 +45,7 @@ It also works on a phone (checked at 375px wide and on a short landscape screen)
 
 ## By the numbers
 
-18 scenarios · 35 searchable data sources · 86 searches over 335 events · 134 response actions · 6 Red Ops operations · 36 Fast Triage cards · 20 hidden secrets · 383 automated tests
+19 scenarios · 35 searchable data sources · 90 searches over 350 events · 141 response actions · 6 Red Ops operations · 36 Fast Triage cards · 20 hidden secrets · 383 automated tests
 
 ## Run it
 
@@ -60,6 +60,6 @@ React 19 and Vite, no backend, and no runtime dependencies beyond React. Everyth
 ## Read more
 
 - **[Features](docs/FEATURES.md)**: a tour of every tab and system, from the dashboard to the shift report.
-- **[Scenarios](docs/SCENARIOS.md)**: all eighteen alerts, and the table of ways to get each one wrong.
+- **[Scenarios](docs/SCENARIOS.md)**: all nineteen alerts, and the table of ways to get each one wrong.
 - **[Design](docs/DESIGN.md)**: how grading, progression and the deal work, the decisions behind them, and how it's built and tested.
 - **[Lab setup](LAB_SETUP.md)**: the planned live-telemetry mode.
