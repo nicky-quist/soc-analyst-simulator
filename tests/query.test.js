@@ -1,7 +1,4 @@
-// The search console is where the analyst can actually be wrong: mistyped
-// indicator, wrong index, time range left on the console default. These tests
-// pin down that each of those fails in its own distinguishable way, because a
-// console that answers "0 events" to everything teaches nothing.
+// SIEM search failure modes
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

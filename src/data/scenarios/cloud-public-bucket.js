@@ -1,18 +1,9 @@
-// A cloud misconfiguration, not an attack: a Terraform change aimed at a public
-// marketing bucket landed on the customer statements archive instead, and one
-// external scanner found it before the CSPM did. The companion to aws-key-leak
-// with the opposite lesson — there, "the bucket was accessible" understated a
-// real download. Here the exposure is real but narrow, and the skill is
-// measuring it precisely: what was listable, what was readable, what actually
-// left, and why this is a Tier 2 case rather than an IR page.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: public bucket misconfiguration
 
 export default {
   id: 'cloud-public-bucket',
   difficulty: 2,
-  // Cosmetic only — the scanner's address is a pure label. The object counts,
-  // byte sizes and timings the rubric reasons about are untouched.
+  // Variables
   variables: {
     sourceIp: { value: '193.32.162.11', pool: 'ipv4-external' },
   },

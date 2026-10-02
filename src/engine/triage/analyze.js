@@ -1,5 +1,4 @@
-// Extracted from SOCTriageTool.jsx so the rule engine can be tested
-// independently of React. Pure functions, no DOM, no network.
+// Triage rule engine
 
 import { uniq, extractIPs, detectFormat, parseZeek } from './format.js';
 
@@ -16,7 +15,7 @@ export function analyzeOffline(text) {
     false_positive_likelihood: "Medium", confidence: 65, analyst_notes: ""
   };
 
-  // ── SYSLOG ──────────────────────────────────────────────────────────────────
+  // ── SYSLOG ──
   if (fmt === "Syslog") {
     const failCount  = (t.match(/Failed password|authentication failure|Invalid user/gi) || []).length;
     const targets    = uniq((t.match(/Failed password for (?:invalid user )?(\S+)/gi) || [])
@@ -53,7 +52,7 @@ export function analyzeOffline(text) {
     if (invalidUsr) r.analyst_notes = "Target username does not exist — consistent with credential stuffing or username enumeration.";
   }
 
-  // ── WINDOWS EVENT LOG ────────────────────────────────────────────────────────
+  // ── WINDOWS EVENT LOG ──
   else if (fmt === "Windows Event Log") {
     const eid      = parseInt((t.match(/EventID\s*:\s*(\d+)/i) || [])[1]) || 0;
     const computer = (t.match(/Computer\s*:\s*(\S+)/i) || [])[1] || "unknown host";
@@ -98,7 +97,7 @@ export function analyzeOffline(text) {
     }
   }
 
-  // ── SURICATA JSON ────────────────────────────────────────────────────────────
+  // ── SURICATA JSON ──
   else if (fmt === "Suricata JSON") {
     let p = {};
     try { p = JSON.parse(t); } catch { /**/ }
@@ -142,12 +141,9 @@ export function analyzeOffline(text) {
     }
   }
 
-  // ── ZEEK CONN.LOG ────────────────────────────────────────────────────────────
+  // ── ZEEK CONN.LOG ──
   else if (fmt === "Zeek conn.log") {
-    // Parse the actual columns. An earlier version scraped the raw text for
-    // long digit runs and used t.includes(port), which matched the Unix
-    // timestamp instead of the duration and byte fields - a 3600s flow was
-    // reported as 473688 hours. See tests/analyze.test.js.
+    // Parse real columns
     const rows        = parseZeek(t);
     const C2_PORTS    = [4444, 4445, 1337, 6666, 6667, 8888, 31337];
     const durationSec = Math.max(0, ...rows.map(row => row.duration || 0));
@@ -180,7 +176,7 @@ export function analyzeOffline(text) {
     }
   }
 
-  // ── CEF ──────────────────────────────────────────────────────────────────────
+  // ── CEF ──
   else if (fmt === "CEF") {
     const kv = {};
     (t.match(/(\w+)=([^\s|]+)/g) || []).forEach(f => { const i = f.indexOf("="); kv[f.slice(0,i)] = f.slice(i+1); });
@@ -215,7 +211,7 @@ export function analyzeOffline(text) {
     }
   }
 
-  // ── DNS LOG ──────────────────────────────────────────────────────────────────
+  // ── DNS LOG ──
   else if (fmt === "DNS Log") {
     const queries    = (t.match(/Query:\s*(\S+)/gi) || []).map(q => q.replace(/Query:\s*/i, ""));
     const highEnt    = /entropy.*HIGH|Unusual_subdomain_entropy.*HIGH/i.test(t);
@@ -242,7 +238,7 @@ export function analyzeOffline(text) {
     }
   }
 
-  // ── FREE-FORM ────────────────────────────────────────────────────────────────
+  // ── FREE-FORM ──
   else {
     const suspCmd  = /whoami|net\s+user|net\s+localgroup|ipconfig|nmap|mimikatz|psexec|procdump/i.test(t);
     const lateral  = /\\\\[\w.]+\\[a-z$]+|admin\$|ipc\$|wmic.*\/node|psexec/i.test(t);

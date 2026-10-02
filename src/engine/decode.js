@@ -1,7 +1,4 @@
-// PowerShell's -EncodedCommand is UTF-16LE base64, which decodes to text with a
-// null between every character. Stripping them is what CyberChef's "Decode
-// text" step does, and recognizing that pattern is a small piece of real
-// analyst knowledge worth teaching in passing.
+// Base64 decode (UTF-16LE aware)
 
 export function decodeBase64(input) {
   const cleaned = String(input).trim().replace(/\s+/g, '');

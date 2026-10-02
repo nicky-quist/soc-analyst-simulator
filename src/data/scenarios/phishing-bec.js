@@ -1,6 +1,4 @@
-// Phishing to token replay to attempted wire fraud, with the payment still stoppable.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: phishing to BEC
 
 export default {
   id: 'phishing-bec-ambiguous',

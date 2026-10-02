@@ -1,17 +1,9 @@
-// The alert the tool under-rates. A MEDIUM "unusual MFA activity" that is in
-// fact a live account takeover, and the giveaway is not in the sign-in log — it
-// is in the audit log six minutes later, where the attacker registers their own
-// authenticator so the password reset you are about to do will not lock them out.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: MFA push fatigue
 
 export default {
   id: 'mfa-push-fatigue',
   difficulty: 2,
-  // Username isn't tagged here: the attacker's recovery-address text
-  // ("h.stern.mail@proton.me") is derived from "hstern" in a different form
-  // that a plain substring swap can't follow, so renaming the account would
-  // leave that address stale and inconsistent.
+  // Variables (username fixed)
   variables: {
     attackerIp: { value: '91.219.238.20', pool: 'ipv4-external' },
   },

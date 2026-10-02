@@ -1,6 +1,4 @@
-// Fast Triage has to hold three things: the pool is well-formed, every dealt
-// run keeps its mix (including both trap types), and scoring treats a missed
-// intrusion as worse than a needless escalation.
+// Fast triage
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -148,7 +146,7 @@ test('review groups mistakes by theme, most common first', () => {
   }
 });
 
-// ── saved runs and "Reset everything" ───────────────────────────────────────
+// ── saved runs ──
 
 function withFakeStorage(fn) {
   const data = new Map();

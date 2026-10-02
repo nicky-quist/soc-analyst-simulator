@@ -1,16 +1,10 @@
-// What you'd actually attach to a handoff: one note per case that either got
-// escalated or is still sitting open, built from data the console already
-// has. Deterministic, like the rest of the core loop — no model call, no new
-// state, just a read over caseFile and the scenario it belongs to.
+// Shift handoff notes
 
 import { evaluateInvestigation, evaluateResponse } from './scoring.js';
 
 const ESCALATION_LABEL = { escalate_ir: 'IR', escalate_tier2: 'Tier 2' };
 
-// evaluateInvestigation/evaluateResponse expect the shape scoreCase() builds
-// at submit time (searchesRun/actionsTaken), but a still-open case only has
-// the live shape (searchKeys/actions) — normalize so the same functions work
-// for both a filed report and a case nobody has closed yet.
+// Normalize live case shape
 function normalized(caseFile) {
   return {
     searchesRun: caseFile.searchesRun || caseFile.searchKeys || [],
@@ -19,9 +13,7 @@ function normalized(caseFile) {
   };
 }
 
-// A note is worth writing for a case that got handed to someone else
-// (escalated) or a case nobody finished — closing it out as a false positive
-// or benign activity needs no handoff, the queue already reflects that.
+// Needs a handoff?
 export function needsHandoff(caseFile) {
   if (caseFile.result) return !!ESCALATION_LABEL[caseFile.result.submission.escalation];
   return (caseFile.searches?.length || 0) + (caseFile.intel?.length || 0) + (caseFile.actions?.length || 0) > 0;
@@ -89,8 +81,7 @@ function formatDurationShort(ms) {
   return minutes < 1 ? 'under a minute' : `${minutes}m`;
 }
 
-// Plain text, meant for a clipboard — the thing you'd actually paste into a
-// ticket or a handover channel.
+// Plain-text handoff
 export function formatHandoffText(notes) {
   if (!notes.length) return 'Nothing to hand off — every case this shift was closed out cleanly.';
   return notes.map((n) => {

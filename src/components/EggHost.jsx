@@ -1,9 +1,4 @@
-// Shows the console's secrets. It listens for finds announced from anywhere in
-// the app (engine/easterEggs.js), remembers which are found, and renders either
-// a dismissible toast or a card. It also owns the two things that are not
-// announced by a feature: the Konami code and the #credits link.
-//
-// Nothing here reads or writes grades, history, ranks or the assisted flag.
+// Secrets host
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EGG_BY_ID, EGGS, REPO_URL } from '../data/easterEggs.js';
@@ -112,7 +107,7 @@ function Credits({ found }) {
 export default function EggHost({ stats }) {
   const [found, setFound] = useState(loadFound);
   const [toast, setToast] = useState(null);
-  // #credits is read before the app's own hash mirroring can overwrite it.
+  // Read #credits first
   const [overlay, setOverlay] = useState(() => (
     typeof window !== 'undefined' && window.location.hash === '#credits' ? 'credits' : null
   ));
@@ -148,7 +143,7 @@ export default function EggHost({ stats }) {
     return () => { off(); clearTimeout(toastTimer.current); };
   }, [handle]);
 
-  // The Konami code, ignored while typing in a field.
+  // Konami code
   useEffect(() => {
     const push = createKonami();
     const onKey = (e) => {
@@ -160,7 +155,7 @@ export default function EggHost({ stats }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Opening the console at #credits, or editing the hash to it later.
+  // #credits link
   useEffect(() => {
     const check = () => { if (window.location.hash === '#credits') announce('credits'); };
     if (window.location.hash === '#credits') announce('credits');

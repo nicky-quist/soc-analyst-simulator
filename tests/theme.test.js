@@ -1,7 +1,4 @@
-// Text colors have to stay readable in both themes. This parses the real CSS
-// variables out of THEME_CSS and checks WCAG AA (4.5:1) for every text color
-// against every surface it is drawn on, so a palette tweak can't quietly bring
-// back the low-contrast helper text this test was written to fix.
+// Text contrast (WCAG AA)
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,8 +27,7 @@ function contrast(a, b) {
 }
 
 const SURFACES = ['surface', 'surface-alt', 'bg'];
-// Text colors used at small sizes. `primary` is a fill and border colour; the
-// text version of it is `primary-strong`.
+// Small-text colors
 const TEXT = ['text', 'text-secondary', 'text-muted', 'primary-strong', 'success', 'warning', 'danger', 'info'];
 
 const THEMES = {

@@ -140,9 +140,7 @@ describe('suricata', () => {
 });
 
 describe('zeek conn.log', () => {
-  // Regression: the original engine scraped the raw text for long digit runs,
-  // so the Unix timestamp became both the duration and the byte count - a
-  // 3600-second flow was reported to the analyst as "473688h" and "1626MB".
+  // Regression: timestamp read as duration
   test('reports duration and volume from the real columns', () => {
     const r = analyzeOffline(F.ZEEK_BEACON);
     assert.match(r.summary, /1\.0h/, 'duration must come from the duration column');
@@ -181,18 +179,14 @@ describe('zeek conn.log', () => {
     assert.ok(rank(r.severity) <= rank('MEDIUM'));
   });
 
-  // Regression: suspicious-port detection used t.includes(String(port)), which
-  // matched any substring anywhere in the line - including the timestamp.
+  // Regression: port matched inside timestamp
   test('does not flag a C2 port that only appears inside the timestamp', () => {
     const benign = [
       '#fields ts uid id.orig_h id.orig_p id.resp_h id.resp_p proto service duration orig_bytes resp_bytes conn_state',
       '1705244440.123456 Cabc123 10.0.0.55 49201 93.184.216.34 443 tcp ssl 0.42 1840 9120 SF'
     ].join('\n');
     const r = analyzeOffline(benign);
-    // A 0.42s, 1.8KB flow to 443 carries no threat signal whatever its
-    // timestamp. Asserting on the absence of *any* verdict (not just the port
-    // verdict) matters: the old parser also misread the timestamp as duration
-    // and bytes, so it called this a C2 beacon before the port rule ran.
+    // Benign flow, no verdict
     assert.equal(r.mitre_technique, 'Unknown');
     assert.notEqual(r.threat_type, 'Suspicious Outbound Connection');
     assert.doesNotMatch(r.summary, /non-standard port/i);

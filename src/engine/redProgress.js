@@ -1,27 +1,11 @@
-// Red Ops career progression: the attacker-side mirror of the analyst career in
-// engine/progress.js, built on the same rules so the two ladders mean the same
-// kind of thing.
-//
-//   Breadth at a standard, not volume. A rank asks for different operations
-//   cleared at a real bar, using your best completed run of each, so replaying
-//   the easiest operation forever gets you nowhere.
-//   A rank is a checkpoint. The highest rank ever earned is stored separately
-//   from live history, so "Reset everything" (which wipes the runs) never takes
-//   a rank back. It only restarts the criteria for the next one.
-//   Finishing counts. Only a run that reaches the objective clears an
-//   operation; a burned or aborted run is recorded and shows up in the stats,
-//   but it can't promote you.
-//
-// Pure functions only. Storage lives in redProgressStore.js.
+// Red team career
 
-// Set so the Operator rung asks for about the same share of the content as the
-// analyst's Tier 1 (half the operations, as it is half the case types), at a
-// score the best runs of every operation can still reach (they top out in the 60s).
+// Promotion thresholds
 export const RED_BAR = 55;
 export const OPERATOR_CLEARED = 3;
 export const SENIOR_GHOST_OPERATIONS = 2;
 export const HISTORY_LIMIT = 60;
-// The senior rank looks at how you have been finishing lately, not forever.
+// Senior rank window
 export const RECENT_RUNS = 6;
 export const MAX_RECENT_FAILURES = 1;
 
@@ -46,7 +30,7 @@ export function buildRedRecord(operationId, result, at = Date.now()) {
     caught,
     moves: result.breakdown.length,
     dwellDays: result.dwellDays,
-    // A ghost run reaches the objective without a single move being caught.
+    // Ghost run
     ghost: result.outcome === 'complete' && caught === 0,
   };
 }
@@ -60,7 +44,7 @@ export function resetRedProgress(progress) {
   return { history: [], checkpointRankIndex: progress.checkpointRankIndex ?? 0 };
 }
 
-// Best score per operation, counting only runs that reached the objective.
+// Best completed score per operation
 export function bestCompleted(history) {
   const best = {};
   for (const r of history) {
@@ -80,7 +64,7 @@ export function redStats(history, operationIds) {
     burned: history.filter((r) => r.outcome === 'burned').length,
     aborted: history.filter((r) => r.outcome === 'aborted').length,
     ghosts: history.filter((r) => r.ghost).length,
-    // Ghosting one operation shows you found its quiet route; two shows it was not luck.
+    // Operations ghosted
     ghostOperations: new Set(history.filter((r) => r.ghost && ids.has(r.operationId)).map((r) => r.operationId)).size,
     cleared,
     total: ids.size,

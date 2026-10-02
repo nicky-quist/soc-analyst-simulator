@@ -1,11 +1,6 @@
-// The AI Coach's connection to a model. Local-first by design: this project's
-// whole point is that it runs with nothing installed, so the coach has to be
-// something you opt into, not something the console depends on.
-//
-// Default target is Ollama on localhost — nothing leaves the machine. A cloud
-// provider is offered as a fallback for anyone without a GPU to spare, and it
-// is opt-in and clearly labeled: the key lives in this browser's storage only
-// and is sent straight to the provider, never to anything this project runs.
+// AI provider (Ollama or cloud)
+
+import { readStored, writeStored } from '../localStore.js';
 
 const STORAGE_KEY = 'soc-sim-ai-settings';
 
@@ -15,11 +10,7 @@ export const PROVIDERS = {
   CLOUD: 'cloud',
 };
 
-// qwen2.5:14b-instruct reasons about nuance (hedged language, a close
-// escalation call) noticeably better than the 7-8B tier, and a debrief is one
-// request per closed case, not a tight loop — the extra seconds are cheap
-// compared to what a stronger model catches. 8B stays on offer for anyone
-// whose hardware can't carry 14B at a usable clip.
+// Ollama models
 export const OLLAMA_MODELS = [
   { id: 'qwen2.5:14b-instruct', label: 'Qwen 2.5 14B Instruct (recommended)', note: '~9GB at Q4 — best judgment for coaching text' },
   { id: 'llama3.1:8b', label: 'Llama 3.1 8B', note: 'lighter fallback if 14B is too slow on your hardware' },
@@ -36,25 +27,12 @@ export const DEFAULT_SETTINGS = {
 };
 
 export function loadAiSettings() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+  return readStored(STORAGE_KEY, DEFAULT_SETTINGS, (parsed) => (parsed ? { ...DEFAULT_SETTINGS, ...parsed } : null));
 }
 
-export function saveAiSettings(settings) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage unavailable — settings just won't survive a reload.
-  }
-}
+export const saveAiSettings = (settings) => writeStored(STORAGE_KEY, settings);
 
-// A cheap reachability check before committing to a generation call, so the
-// UI can say "Ollama isn't running" instead of hanging on the real request.
+// Ollama reachability check
 export async function checkOllama(baseUrl, { timeoutMs = 2500 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -70,9 +48,7 @@ export async function checkOllama(baseUrl, { timeoutMs = 2500 } = {}) {
   }
 }
 
-// Streams tokens from Ollama's /api/generate (newline-delimited JSON), calling
-// onToken as each chunk arrives so the UI can render text as it's produced
-// rather than waiting out the full generation in silence.
+// Ollama streaming
 async function streamOllama({ ollamaUrl, ollamaModel }, prompt, { onToken, signal } = {}) {
   const res = await fetch(`${ollamaUrl.replace(/\/$/, '')}/api/generate`, {
     method: 'POST',
@@ -107,10 +83,7 @@ async function streamOllama({ ollamaUrl, ollamaModel }, prompt, { onToken, signa
   return full;
 }
 
-// Cloud fallback: Anthropic Messages API, called directly from the browser
-// with a key the user supplies and this app never stores anywhere but their
-// own localStorage. No streaming here — kept simple since this path is the
-// exception, not the default.
+// Cloud fallback
 async function callCloud({ cloudBaseUrl, cloudModel, cloudApiKey }, prompt, { onToken, signal } = {}) {
   if (!cloudApiKey) throw new Error('No API key set for the cloud provider.');
   const res = await fetch(cloudBaseUrl, {
@@ -135,7 +108,7 @@ async function callCloud({ cloudBaseUrl, cloudModel, cloudApiKey }, prompt, { on
   return text;
 }
 
-// Single entry point the UI calls, regardless of which provider is active.
+// Provider entry point
 export async function generate(settings, prompt, opts = {}) {
   if (settings.provider === PROVIDERS.OLLAMA) return streamOllama(settings, prompt, opts);
   if (settings.provider === PROVIDERS.CLOUD) return callCloud(settings, prompt, opts);

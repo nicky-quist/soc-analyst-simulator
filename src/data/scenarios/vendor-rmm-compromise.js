@@ -1,19 +1,9 @@
-// A trusted-relationship compromise: the bank's managed IT provider has standing
-// remote-management access to about 300 hosts, the provider's own breach has
-// exposed a technician's portal credentials, and someone is now driving the
-// bank's own remote-management tool. Everything about the alert says "approved
-// vendor, known software". Tests whether an L1 treats trust as a reason to
-// look less closely or a reason to verify harder, and whether containment can
-// be aimed at the one account that is compromised instead of the whole
-// relationship.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: vendor RMM compromise
 
 export default {
   id: 'vendor-rmm-compromise',
   difficulty: 3,
-  // Cosmetic only: the session's source address is a pure label. Vendor
-  // addresses, host names, counts and times never move.
+  // Variables
   variables: {
     sourceIp: { value: '154.13.25.77', pool: 'ipv4-external' },
   },

@@ -1,8 +1,4 @@
-// A Teams-style roster: who's actually reachable right now, not a static org
-// chart. The presence dot on every card is read from real shift state (see
-// engine/presence.js) — this project already tore out one fake/decorative
-// chart this session because invented numbers teach an analyst to stop
-// trusting the real ones, and a presence dot is no different.
+// Team roster
 
 import { COMPANY, SCENARIOS } from '../data/scenarios/index.js';
 import { C, TONE } from '../theme.js';
@@ -12,11 +8,7 @@ import { IconUsers } from '../ui/icons.jsx';
 import { generateDetectionEngResponse } from '../engine/personas.js';
 import { STATUS, presenceFor } from '../engine/presence.js';
 
-// Cross-functional contacts don't live in COMPANY — they're one-off
-// characters carried on individual scenarios' response actions (the ones with
-// a `consequence`), so a full company roster would have to scan the library
-// rather than list a fixed cast. Named here as a footnote instead of faked
-// into a roster they were never meant to be part of.
+// Cross-functional contacts
 const CROSS_FUNCTIONAL = [
   'Data Platform Lead', 'Employment Counsel', 'Security Engineering Manager', 'Head of IT Service Delivery',
 ];
@@ -44,9 +36,7 @@ function PresenceDot({ status, size = 11 }) {
   );
 }
 
-// `title` overrides person.title when passed — the analyst's own card needs
-// this, since their title is an earned rank (engine/progress.js's
-// careerStatus()), not the fixed string every other role has.
+// Person card
 function ContactCard({ personKey, person, isYou, presence, title }) {
   return (
     <Card

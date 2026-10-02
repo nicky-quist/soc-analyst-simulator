@@ -1,28 +1,4 @@
-// The SEA SOC roster the leaderboards rank you against. Everyone here is
-// fictional, drawn from the people the console already puts in front of you, and
-// their standings are fixed so the boards are the same every time you open them.
-// It is you against the sim's own people, not against other players.
-//
-// Standings follow what each person's job would actually give them, so the
-// boards read the way the org chart does:
-//   - Analyst judgment (Blue, Fast Triage): the Tier 2 analyst who does this all
-//     day leads, then the team lead, IR lead, detection and security engineering,
-//     then the CISO, then the IT and business roles.
-//   - Attacker tradecraft (Red): IR and detection engineering know adversary
-//     behavior best, then the analysts and security engineers, then IT.
-//   - Curiosity (Secrets): the engineers and analysts who poke at tools find the
-//     most; executives find the fewest.
-// The CEO is last on every board. tests/leaderboard.test.js pins these orders.
-//
-// Standings are stored the way the engines store yours, so they compare directly:
-//   blue    — rankIndex 0-2 (CAREER_RANKS), cleared case types, average best score.
-//             A rank-2 analyst has by definition cleared every case type, so
-//             `cleared` is only given below that and is clamped as the library grows.
-//   red     — rankIndex 0-2 (RED_RANKS), operations cleared, ghost runs, best score.
-//   secrets — how many of the hidden things they have found.
-//   fast    — best Fast Triage score, the pace of that run, and runs on record.
-//
-// Each board is beatable: no roster standing is higher than a perfect player's.
+// Leaderboard roster (fictional, fixed standings)
 
 export const ROSTER = [
   {

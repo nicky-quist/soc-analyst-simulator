@@ -96,14 +96,11 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
   const [feedTick, setFeedTick] = useState(0);
   const [confirmingReset, setConfirmingReset] = useState(false);
 
-  // Everything estate-side is a function of the shift seed, so it is stable for
-  // as long as you are sitting in this shift and different the next one.
+  // Seeded estate data
   const seedAt = shiftStartedAt ?? now;
   const shiftHeader = useMemo(() => buildShift(seedAt, deal), [seedAt, deal]);
   const hourlyVolume = useMemo(() => buildHourlyVolume(seedAt, deal), [seedAt, deal]);
-  // Real cases you've actually closed, not an invented calendar week — this is
-  // the one number on the board that can never read as "wrong day": there is
-  // no day attached to it, only the order you closed things in.
+  // SLA history from closed cases
   const slaHistory = useMemo(() => slaComplianceTrend(progress?.history || []), [progress]);
 
   useEffect(() => {
@@ -136,17 +133,13 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
   const dayTotal = hourlyVolume.reduce((sum, h) => sum + h.critical + h.high + h.medium + h.low, 0);
   const maxSource = Math.max(...DETECTION_SOURCES.map((s) => s.alerts));
 
-  // Today's compliance is yours, not the estate's: it is the one number on this
-  // board that moves because of what you do in the next twenty minutes.
+  // This shift's SLA compliance
   const compliance = shiftCompliance(scenarios, cases, now);
   const complianceHint = compliance.handled
     ? `${compliance.onTime} of ${compliance.handled} handled within target`
     : 'nothing closed or breached yet';
 
-  // Starts at 100% because nothing has gone wrong before anything has
-  // happened, then the real history you've built across every session, then
-  // this shift's own still-forming number — shown open/pending until you
-  // close or breach something, same as before, just never a calendar day.
+  // SLA trend points
   const slaPoints = [
     { day: 'start', pct: 100 },
     ...slaHistory.slice(-11),
@@ -191,7 +184,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
         </div>
       )}
 
-      {/* Said out loud, because a queue that quietly leans one way reads as luck. */}
+      {/* Adaptive focus notice */}
       {focus && (
         <Callout tone={TONE.primary} title={`This shift leans toward practicing ${focus.label.toLowerCase()}`} style={{ marginBottom: 14 }}>
           {focus.summary} The mix quotas still apply. See Your progress for why.
@@ -233,12 +226,11 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
 
         <Panel title="Alert volume — last 24 hours" icon={<IconActivity size={13} />} hint={`${formatCount(dayTotal)} alerts`} style={{ gridColumn: 'span 2' }}>
           <StackedBars data={hourlyVolume} keys={['low', 'medium', 'high', 'critical']} height={150} currentIndex={hourlyVolume.length - 1} />
-          <Legend items={[
-            { label: 'Critical', color: CHART_COLORS.critical, value: hourlyVolume.reduce((s, h) => s + h.critical, 0) },
-            { label: 'High', color: CHART_COLORS.high, value: hourlyVolume.reduce((s, h) => s + h.high, 0) },
-            { label: 'Medium', color: CHART_COLORS.medium, value: hourlyVolume.reduce((s, h) => s + h.medium, 0) },
-            { label: 'Low', color: CHART_COLORS.low, value: hourlyVolume.reduce((s, h) => s + h.low, 0) },
-          ]} />
+          <Legend items={['critical', 'high', 'medium', 'low'].map((key) => ({
+            label: key[0].toUpperCase() + key.slice(1),
+            color: CHART_COLORS[key],
+            value: hourlyVolume.reduce((s, h) => s + h[key], 0),
+          }))} />
         </Panel>
 
         <Panel title="Open alerts requiring action" icon={<IconListChecks size={13} />} hint="click to work one" style={{ gridColumn: 'span 2' }}>
@@ -256,6 +248,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
               </thead>
               <tbody>
                 {scenarios.map((scenario, index) => {
+                  const cell = { padding: '7px 10px', borderBottom: `1px solid ${C.border}` };
                   const caseFile = cases[scenario.id];
                   const status = caseStatus(caseFile);
                   const sla = slaState(scenario, caseFile, now);
@@ -267,16 +260,16 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
                       style={{ cursor: 'pointer' }}
                       title="Open this alert"
                     >
-                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, fontFamily: MONO, fontSize: 11.5, color: C.primaryStrong, whiteSpace: 'nowrap' }}>
+                      <td style={{ ...cell, fontFamily: MONO, fontSize: 11.5, color: C.primaryStrong, whiteSpace: 'nowrap' }}>
                         {scenario.alert.ref}
                       </td>
-                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}` }}>
+                      <td style={cell}>
                         <Badge label={scenario.alert.reportedSeverity} tone={severityTone(scenario.alert.reportedSeverity)} />
                       </td>
-                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, color: C.text, minWidth: 220 }}>{scenario.alert.rule}</td>
-                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, color: C.textSecondary, whiteSpace: 'nowrap' }}>{scenario.source}</td>
+                      <td style={{ ...cell, color: C.text, minWidth: 220 }}>{scenario.alert.rule}</td>
+                      <td style={{ ...cell, color: C.textSecondary, whiteSpace: 'nowrap' }}>{scenario.source}</td>
                       <td style={{
-                        padding: '7px 10px', borderBottom: `1px solid ${C.border}`, fontFamily: MONO, whiteSpace: 'nowrap',
+                        ...cell, fontFamily: MONO, whiteSpace: 'nowrap',
                         color: status === 'closed' ? C.textMuted : sla.breached ? C.danger : C.textSecondary,
                       }}>
                         {status === 'closed'
@@ -285,7 +278,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
                             ? <Badge label="Breached" tone={TONE.concerned} />
                             : `${Math.floor(sla.remaining / 60000)}m left`}
                       </td>
-                      <td style={{ padding: '7px 10px', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>
+                      <td style={{ ...cell, whiteSpace: 'nowrap' }}>
                         {result
                           ? <Badge label={isResolvedCorrectly(result.score) ? 'Resolved' : 'Review'} tone={isResolvedCorrectly(result.score) ? TONE.positive : TONE.coaching} />
                           : <Badge label={status === 'in_progress' ? 'In progress' : 'New'} tone={status === 'in_progress' ? TONE.coaching : TONE.primary} />}

@@ -1,17 +1,9 @@
-// Builds the prompt for the AI debrief coach and asks a provider to fill it
-// in. Deliberately separate from personas.js: that file is the trusted,
-// deterministic debrief and stays exactly as it is. This is a second, optional
-// lens on the same case — never a replacement, and never wired into scoring
-// or progress.js, which have to keep trusting a function that can't hallucinate.
+// AI coach prompt
 
 import { formatDuration } from '../../ui/helpers.js';
 import { generate } from './provider.js';
 
-// The full timeline can run long on a thorough investigation, and a bigger
-// prompt is a slower response for no better a debrief — the coach needs the
-// shape of what happened, not a transcript. Empty searches, harmful actions,
-// and the report submission are what a debrief actually turns on; routine
-// found-it searches are compressed to a count.
+// Compact timeline
 function summarizeTimeline(timeline = []) {
   const lines = [];
   let quietFound = 0;

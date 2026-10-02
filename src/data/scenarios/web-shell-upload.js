@@ -1,8 +1,4 @@
-// An internet-facing server answering commands. The alert catches the tail of
-// it — one cmd.exe — and the web logs show the access started three days ago.
-// Everything here turns on not destroying the evidence while you contain it.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: web shell upload
 
 export default {
   id: 'web-shell-upload',

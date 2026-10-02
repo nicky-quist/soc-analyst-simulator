@@ -1,6 +1,4 @@
-// Asking Tier 2 twice about the same still-missing gap should not get you
-// the identical sentence back — that's what made the repeat-click feel
-// pointless. It should get more direct instead.
+// Tier 2 nudges escalate
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -39,8 +37,7 @@ test('progress on the gap moves the nudge to the next one, resetting escalation'
 
 test('once everything required is done, repeat asks stop repeating the same line', () => {
   const done = {
-    // searchesRun holds resolved searchKey() values (satisfies || id), the
-    // same shape handleSearch() builds live - 's1-followup', not 's1-edr-host'.
+    // Resolved search keys
     searchesRun: ['s1-auth-ip', 's1-followup', 's1-asset-host'],
     intelChecked: ['185.220.101.45'],
     actionsTaken: scenario.truth.requiredActions,

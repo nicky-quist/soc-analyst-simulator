@@ -1,32 +1,14 @@
-// Fast Triage's saved runs live under their own key, separate from the shift
-// and from cross-shift progress, so "Reset everything" has to clear them
-// explicitly or the Fast triage tab would keep a record the rest of the
-// console just forgot.
+// Fast triage run storage
+
+import { clearStored, readStored, writeStored } from './localStore.js';
 
 export const FASTTRIAGE_KEY = 'soc-analyst-sim:fasttriage:v1';
 export const KEEP_RUNS = 20;
 
 export function loadFastTriageRuns() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(FASTTRIAGE_KEY) || 'null');
-    return Array.isArray(parsed) ? parsed.filter((r) => Number.isFinite(r.score)) : [];
-  } catch {
-    return [];
-  }
+  return readStored(FASTTRIAGE_KEY, [], (parsed) =>
+    Array.isArray(parsed) ? parsed.filter((r) => Number.isFinite(r.score)) : null);
 }
 
-export function saveFastTriageRuns(runs) {
-  try {
-    window.localStorage.setItem(FASTTRIAGE_KEY, JSON.stringify(runs.slice(-KEEP_RUNS)));
-  } catch {
-    // Storage unavailable: history lasts for this session only.
-  }
-}
-
-export function clearFastTriageRuns() {
-  try {
-    window.localStorage.removeItem(FASTTRIAGE_KEY);
-  } catch {
-    // Nothing to clear if storage is unavailable.
-  }
-}
+export const saveFastTriageRuns = (runs) => writeStored(FASTTRIAGE_KEY, runs.slice(-KEEP_RUNS));
+export const clearFastTriageRuns = () => clearStored(FASTTRIAGE_KEY);

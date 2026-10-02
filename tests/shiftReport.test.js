@@ -1,7 +1,4 @@
-// The shift report card: it gathers what the grader, the progress engine and the
-// handoff builder already know, so these tests check the gathering (counts,
-// skill verdicts, lean, handoff, empty and partial shifts), that the report
-// survives storage, and that its text never prints "undefined" or "NaN".
+// Shift report
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,8 +23,7 @@ const ir = byEscalation('escalate_ir');
 const tier2 = byEscalation('escalate_tier2');
 const benign = byEscalation('close_no_escalation');
 
-// A closed case file, graded by the real grader. `escalation` overrides the
-// call so a case can be under- or over-escalated on purpose.
+// Graded case file
 function closedCase(scenario, { escalation, elapsedMs = 8 * 60_000, actions } = {}) {
   const truth = scenario.truth;
   const submission = {
@@ -189,7 +185,7 @@ test('the report text lists every case and never prints undefined, NaN or null',
   assert.match(text, /Escalation lean: you under-escalated 1 of 2/);
 });
 
-// ── storage ─────────────────────────────────────────────────────────────────
+// ── storage ──
 
 function withFakeStorage(fn) {
   const data = new Map();
@@ -234,7 +230,7 @@ test('the team lead note admits when part of the queue was never worked', () => 
   assert.ok(!/still open/.test(full.teamLead.message), 'a fully closed shift gets the plain note');
 });
 
-// ── what a shift nobody worked reads like (caught by reading a saved PDF) ───
+// ── untouched shift ──
 
 test('an untouched shift does not claim its cases were closed out cleanly', () => {
   const untouched = build(SCENARIOS.slice(0, 7), {});

@@ -1,13 +1,4 @@
-// Quick triage for an alert that isn't part of the shift queue.
-//
-// Paste a raw log line or alert and get a first-pass read: which format it is,
-// how severe it looks, the likely ATT&CK technique, the indicators in it, and a
-// next step. Everything comes from the deterministic rule engine in
-// engine/triage, which runs in the browser and makes no network call, so every
-// verdict traces back to a specific pattern match.
-//
-// State lives in the app shell (SOCAnalystSim.jsx), so leaving the tab and
-// coming back keeps your input, result and history.
+// Quick triage
 
 import { analyzeOffline } from '../engine/triage/analyze.js';
 import { validateInput } from '../engine/triage/validation.js';

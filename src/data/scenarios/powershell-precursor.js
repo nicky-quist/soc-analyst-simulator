@@ -1,13 +1,9 @@
-// The macro-to-ransomware opening chain, one host in and a campaign behind it.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: PowerShell ransomware precursor
 
 export default {
   id: 'malicious-powershell-precursor',
   difficulty: 2,
-  // The C2 IP is baked into the base64 -EncodedCommand blob, not just plain
-  // text, so it isn't safely substitutable without re-encoding that blob too.
-  // Hostname carries none of that risk.
+  // Variables (C2 IP fixed, it's in the blob)
   variables: {
     hostname: { value: 'FIN-WKSTN-22', pool: 'hostname-workstation' },
   },

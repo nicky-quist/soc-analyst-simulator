@@ -1,7 +1,4 @@
-// The end-of-shift report card: one page on how the shift went, meant to be read,
-// printed or saved as a PDF, and copied as text. It is a full-screen page over the
-// console rather than a tab, because it belongs to a moment (the end of a shift)
-// and not to a place. The numbers all come from engine/shiftReport.js.
+// Shift report card
 
 import { useRef, useState } from 'react';
 import { formatReportText, handoffEmptyText } from '../engine/shiftReport.js';

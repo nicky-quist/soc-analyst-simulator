@@ -1,5 +1,4 @@
-// Easter eggs: every one is reachable, none can be tripped by real play, and
-// Reset everything leaves the found list alone.
+// Secrets
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -156,7 +155,7 @@ test('no Fast Triage card or Red Ops choice text is a secret trigger', () => {
   }
 });
 
-// ── storage ─────────────────────────────────────────────────────────────────
+// ── storage ──
 
 function withFakeStorage(fn) {
   const data = new Map();
@@ -196,7 +195,7 @@ test('corrupt storage or unknown ids load as an empty list', () => {
 test('only the Settings button forgets finds, and Reset everything never does', () => {
   withFakeStorage((data) => {
     saveFound(['credits', 'konami']);
-    // What the Dashboard's Reset everything runs on the other stores.
+    // Reset everything
     resetRedProgress({ history: [{ x: 1 }], checkpointRankIndex: 1 });
     assert.deepEqual(loadFound(), ['credits', 'konami']);
     clearFound();

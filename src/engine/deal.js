@@ -1,16 +1,4 @@
-// Which alerts are in your queue tonight.
-//
-// The library is bigger than a shift. Dealing a hand from it rather than
-// handing over the whole library is the difference between a sim you play once
-// and a sim you can sit down at twice: the second shift is a different set of
-// alerts in a different order, so recognising the scenario cannot substitute
-// for reading the evidence.
-//
-// A random seven would be a bad shift, though. Real queues are mixed by
-// construction — something that turns out to be nothing, something that has to
-// be escalated tonight, and a couple that need a second pair of eyes — and a
-// hand of seven true positives teaches an analyst to escalate everything. So
-// the deal fills quotas first and fills the rest at random.
+// Deal a shift's hand
 
 import { SCENARIOS } from '../data/scenarios/index.js';
 import { mulberry32, shiftSeed } from './random.js';
@@ -23,9 +11,7 @@ const isClosable = (s) => s.truth.escalation.startsWith('close_');
 const isIr = (s) => s.truth.escalation === 'escalate_ir';
 const isTier2 = (s) => s.truth.escalation === 'escalate_tier2';
 
-// Each quota is "at least this many of these in every hand", applied in order.
-// Anything that cannot be satisfied from the library is skipped rather than
-// throwing — a smaller library still deals, it just deals a flatter shift.
+// Mix quotas
 const QUOTAS = [
   { need: 1, test: isClosable },
   { need: 1, test: isIr },
@@ -43,20 +29,14 @@ function shuffled(items, rand) {
   return out;
 }
 
-// The queue an analyst sees is sorted the way a console sorts one: by the
-// severity the tool reported — which is not the severity the case deserves —
-// and then by how little time is left on the clock. Exported so a War Room
-// alert injected mid-shift (engine/warroom.js) sorts into the same queue by
-// the same rule instead of just being appended at the end.
+// Queue sort order
 export function queueOrder(a, b) {
   const bySeverity = (SEVERITY_RANK[a.alert.reportedSeverity] ?? 9) - (SEVERITY_RANK[b.alert.reportedSeverity] ?? 9);
   if (bySeverity) return bySeverity;
   return a.alert.slaMinutes - b.alert.slaMinutes;
 }
 
-// Weighted random order (Efraimidis-Spirakis): each item draws u^(1/w) and the
-// highest keys go first, so an item with weight 2 tends to sit ahead of one
-// with weight 1 without ever being guaranteed a place.
+// Weighted shuffle
 function weightedOrder(items, rand, weights) {
   return items
     .map((item) => ({ item, key: rand() ** (1 / Math.max(weights[item.id] ?? 1, 0.01)) }))
@@ -64,18 +44,10 @@ function weightedOrder(items, rand, weights) {
     .map((entry) => entry.item);
 }
 
-// A scenario that was just in the hand isn't excluded from the next one —
-// with 13 scenarios and a 7-slot hand, most things have to recur eventually,
-// and quotas already narrow the field further for a couple of slots. This
-// just makes a just-seen scenario compete at a disadvantage instead of on
-// equal footing, so back-to-back shifts don't keep landing on the same
-// handful of alerts the way an unweighted shuffle does in a library this size.
+// Recently seen scenarios weigh less
 const REPEAT_PENALTY = 0.15;
 
-// `focus` comes from engine/progress.js planFocus(). It only changes the order
-// the pool is drawn in, so every quota below still holds on a focused shift.
-// Without a focus the original shuffle runs unchanged, and a shift saved
-// before focus existed re-deals to exactly the same hand.
+// Adaptive focus weighting
 export function dealShift(startedAt = Date.now(), variant = 0, library = SCENARIOS, focus = null, recentIds = null) {
   const size = Math.min(HAND_SIZE, library.length);
   const rand = mulberry32((shiftSeed(startedAt) ^ Math.imul(variant + 1, 0x9e3779b1)) >>> 0);

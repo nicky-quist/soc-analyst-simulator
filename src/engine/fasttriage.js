@@ -1,31 +1,20 @@
-// Fast Triage engine: deal a run of noise-heavy alerts, then score the
-// decisions. Pure functions, seeded the same way as the shift deal, so a run
-// can be reproduced from its seed and tested without a browser.
-//
-// Scoring is cost-weighted rather than a plain percent-correct because triage
-// mistakes are not symmetric. Closing a live intrusion is the failure that
-// gets a bank breached; sending a benign alert to Tier 2 only costs Tier 2 a
-// few minutes. A run that is "85% correct" but closed the ransomware alert is
-// not a good run, and the score has to say so.
+// Fast triage engine
 
 import { FAST_ALERTS } from '../data/fasttriage.js';
 import { mulberry32 } from './random.js';
 
 export const RUN_SIZE = 20;
-// About 36 seconds an alert: enough to read the card, not enough to dither.
+// Time per alert
 export const RUN_SECONDS = 12 * 60;
 
-// Guaranteed mix per run. The trap quotas sit inside these counts (two of the
-// nine closes are 'overstated', and so on) so a run always contains both ways
-// triage goes wrong, and never degenerates into a queue that is all true
-// positives, which teaches escalating everything.
+// Mix quotas per run
 const MIX = [
   { disposition: 'close', count: 9, trap: 'overstated', trapCount: 2 },
   { disposition: 'tier2', count: 7, trap: 'understated', trapCount: 1 },
   { disposition: 'ir', count: 4, trap: 'understated', trapCount: 1 },
 ];
 
-// COST[truth][answer]; 'skipped' means the clock ran out before a decision.
+// Mistake costs
 export const COST = {
   close: { close: 0, tier2: 0.5, ir: 1, skipped: 0.5 },
   tier2: { close: 2, tier2: 0, ir: 0.5, skipped: 2 },
@@ -62,8 +51,7 @@ export function outcomeOf(truth, answer) {
   return RANK[answer] < RANK[truth] ? 'undertriage' : 'overtriage';
 }
 
-// answers: { [alertId]: { choice: 'close'|'tier2'|'ir', ms } }. Anything in
-// `alerts` with no answer is scored as skipped.
+// Score a run
 export function scoreRun(alerts, answers) {
   let cost = 0;
   let maxCost = 0;
@@ -89,7 +77,7 @@ export function scoreRun(alerts, answers) {
   const avgSeconds = timed.length ? timed.reduce((n, r) => n + r.ms, 0) / timed.length / 1000 : null;
 
   const score = maxCost ? Math.round(100 * (1 - cost / maxCost)) : 0;
-  // Traps: how often the card's surface impression won over its facts.
+  // Trap hits
   const trapRows = rows.filter((r) => r.alert.trap);
   const trapsMissed = trapRows.filter((r) => r.outcome !== 'correct').length;
 
@@ -108,9 +96,7 @@ export function scoreRun(alerts, answers) {
   };
 }
 
-// A run that closed a live threat cannot grade above C whatever its total,
-// mirroring the main sim: a correct-looking report after a damaging action is
-// not a resolved case.
+// Closing a live threat caps the grade at C
 export function gradeFor(score, closedLive, skipped) {
   let g = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 55 ? 'D' : 'F';
   if (closedLive > 0 && (g === 'A' || g === 'B')) g = 'C';

@@ -1,7 +1,4 @@
-// The moment "ending a shift" becomes real instead of just re-dealing a hand:
-// every open or escalated case has to go to someone, and who that is isn't a
-// choice you make here — it was already decided by the escalation call on the
-// Report tab. This just makes that consequence visible before you walk away.
+// End-of-shift handoff review
 
 import { useRef } from 'react';
 import { COMPANY } from '../data/scenarios/index.js';
@@ -71,7 +68,7 @@ export default function EndShiftModal({ scenarios, cases, onConfirm, onCancel })
   const notes = buildShiftHandoff(scenarios, cases);
   const dialogRef = useRef(null);
   const keepWorkingRef = useRef(null);
-  // Focus starts on the safe choice, so an accidental Enter doesn't end the shift.
+  // Focus the safe choice
   useDialogFocus(dialogRef, onCancel, keepWorkingRef);
 
   return (

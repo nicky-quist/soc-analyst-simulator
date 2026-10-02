@@ -1,20 +1,11 @@
-// Cross-shift progress and the adaptive deal.
-//
-// Two properties matter more than the rest. The record has to be honest (only
-// first, unassisted attempts; no weakness named from one bad case), and the
-// adaptive deal must never break what makes a shift a shift: the mix quotas,
-// and a saved shift re-dealing to the same hand after a reload.
+// Blue team progress and adaptive deal
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 
-// Shifts are local: shiftSeed() buckets by local date and 8-hour block, so the
-// hand dealt for a timestamp depends on the time zone. The golden file was
-// generated in UTC; pin UTC here so the comparison means the same thing on a
-// laptop and on a CI runner. Each test file runs in its own process, and
-// nothing reads the clock before this line.
+// Pin UTC for the golden file
 process.env.TZ = 'UTC';
 
 import { SCENARIOS } from '../src/data/scenarios/index.js';
@@ -28,8 +19,7 @@ import {
 
 const SEEDS = Array.from({ length: 300 }, (_, i) => Date.UTC(2026, 0, 1) + i * 9 * 3600_000);
 
-// A submission that makes every *call* correctly. The report text is left empty
-// on purpose; the tests below that care about the report say so.
+// Correct calls, empty report
 function correctCalls(scenario) {
   const { truth } = scenario;
   return {
@@ -47,13 +37,13 @@ function closeCase(scenario, submission, { attempt = 1, assisted = false, shift 
   return buildRecord({ scenario, submission, score, attempt, closedAt: shift * 1000, shiftStartedAt: shift, deal });
 }
 
-// Fabricated outcomes for testing the statistics without scoring real cases.
+// Fake outcomes
 function outcomeRecord(i, outcomes, escalation = 'correct', scenarioId = SCENARIOS[i % SCENARIOS.length].id) {
   const all = Object.fromEntries(SKILLS.map((s) => [s.id, true]));
   return { key: `k${i}`, scenarioId, attempt: 1, assisted: false, overallScore: 80, resolved: true, escalation, outcomes: { ...all, ...outcomes } };
 }
 
-// ── recording ───────────────────────────────────────────────────────────────
+// ── recording ──
 
 test('a closed case is broken into the individual calls the grader makes', () => {
   const scenario = SCENARIOS[0];
@@ -114,7 +104,7 @@ test('history is capped so storage cannot grow without bound', () => {
   assert.equal(progress.history.at(-1).key, `k${HISTORY_LIMIT + 24}`, 'the newest records are the ones kept');
 });
 
-// ── statistics ──────────────────────────────────────────────────────────────
+// ── statistics ──
 
 test('smoothing keeps one miss from reading as a 0% skill', () => {
   assert.equal(smoothedRate(0, 1), 1 / 3);
@@ -161,7 +151,7 @@ test('escalation tendency needs a pattern, not a single miss', () => {
   assert.equal(escalationTendency(history).direction, 'under');
 });
 
-// ── focus planning ──────────────────────────────────────────────────────────
+// ── focus planning ──
 
 test('no focus without a weakness', () => {
   assert.equal(planFocus([], SCENARIOS), null);
@@ -187,7 +177,7 @@ test('an under-escalator is dealt cases whose alert undersells how serious they 
     assert.ok(focus.weights[s.id] > 1, `${s.id} should be boosted`);
     assert.match(focus.reasons[s.id], /arrives as .* but is .* has to go to/);
   }
-  // Needing escalation alone is not a reason: most of the library needs it.
+  // Escalation alone isn't a reason
   for (const s of honest) assert.equal(focus.weights[s.id], 1, `${s.id} reports its severity honestly`);
 
   // The bigger the undersell, the bigger the boost.
@@ -235,7 +225,7 @@ test('no scenario is ever weighted past the cap', () => {
   assert.ok(Math.max(...Object.values(focus.weights)) <= MAX_WEIGHT);
 });
 
-// ── the adaptive deal ───────────────────────────────────────────────────────
+// ── adaptive deal ──
 
 const underEscalatorFocus = () => planFocus(
   Array.from({ length: 8 }, (_, i) => outcomeRecord(i, { escalation: i % 2 === 0 }, i % 2 === 0 ? 'correct' : 'under')),
@@ -243,11 +233,7 @@ const underEscalatorFocus = () => planFocus(
 );
 
 test('without a focus, every hand is identical to the deal before focus existed', () => {
-  // Saved shifts are re-dealt from (startedAt, deal) on reload. If the
-  // unfocused deal changed at all, a shift in progress when focus shipped would
-  // re-deal a different hand and drop the analyst's open cases. The golden file
-  // was generated from the pre-focus implementation, so this comparison keeps
-  // holding after that implementation is gone from HEAD.
+  // Unfocused deal matches the golden file
   const golden = JSON.parse(readFileSync(new URL('./fixtures/deal-golden.json', import.meta.url), 'utf8'));
   let compared = 0;
   for (const [key, expected] of Object.entries(golden.hands)) {
@@ -299,10 +285,7 @@ test('the adaptive plan is plain data that survives a storage round-trip', () =>
 });
 
 test('recorded cases feed the plan end to end', () => {
-  // Real scoring, real records: an analyst who closes every IR case without
-  // escalating. They also run no searches and write no report, so those skills
-  // are missed on *every* case, and the plan must name the worst of them rather
-  // than the escalation miss this test happens to be about.
+  // Worst skill wins
   const ir = SCENARIOS.filter((s) => s.truth.escalation === 'escalate_ir');
   const others = SCENARIOS.filter((s) => s.truth.escalation !== 'escalate_ir');
   let progress = emptyProgress();
@@ -326,20 +309,14 @@ test('recorded cases feed the plan end to end', () => {
   assert.equal(summary.find((s) => s.id === focus.skill).smoothed, worst);
 });
 
-// ── does the focus actually do anything? ────────────────────────────────────
-// A banner saying "this shift leans toward X" is a promise. Each structural
-// rule has to move its most-boosted scenario's chance of being dealt by a
-// margin a trainee would feel, not a rounding error. An earlier version boosted
-// every scenario that needed escalating, which is 11 of 13, and moved the odds
-// by 0.07 while the banner claimed a focus.
+// ── focus effect size ──
 
 function dealRate(focus, id, seeds) {
   return seeds.filter((seed) => dealShift(seed, 0, SCENARIOS, focus).some((s) => s.id === id)).length / seeds.length;
 }
 
 const EFFECT_SEEDS = Array.from({ length: 1000 }, (_, i) => Date.UTC(2026, 0, 1) + i * 9 * 3600_000);
-// Misses all land on one scenario, which is then left out of the measurement,
-// so what's measured is the structural rule and not the missed-before boost.
+// Measure the structural rule only
 const MISS_SITE = 'insider-after-hours-ambiguous';
 
 const RULES = {
@@ -378,10 +355,7 @@ test('a structural rule targets a minority of the library, or it is not a focus'
   }
 });
 
-// The dashboard replaced a synthetic 7-day calendar week (which could show a
-// weekday that didn't match the clock the analyst was actually sitting at)
-// with this: a trend built only from cases the analyst actually closed, with
-// no notion of "today" to fall out of sync. See Dashboard.jsx's SLA panel.
+// SLA trend
 function slaRecord(sla) {
   return { outcomes: { ...Object.fromEntries(SKILLS.map((s) => [s.id, null])), sla } };
 }
@@ -393,7 +367,7 @@ test('the SLA trend has no history before any case has been closed', () => {
 test('the SLA trend only moves on cases that had a response-time target', () => {
   const history = [slaRecord(true), slaRecord(null), slaRecord(true), slaRecord(false)];
   const trend = slaComplianceTrend(history);
-  // The null (no target) case is skipped entirely, not counted as compliant.
+  // No-target case skipped
   assert.equal(trend.length, 3);
   assert.deepEqual(trend.map((p) => p.pct), [100, 100, 67]);
   assert.deepEqual(trend.map((p) => p.breached), [false, false, true]);
@@ -405,10 +379,7 @@ test('the SLA trend is cumulative and chronological, not a rolling window', () =
   assert.deepEqual(trend.map((p) => p.pct), [0, 0, 33, 50, 60]);
 });
 
-// Career progression. The requirement that actually matters here: breadth,
-// not volume — closing the same easy scenario over and over must never be a
-// path to promotion, because the queue re-deals the same alert across
-// separate shifts and "cases closed" alone would be a counter anyone could pad.
+// Career: breadth, not volume
 const FAKE_LIB = Array.from({ length: 12 }, (_, i) => ({ id: `s${i}` }));
 
 function careerRecord(scenarioId, overallScore, overrides = {}) {
@@ -474,15 +445,12 @@ test('a consistent escalation lean blocks Senior even with full score coverage',
   assert.equal(escalationCriterion.met, false);
 });
 
-// A rank is a checkpoint: once earned, clearing history (the Dashboard's
-// "Reset everything", or the Progress tab's "Clear history") must never take
-// it back. This is the property the analyst specifically asked for.
+// Rank checkpoint
 test('an empty history with a checkpoint keeps the checkpoint\'s rank, not Trainee', () => {
   const career = careerStatus([], FAKE_LIB, 1);
   assert.equal(career.rank, 'Tier 1 Analyst');
   assert.equal(career.viaCheckpoint, true);
-  // The criteria shown are for the *next* rank, computed from the (empty)
-  // live history — reaching Senior after a reset starts over for real.
+  // Criteria for the next rank
   assert.equal(career.next, 'Senior Analyst — Tier 2 ready');
   assert.equal(career.criteria[0].current, '0');
 });
@@ -514,8 +482,7 @@ test('clearing history preserves the checkpoint end to end', () => {
   let progress = advanceCheckpoint({ ...emptyProgress(), history: full }, FAKE_LIB);
   assert.equal(progress.checkpointRankIndex, 2);
 
-  // What SOCAnalystSim.jsx's clearHistory / handleFullReset actually do:
-  // rebuild from emptyProgress() but keep the checkpoint.
+  // Same as the app's reset
   const cleared = { ...emptyProgress(), checkpointRankIndex: progress.checkpointRankIndex };
   const career = careerStatus(cleared.history, FAKE_LIB, cleared.checkpointRankIndex);
   assert.equal(career.rank, 'Senior Analyst — Tier 2 ready');

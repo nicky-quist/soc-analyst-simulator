@@ -1,6 +1,4 @@
-// An ambiguous insider case where the anomaly is scale and timing, not access.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: insider data export
 
 export default {
   id: 'insider-after-hours-ambiguous',

@@ -1,18 +1,9 @@
-// A plain benign case, deliberately clear-cut: the nightly offsite backup went
-// to a new address because the backup vendor migrated its range, and a
-// "large outbound transfer to a new destination" detection read it as
-// exfiltration. Exists to balance a library that leans toward escalation:
-// most alerts here are real, and an analyst who has only ever seen real ones
-// learns to escalate everything. The skill is checking the boring explanation
-// first, and being able to say why it is boring.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: benign backup migration
 
 export default {
   id: 'backup-vendor-migration',
   difficulty: 1,
-  // Cosmetic only. The vendor's new address is a pure label; the transfer
-  // sizes, dates and windows the rubric reasons about never move.
+  // Variables
   variables: {
     destIp: { value: '206.189.88.14', pool: 'ipv4-external' },
   },
@@ -184,7 +175,7 @@ Note:          the detection has no context for what BKP-SRV-01 is or what it no
   truth: {
     classification: 'benign_expected',
     severity: 'LOW',
-    // What the detection would map to, as with the scanner case; nothing here is exfiltration.
+    // Technique mapping
     mitreTechnique: 'T1567.002',
     mitreTactic: 'Exfiltration',
     escalation: 'close_no_escalation',

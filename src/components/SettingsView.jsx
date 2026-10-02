@@ -1,6 +1,4 @@
-// A findable home for app-wide settings. The AI Coach was previously only
-// discoverable by closing a case and scrolling its Debrief tab — this gives
-// it (and anything added later) a permanent, always-visible spot.
+// Settings
 
 import { useState } from 'react';
 import { C, TONE } from '../theme.js';
@@ -12,8 +10,7 @@ import { clearFound, loadFound } from '../engine/easterEggsStore.js';
 import { loadAiSettings, PROVIDERS, saveAiSettings } from '../engine/ai/provider.js';
 import { SettingsPanel } from './AiCoach.jsx';
 
-// Found secrets, with the rest shown as ??? and never explained. Reset
-// everything does not touch these; this button is the only way to forget them.
+// Found secrets
 function Secrets() {
   const [found, setFound] = useState(loadFound);
   const [confirming, setConfirming] = useState(false);

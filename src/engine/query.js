@@ -1,11 +1,4 @@
-// A deliberately small SIEM search language, modeled on the shape of SPL /
-// KQL rather than any one product: `index=auth src_ip=185.220.101.45`.
-//
-// The point of this module is that the analyst has to produce the correct
-// indicator themselves. Nothing is clickable — if you mistype an octet, search
-// the wrong index, or leave the time picker on its 15-minute default (which is
-// where a real console starts you), you get zero events back and have to work
-// out why. Those three are the most common ways a new analyst loses an hour.
+// SIEM search
 
 export const TIME_RANGES = [
   { id: '15m', label: 'Last 15 minutes', minutes: 15 },
@@ -20,9 +13,7 @@ export const DEFAULT_RANGE = '15m';
 
 const INDEX_KEYS = new Set(['index', 'source', 'sourcetype', 'datasource', 'log']);
 
-// Threat feeds and tickets hand analysts "defanged" indicators so they can't be
-// clicked by accident. Pasting one into a search bar is normal; the console
-// should understand it rather than silently return nothing.
+// Refang indicators
 export function refang(value) {
   return String(value)
     .trim()
@@ -61,7 +52,7 @@ export function parseQuery(input) {
     index,
     pairs,
     terms,
-    // Every value the analyst actually typed, whether as a field or a bare term.
+    // Typed values
     values: [...Object.values(pairs), ...terms],
   };
 }
@@ -74,8 +65,7 @@ function rangeLabel(rangeId) {
   return TIME_RANGES.find((r) => r.id === rangeId)?.label ?? rangeId;
 }
 
-// A term is satisfied when the analyst typed it exactly, or typed something
-// that contains it (so `src_ip=185.220.101.45` and a bare paste both work).
+// Term match
 function hasTerm(query, term) {
   const needle = normalize(term);
   return query.values.some((value) => value === needle || value.includes(needle));
@@ -118,7 +108,7 @@ export function runQuery(scenario, rawInput, rangeId = DEFAULT_RANGE) {
 
   const candidates = (scenario.searches || []).filter((s) => matchesTerms(query, s));
 
-  // The terms are right but the analyst is looking in the wrong data source.
+  // Wrong index
   const wrongIndex = candidates.find((s) => query.index && s.match.index && s.match.index !== query.index);
   const match = candidates.find((s) => !query.index || !s.match.index || s.match.index === query.index);
 
@@ -141,8 +131,7 @@ export function runQuery(scenario, rawInput, rangeId = DEFAULT_RANGE) {
     };
   }
 
-  // Right search, window too narrow — the classic "the console defaulted to 15
-  // minutes and the activity was overnight" miss.
+  // Time window too narrow
   const needed = match.needsWindow || 0;
   if (needed > rangeMinutes(rangeId)) {
     return {

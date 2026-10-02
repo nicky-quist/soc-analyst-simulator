@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { APP_CSS } from './app/appCss.js';
 import {
-  EMPTY_CASE, EMPTY_SHIFT, SHIFT_RESET_MS, focusFor, loadProgress, loadShift, openShift, saveProgress, saveShift,
-  startClock, viewFromHash,
+  EMPTY_CASE, SHIFT_RESET_MS, dealtHand, focusFor, loadProgress, loadShift, nextShift, openShift, saveProgress,
+  saveShift, startClock, viewFromHash,
 } from './app/storage.js';
 import { SCENARIOS } from './data/scenarios/index.js';
 import { buildShift } from './data/estate.js';
 import { RED_OPS } from './data/redops.js';
 import { EGGS } from './data/easterEggs.js';
-import { dealShift } from './engine/deal.js';
 import { runQuery } from './engine/query.js';
 import { lookupIndicator } from './engine/intel.js';
 import { scoreCase, isResolvedCorrectly, searchKey } from './engine/scoring.js';
@@ -47,19 +46,35 @@ import ShiftReportCard from './components/ShiftReportCard.jsx';
 import TeamTab from './components/TeamTab.jsx';
 import TriageView from './components/TriageView.jsx';
 
-// Announce a secret if there is one; matchers return null when nothing matched.
+// Announce a secret if one matched
 function announceEgg(id) {
   if (id) announce(id);
 }
 
-// The Triage tab's working state: what's pasted, the latest verdict, and this session's history.
+const RED_OP_IDS = Object.keys(RED_OPS);
+
+function elapsedSince(startedAt) {
+  return startedAt ? Date.now() - startedAt : null;
+}
+
+// Cleared progress (keeps adaptive + rank)
+function clearedProgress(prev) {
+  return { ...emptyProgress(), adaptive: prev.adaptive, checkpointRankIndex: prev.checkpointRankIndex ?? 0 };
+}
+
+// Page column
+function Page({ width, children }) {
+  return <main className="sim-main" style={{ maxWidth: width, margin: '0 auto', width: '100%' }}>{children}</main>;
+}
+
+// Triage tab state
 const EMPTY_TRIAGE = { input: '', result: null, issues: [], history: [], guideOpen: false, guideFormat: 0 };
 
 export default function SOCAnalystSim() {
   const [progress, setProgress] = useState(loadProgress);
-  // The attacker-side career: its own record and its own checkpoint rank.
+  // Red team career
   const [redProgress, setRedProgress] = useState(loadRedProgress);
-  // Bursts for two secrets: flipping the theme many times fast, clicking the logo.
+  // Secret triggers: theme spam, logo clicks
   const [themeBurst] = useState(() => createBurst(10, 6000));
   const [logoBurst] = useState(() => createBurst(5, 3000));
   const [shift, setShift] = useState(() => {
@@ -67,65 +82,47 @@ export default function SOCAnalystSim() {
     const linked = viewFromHash();
     return linked ? { ...opened, view: linked } : opened;
   });
-  // Kept here rather than in the view so leaving the tab doesn't lose the work.
+  // Lives here so it survives tab switches
   const [triage, setTriage] = useState(EMPTY_TRIAGE);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tab, setTab] = useState('overview');
   const [walkthrough, setWalkthrough] = useState(false);
   const [showEndShiftReview, setShowEndShiftReview] = useState(false);
-  // The shift report card: what is showing now (or null), and the last one saved.
+  // Shift report card: showing now, last saved
   const [reportView, setReportView] = useState(null);
   const [lastReport, setLastReport] = useState(loadLastReport);
   const [now, setNow] = useState(() => Date.now());
 
-  // The console header and the dashboard have to agree about which shift this
-  // is, so both read the same builder off the same seed. startClock() stamps
-  // shiftStartedAt on the first render, so the `now` fallback is only ever the
-  // value for that one frame.
+  // Shift header, shared with the dashboard
   const seedAt = shift.shiftStartedAt || now;
   const shiftHeader = useMemo(() => buildShift(seedAt, shift.deal), [seedAt, shift.deal]);
 
-  // Your seven for this shift, dealt from the library and stable for as long as
-  // the shift is. Scenarios that declare `variables` (see engine/scenarioVariants.js)
-  // get their attacker IP / hostname / service account re-rolled per shift, keyed
-  // off the same (seedAt, deal) as the deal itself so a reload never changes them.
+  // This shift's queue (seeded, stable across reloads)
+  const { deal, focus, previousHandIds } = shift;
+  const dealt = useMemo(
+    () => dealtHand({ deal, focus, previousHandIds }, seedAt),
+    [seedAt, deal, focus, previousHandIds]
+  );
   const queue = useMemo(() => {
-    const hand = withWarRoom(
-      withRedOpsTarget(
-        dealShift(seedAt, shift.deal, undefined, shift.focus, new Set(shift.previousHandIds || [])),
-        shift.redOpsTarget,
-        SCENARIOS
-      ),
-      shift.warRoom
-    );
-    const seedKey = `${seedAt}:${shift.deal}`;
+    const hand = withWarRoom(withRedOpsTarget(dealt, shift.redOpsTarget, SCENARIOS), shift.warRoom);
+    const seedKey = `${seedAt}:${deal}`;
     return hand.map((s) => instantiateScenario(s, seedKey));
-  }, [seedAt, shift.deal, shift.focus, shift.warRoom, shift.redOpsTarget, shift.previousHandIds]);
+  }, [dealt, seedAt, deal, shift.warRoom, shift.redOpsTarget]);
 
   const scenario = queue[Math.min(currentIndex, queue.length - 1)];
   const caseFile = shift.cases[scenario.id] || EMPTY_CASE;
   const result = caseFile.result;
   const closed = !!result;
 
-  // Also the stale-tab watchdog for the shift auto-reset: a tab left open past
-  // SHIFT_RESET_MS gets its board wiped on the next tick, the same way loadShift()
-  // would treat it on a fresh load. Folded into the existing ticker (rather than
-  // its own effect calling setState directly) so the reset only ever happens
-  // from inside a timer callback, never synchronously during an effect body.
+  // Clock tick + stale-shift auto-reset
   useEffect(() => {
     const id = setInterval(() => {
       const nowTs = Date.now();
       setNow(nowTs);
       setShift((prev) => {
         if (!prev.shiftStartedAt || nowTs - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
-        // Read progress from storage: this interval closes over the first render's state.
-        const oldHandIds = dealShift(
-          prev.shiftStartedAt, prev.deal, undefined, prev.focus, new Set(prev.previousHandIds || [])
-        ).map((s) => s.id);
-        const fresh = {
-          ...openShift({ ...EMPTY_SHIFT, deal: prev.deal + 1, previousHandIds: oldHandIds }, loadProgress()),
-          theme: prev.theme,
-        };
+        // Read progress from storage (stale closure)
+        const fresh = nextShift(prev, loadProgress(), dealtHand(prev).map((s) => s.id));
         saveShift(fresh);
         return fresh;
       });
@@ -133,8 +130,7 @@ export default function SOCAnalystSim() {
     return () => clearInterval(id);
   }, []);
 
-  // The theme attribute lives on the document root, not on this component's
-  // wrapper, so <body> and the overscroll area repaint with everything else.
+  // Theme on the document root
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', shift.theme);
   }, [shift.theme]);
@@ -154,12 +150,30 @@ export default function SOCAnalystSim() {
     });
   }
 
+  function updateProgress(fn) {
+    setProgress((prev) => {
+      const next = fn(prev);
+      saveProgress(next);
+      return next;
+    });
+  }
+
   function stamp() {
-    return caseFile.startedAt ? Date.now() - caseFile.startedAt : 0;
+    return elapsedSince(caseFile.startedAt) ?? 0;
   }
 
   function note(current, kind, text) {
     return [...current.timeline, { at: stamp(), kind, text }];
+  }
+
+  // Close a case
+  function closeCase(current, score) {
+    return {
+      ...current,
+      result: { submission: current.form, score, attempt: current.attempts + 1 },
+      attempts: current.attempts + 1,
+      timeline: note(current, 'report', `Report submitted — case closed (${score.overallScore}/100)`),
+    };
   }
 
   function handleSearch(query, range) {
@@ -230,17 +244,18 @@ export default function SOCAnalystSim() {
   }
 
   function handleSubmit() {
+    const elapsedMs = elapsedSince(caseFile.startedAt);
     const score = scoreCase(scenario, caseFile.form, {
       searchesRun: caseFile.searchKeys,
       intelChecked: caseFile.intelChecked,
       actionsTaken: caseFile.actions,
       noiseSearches: caseFile.noiseSearches,
       assisted: caseFile.assisted,
-      elapsedMs: caseFile.startedAt ? Date.now() - caseFile.startedAt : null,
+      elapsedMs,
     });
-    // Secrets only announce; none of this reads back into the score or history.
+    // Secrets (never affect score)
     announceEgg(matchReport(caseFile.form));
-    announceEgg(matchQuickClose(caseFile.startedAt ? Date.now() - caseFile.startedAt : null, isResolvedCorrectly(score)));
+    announceEgg(matchQuickClose(elapsedMs, isResolvedCorrectly(score)));
     announceEgg(matchDeadEven(shift.redOps, scenario.id, score.overallScore));
     const record = buildRecord({
       scenario,
@@ -254,24 +269,14 @@ export default function SOCAnalystSim() {
     setProgress((prev) => {
       const next = recordCase(prev, record);
       if (!next.recorded) return next.progress;
-      // A rank is a checkpoint: once earned it never drops back down, even if
-      // history is cleared later — see advanceCheckpoint in progress.js.
+      // Ranks are checkpoints
       const withCheckpoint = advanceCheckpoint(next.progress, SCENARIOS);
       saveProgress(withCheckpoint);
       return withCheckpoint;
     });
-    updateCase((current) => ({
-      ...current,
-      result: { submission: current.form, score, attempt: current.attempts + 1 },
-      attempts: current.attempts + 1,
-      timeline: note(current, 'report', `Report submitted — case closed (${score.overallScore}/100)`),
-    }));
+    updateCase((current) => closeCase(current, score));
 
-    // A response bad enough to leave the threat live escalates the shift, once
-    // — a second War Room can't stack on top of the first. Injecting it
-    // reorders the queue (a 5-minute CRITICAL sorts near the top), which would
-    // otherwise leave currentIndex pointing at whatever slid into this case's
-    // old slot — so the index is corrected to follow this case, not its slot.
+    // Bad response triggers a War Room (once)
     if (!shift.warRoom && warRoomTriggered(scenario, score)) {
       const newWarRoom = { scenarioId: followOnFor(scenario).id, sourceId: scenario.id, triggeredAt: Date.now() };
       update((prev) => ({ ...prev, warRoom: newWarRoom }));
@@ -282,11 +287,7 @@ export default function SOCAnalystSim() {
     setTab('debrief');
   }
 
-  // Demo shortcut: fills in the correct answer and every required search,
-  // lookup, and action instantly, then jumps to Debrief — for showing the AI
-  // Coach (or anything else on that tab) without working the case for real.
-  // Marked assisted, same as Learn Mode, so recordCase() refuses to enter it
-  // into progress history — it can never count toward a career promotion.
+  // Demo shortcut to Debrief (assisted, not recorded)
   function handleSkipToDebrief() {
     const truth = scenario.truth;
     const summary = (truth.requiredReportPoints || [])
@@ -311,25 +312,14 @@ export default function SOCAnalystSim() {
         actionsTaken: actions,
         noiseSearches: 0,
         assisted: true,
-        elapsedMs: current.startedAt ? Date.now() - current.startedAt : null,
+        elapsedMs: elapsedSince(current.startedAt),
       });
-      return {
-        ...current,
-        form,
-        searchKeys,
-        intelChecked,
-        actions,
-        assisted: true,
-        result: { submission: form, score, attempt: current.attempts + 1 },
-        attempts: current.attempts + 1,
-        timeline: note(current, 'report', `Report submitted — case closed (${score.overallScore}/100)`),
-      };
+      return closeCase({ ...current, form, searchKeys, intelChecked, actions, assisted: true }, score);
     });
     setTab('debrief');
   }
 
-  // Reopening starts the investigation over rather than letting coverage carry
-  // across attempts — the point of a second pass is to work it properly.
+  // Reopen a case from scratch
   function handleRetry() {
     updateCase((current) => ({
       ...EMPTY_CASE,
@@ -344,34 +334,23 @@ export default function SOCAnalystSim() {
 
   function selectScenario(index) {
     setCurrentIndex(index);
-    update((prev) => ({ ...prev, view: 'queue' }));
+    update((prev) => startClock({ ...prev, view: 'queue' }, queue[index].id));
     setTab(shift.cases[queue[index].id]?.result ? 'debrief' : 'overview');
     setWalkthrough(false);
-    update((prev) => startClock(prev, queue[index].id));
   }
 
-  // "Defend this incident now" from Red Ops: the scenario may not be part of
-  // this shift's dealt hand, so it gets injected the same way a War Room
-  // alert does — added to the queue, sorted in, and the index is resolved
-  // against that same merged queue rather than the position it doesn't have
-  // yet in `queue` from the last render.
+  // Defend a Red Ops incident in the queue
   function handleDefendFromRedOps(scenarioId, redRun) {
-    update((prev) => ({
+    update((prev) => startClock({
       ...prev,
       view: 'queue',
       redOpsTarget: scenarioId,
       redOps: { scenarioId, ...redRun, completedAt: Date.now() },
-    }));
-    const merged = withRedOpsTarget(
-      dealShift(seedAt, shift.deal, undefined, shift.focus, new Set(shift.previousHandIds || [])),
-      scenarioId,
-      SCENARIOS
-    );
-    const idx = merged.findIndex((s) => s.id === scenarioId);
+    }, scenarioId));
+    const idx = withRedOpsTarget(dealt, scenarioId, SCENARIOS).findIndex((s) => s.id === scenarioId);
     if (idx !== -1) setCurrentIndex(idx);
     setTab(shift.cases[scenarioId]?.result ? 'debrief' : 'overview');
     setWalkthrough(false);
-    update((prev) => startClock(prev, scenarioId));
   }
 
   function toggleWalkthrough() {
@@ -381,11 +360,7 @@ export default function SOCAnalystSim() {
     if (opening && !closed) updateCase((current) => ({ ...current, assisted: true }));
   }
 
-  // Asking Tier 2 is real help, same as opening Learn Mode — it counts as
-  // assisted so the attempt doesn't get credited as unaided skill. Tracked
-  // per nudge target (search/intel/action id) so asking about the exact same
-  // still-missing thing again gets a more direct answer instead of the same
-  // hint on repeat — see engine/mentor.js.
+  // Ask Tier 2 for a nudge (counts as assisted)
   function handleAskTier2(nudgeKey) {
     if (closed) return;
     updateCase((current) => ({
@@ -396,24 +371,21 @@ export default function SOCAnalystSim() {
     }));
   }
 
-  // Reset deals the next hand rather than the same one again — the counter is
-  // what makes a second shift a second shift.
-  const handleReset = useCallback(() => {
-    const fresh = {
-      ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1, previousHandIds: queue.map((s) => s.id) }, progress),
-      theme: shift.theme,
-    };
+  // New shift
+  function startNextShift(progressForFocus) {
+    const fresh = nextShift(shift, progressForFocus, queue.map((s) => s.id));
     saveShift(fresh);
     setShift(fresh);
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
-  }, [shift.theme, shift.deal, progress, queue]);
+  }
 
-  // The real "end of shift" action: anything still open or escalated has to
-  // go to someone, so a shift with live work doesn't just quietly reset —
-  // it stops for a review of who picks each one up. Nothing to hand off
-  // means nothing to review, so it ends the same way handleReset always has.
+  function handleReset() {
+    startNextShift(progress);
+  }
+
+  // End shift (handoff review if work is open)
   function handleEndShift() {
     const notes = buildShiftHandoff(queue, shift.cases);
     if (notes.length === 0) {
@@ -428,8 +400,7 @@ export default function SOCAnalystSim() {
     endShiftNow();
   }
 
-  // The report is built from the shift as it stands, before the next hand is
-  // dealt over it, then kept so it can be reopened from Your progress.
+  // Shift report
   function makeReport() {
     const boards = buildBoards({
       progress,
@@ -437,7 +408,7 @@ export default function SOCAnalystSim() {
       found: loadFound(),
       fastRuns: loadFastTriageRuns(),
       library: SCENARIOS,
-      operationIds: Object.keys(RED_OPS),
+      operationIds: RED_OP_IDS,
       secretsTotal: EGGS.length,
     });
     return buildShiftReport({
@@ -457,73 +428,47 @@ export default function SOCAnalystSim() {
     setReportView({ report, mode: 'ended' });
   }
 
-  // A look at the report mid-shift, without ending anything.
+  // Preview report mid-shift
   function previewReport() {
     setReportView({ report: makeReport(), mode: 'preview' });
   }
 
-  // Takes effect from the next shift: the current hand was dealt with the
-  // focus it has, and changing it now would re-deal the queue under the analyst.
+  // Adaptive deal (applies next shift)
   function toggleAdaptive() {
-    setProgress((prev) => {
-      const next = { ...prev, adaptive: !prev.adaptive };
-      saveProgress(next);
-      return next;
-    });
+    updateProgress((prev) => ({ ...prev, adaptive: !prev.adaptive }));
   }
 
-  // A rank is a checkpoint, not a reflection of live stats — clearing history
-  // (here, or from the Dashboard's "Reset everything") wipes the skill numbers
-  // and the adaptive weighting they drive, but never takes back a rank you
-  // already earned.
+  // Clear history (rank kept)
   function clearHistory() {
-    setProgress((prev) => {
-      const next = { ...emptyProgress(), adaptive: prev.adaptive, checkpointRankIndex: prev.checkpointRankIndex ?? 0 };
-      saveProgress(next);
-      return next;
-    });
+    updateProgress(clearedProgress);
   }
 
-  // The Dashboard's "Reset everything" — a genuine fresh start, not just a new
-  // hand: clears cross-shift history (skills, adaptive weighting) as well as
-  // the current queue, so a score you're about to compare against something
-  // isn't carrying baggage from an earlier test run. Your career rank is a
-  // checkpoint and survives this, same as clearHistory above.
-  const handleFullReset = useCallback(() => {
-    const freshProgress = { ...emptyProgress(), adaptive: progress.adaptive, checkpointRankIndex: progress.checkpointRankIndex ?? 0 };
+  // Reset everything (ranks kept)
+  function handleFullReset() {
+    const freshProgress = clearedProgress(progress);
     saveProgress(freshProgress);
     setProgress(freshProgress);
-    // Fast triage keeps its own record; forgetting it here keeps "everything" true.
+    // Fast triage runs
     clearFastTriageRuns();
     // The saved shift report is history too.
     clearLastReport();
     setLastReport(null);
     setReportView(null);
-    // Red Ops runs go too; the Red Ops rank is a checkpoint and stays, like the analyst's.
+    // Red Ops runs (rank kept)
     const freshRed = resetRedProgress(redProgress);
     saveRedProgress(freshRed);
     setRedProgress(freshRed);
-    const freshShift = {
-      ...openShift({ ...EMPTY_SHIFT, deal: shift.deal + 1, previousHandIds: queue.map((s) => s.id) }, freshProgress),
-      theme: shift.theme,
-    };
-    saveShift(freshShift);
-    setShift(freshShift);
-    setCurrentIndex(0);
-    setTab('overview');
-    setWalkthrough(false);
-  }, [shift.theme, shift.deal, progress.adaptive, progress.checkpointRankIndex, queue, redProgress]);
+    startNextShift(freshProgress);
+  }
 
-  // A finished operation goes on the Red Ops record. Returns the new rank's
-  // name when the run earned a promotion, so the debrief can say so.
+  // Record a Red Ops run; returns a new rank if promoted
   function handleRedRunFinished(operationId, result) {
-    const ids = Object.keys(RED_OPS);
-    const before = redStatus(redProgress.history, ids, redProgress.checkpointRankIndex);
-    const next = advanceRedCheckpoint(recordRedRun(redProgress, buildRedRecord(operationId, result)), ids);
+    const before = redStatus(redProgress.history, RED_OP_IDS, redProgress.checkpointRankIndex);
+    const next = advanceRedCheckpoint(recordRedRun(redProgress, buildRedRecord(operationId, result)), RED_OP_IDS);
     saveRedProgress(next);
     setRedProgress(next);
-    const after = redStatus(next.history, ids, next.checkpointRankIndex);
-    announceEgg(matchGhostwire(next.history, ids));
+    const after = redStatus(next.history, RED_OP_IDS, next.checkpointRankIndex);
+    announceEgg(matchGhostwire(next.history, RED_OP_IDS));
     return after.rankIndex > before.rankIndex ? after.rank : null;
   }
 
@@ -531,13 +476,13 @@ export default function SOCAnalystSim() {
     update((prev) => ({ ...prev, view }));
   }
 
-  // Mirror the current tab into the URL so it can be bookmarked or linked.
+  // Tab -> URL hash
   useEffect(() => {
     const hash = `#${shift.view}`;
     if (window.location.hash !== hash) window.history.replaceState(null, '', hash);
   }, [shift.view]);
 
-  // And the other way: editing the hash, or following a #link on this page, switches tab.
+  // URL hash -> tab
   useEffect(() => {
     const onHashChange = () => {
       const view = viewFromHash();
@@ -545,7 +490,7 @@ export default function SOCAnalystSim() {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []); // update only calls the stable setShift, so subscribing once is enough
+  }, []); // setShift is stable
 
   function toggleTheme() {
     if (themeBurst()) announce('flashbang');
@@ -558,15 +503,15 @@ export default function SOCAnalystSim() {
   );
 
   const redRank = useMemo(
-    () => redStatus(redProgress.history, Object.keys(RED_OPS), redProgress.checkpointRankIndex),
+    () => redStatus(redProgress.history, RED_OP_IDS, redProgress.checkpointRankIndex),
     [redProgress]
   );
-  // Your title is earned, not a fixed label — see engine/progress.js's
-  // careerStatus() for the promotion bar.
+  // Blue team career
   const career = useMemo(
     () => careerStatus(progress.history, SCENARIOS, progress.checkpointRankIndex),
     [progress]
   );
+  const openCount = queue.length - closedCases.length;
   const avgScore = closedCases.length
     ? Math.round(closedCases.reduce((sum, r) => sum + r.score.overallScore, 0) / closedCases.length)
     : null;
@@ -581,7 +526,7 @@ export default function SOCAnalystSim() {
         className="skip-link"
         href="#"
         onClick={(e) => {
-          // Not a hash link: the console's own #view routing owns the hash.
+          // Hash belongs to view routing
           e.preventDefault();
           const target = document.querySelector('main');
           if (target) { target.setAttribute('tabindex', '-1'); target.focus(); }
@@ -595,7 +540,7 @@ export default function SOCAnalystSim() {
         <AppRail
           view={shift.view}
           onSelectView={setView}
-          openCount={queue.length - closedCases.length}
+          openCount={openCount}
           onToggleTheme={toggleTheme}
           onEndShift={handleEndShift}
           onLogoClick={() => { if (logoBurst()) announce('credits'); }}
@@ -606,14 +551,14 @@ export default function SOCAnalystSim() {
         blueRank={career.rank}
         redRank={redRank.rank}
         shiftWindow={shiftHeader.window}
-        openCount={queue.length - closedCases.length}
+        openCount={openCount}
         closedCount={closedCases.length}
         avgScore={avgScore}
         slaBreaches={slaBreaches}
       />
 
       {shift.view === 'dashboard' && (
-        <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
+        <Page width={1440}>
           <Dashboard
             scenarios={queue}
             cases={shift.cases}
@@ -626,35 +571,35 @@ export default function SOCAnalystSim() {
             onFullReset={handleFullReset}
             onPreviewReport={previewReport}
           />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'triage' && (
-        <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
+        <Page width={1440}>
           <TriageView state={triage} onChange={setTriage} />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'fasttriage' && (
-        <main className="sim-main" style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+        <Page width={900}>
           <FastTriageView />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'redops' && (
-        <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+        <Page width={1000}>
           <RedOpsView onDefend={handleDefendFromRedOps} progress={redProgress} onRunFinished={handleRedRunFinished} />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'team' && (
-        <main className="sim-main" style={{ maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+        <Page width={1000}>
           <TeamTab progress={progress} closedCases={closedCases} warRoomActive={!!shift.warRoom} rank={career.rank} />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'progress' && (
-        <main className="sim-main" style={{ maxWidth: 1440, margin: '0 auto', width: '100%' }}>
+        <Page width={1440}>
           <ProgressView
             progress={progress}
             currentFocus={shift.focus}
@@ -663,19 +608,19 @@ export default function SOCAnalystSim() {
             hasLastReport={!!lastReport}
             onOpenLastReport={() => lastReport && setReportView({ report: lastReport, mode: 'last' })}
           />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'leaderboard' && (
-        <main className="sim-main" style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+        <Page width={900}>
           <LeaderboardView progress={progress} redProgress={redProgress} />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'settings' && (
-        <main className="sim-main" style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+        <Page width={900}>
           <SettingsView />
-        </main>
+        </Page>
       )}
 
       {shift.view === 'queue' && (

@@ -1,20 +1,4 @@
-// Cosmetic identifier randomization: a scenario's attacker IP, hostname, or
-// service-account name gets swapped for another plausible one each shift, so
-// a scenario a player has seen before can't be solved from memory of the
-// exact string — they still have to search, enrich, and read.
-//
-// Deliberately narrow in scope. Only identifiers that are pure labels — an
-// IP, a hostname, a domain, a login name — are candidates. Anything the
-// narrative or the report rubric actually reasons about (byte counts, record
-// counts, "29 months unrotated") stays fixed, because those are facts the
-// story and the grader depend on, not flavor. A scenario opts in by
-// declaring `variables`; everything else passes through this untouched.
-//
-// Usernames are deliberately excluded except where a scenario file was
-// checked to have exactly one human handle in it — several scenarios name
-// two or three people (a victim plus decoy accounts) precisely so a report
-// has to distinguish them, and renaming just one risks colliding with a
-// decoy that was never meant to move.
+// Scenario variables
 
 import { hashString, mulberry32 } from './random.js';
 
@@ -48,8 +32,7 @@ const SERVICE_ACCOUNTS = [
   'svc-etl-loader', 'svc-reporting-sync', 'svc-backup-agent', 'svc-data-pipeline', 'svc-nightly-export',
 ];
 
-// Fresh handles not used as a decoy or a default anywhere in the library, so
-// a scenario tagging one can't collide with a name that was never meant to move.
+// Spare usernames
 const HUMAN_USERNAMES = [
   'tward', 'ncole', 'bhaas', 'vquinn', 'rfoster', 'emarsh',
 ];
@@ -82,9 +65,7 @@ function pickReplacement(pool, defaultValue, rand) {
   return candidates[Math.floor(rand() * candidates.length)];
 }
 
-// Walks every string in the tree — including object keys, since a variable
-// can be the thing an intel table is keyed on — and swaps each variable's
-// default value for its replacement wherever it appears.
+// Deep string substitution
 function deepSubstitute(node, replacements) {
   if (typeof node === 'string') {
     let out = node;
@@ -104,10 +85,7 @@ function deepSubstitute(node, replacements) {
   return node;
 }
 
-// Deterministic per (scenario, seedKey): the same shift always sees the same
-// substitution, same as every other seeded system in this project, so a
-// reload doesn't hand the analyst a different case mid-shift. Scenarios that
-// don't declare `variables` are returned exactly as given.
+// Instantiate a scenario for a shift
 export function instantiateScenario(scenario, seedKey) {
   if (!scenario.variables) return scenario;
   const rand = mulberry32(hashString(`${scenario.id}:${seedKey}`));
@@ -116,9 +94,7 @@ export function instantiateScenario(scenario, seedKey) {
     const pool = POOLS[v.pool];
     const picked = pool ? pickReplacement(pool, v.value, rand) : v.value;
     replacements.push([v.value, picked]);
-    // A search's own match.terms conventionally lowercase a hostname that's
-    // shown in title case everywhere else (e.g. "FIN-WKSTN-22" vs the search
-    // term "fin-wkstn-22") — the same variable, a second literal spelling.
+    // Lowercase spelling in search terms
     const lower = [v.value.toLowerCase(), picked.toLowerCase()];
     if (lower[0] !== v.value && lower[0] !== lower[1]) replacements.push(lower);
   }

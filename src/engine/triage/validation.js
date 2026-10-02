@@ -1,5 +1,4 @@
-// Extracted from SOCTriageTool.jsx so the rule engine can be tested
-// independently of React. Pure functions, no DOM, no network.
+// Triage input validation
 
 export const VALIDATION_RULES = [
   {
@@ -35,10 +34,7 @@ export const VALIDATION_RULES = [
   }
 ];
 
-/**
- * Run every validation rule against `input`.
- * @returns {Array<{id,message,detail}>} the rules that tripped; empty means analysable.
- */
+/** Run validation rules */
 export function validateInput(input) {
   return VALIDATION_RULES.filter(r => r.test(input)).map(({ id, message, detail }) => ({ id, message, detail }));
 }

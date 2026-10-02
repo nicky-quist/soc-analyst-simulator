@@ -1,8 +1,4 @@
-// Your record across shifts: which calls you get right, which you keep
-// missing, and what the next shift will do about it.
-//
-// Everything here is computed from engine/progress.js. This component only
-// lays it out, so the numbers on screen are the same numbers the tests check.
+// Progress across shifts
 
 import { useMemo, useState } from 'react';
 import { SCENARIOS } from '../data/scenarios/index.js';
@@ -75,8 +71,7 @@ export default function ProgressView({ progress, currentFocus, onToggleAdaptive,
         </div>
       )}
 
-      {/* Always shown, even with no history — a rank is a checkpoint, so it
-          has to survive a reset the same way the header title does. */}
+      {/* Rank card */}
       <Panel
         title="Career"
         icon={<IconGraduationCap size={14} />}

@@ -5,9 +5,7 @@ import { searchTechniques, findTechnique } from '../data/techniques.js';
 import { Badge, Button, Callout, Card, Field, SectionLabel } from '../ui/primitives.jsx';
 import { inputStyle } from '../ui/helpers.js';
 
-// ATT&CK mapping as a picker rather than a free-text box: the analyst has to
-// choose between techniques that all look plausible for the alert, which is the
-// actual difficulty of mapping. Typing a technique ID from memory is not.
+// ATT&CK technique picker
 function TechniquePicker({ value, onChange, disabled }) {
   const [filter, setFilter] = useState('');
   const selected = findTechnique(value);

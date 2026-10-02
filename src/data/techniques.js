@@ -1,9 +1,4 @@
-// A working subset of MITRE ATT&CK (Enterprise) — the techniques an L1 at a
-// bank plausibly reaches for, plus the near-miss ones that make the mapping a
-// real decision instead of a lookup. ATT&CK mapping is kept because it is
-// genuinely part of the job: SIEM detections ship with technique IDs attached,
-// and case tools ask for one on every incident, because it is what makes
-// incidents comparable and coverage gaps visible.
+// ATT&CK techniques
 
 export const TECHNIQUES = [
   { id: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory', tactic: 'Credential Access' },

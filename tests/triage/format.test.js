@@ -53,8 +53,7 @@ describe('extractIPs', () => {
   });
 
   test('does not leak regex lastIndex between calls', () => {
-    // IP_RE is a module-level /g regex; .match() resets it, but a switch to
-    // .test() or .exec() would make repeat calls return different results.
+    // Global regex state
     const text = '10.0.0.1 and 10.0.0.2';
     assert.deepEqual(extractIPs(text), extractIPs(text));
   });

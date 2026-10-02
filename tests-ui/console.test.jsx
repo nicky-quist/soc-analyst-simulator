@@ -1,9 +1,4 @@
-// Smoke tests for the console as a person uses it: the shell and its navigation,
-// the whole core loop on a real dealt case (investigate, respond, report, debrief),
-// that the work survives a reload, the shift report, and a secret. They drive the
-// screen with the same clicks and typing a person would, and read what a person
-// would see, so a refactor that breaks the app fails here even when every engine
-// test still passes.
+// Console smoke tests
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -23,8 +18,7 @@ const nav = () => within(screen.getByRole('navigation', { name: 'Console section
 const goTo = (label) => fireEvent.click(nav().getByRole('button', { name: label }));
 const openTab = (name) => fireEvent.click(screen.getByRole('tab', { name: new RegExp(`^${name}`) }));
 
-// The case on screen, as the scenario the console dealt: found by its alert
-// reference, then given the same per-shift identifiers the console gave it.
+// Scenario on screen
 function currentScenario() {
   const ref = document.querySelector('main code').textContent;
   const saved = JSON.parse(window.localStorage.getItem(SHIFT_KEY));
@@ -32,8 +26,7 @@ function currentScenario() {
   return instantiateScenario(base, `${saved.shiftStartedAt}:${saved.deal}`);
 }
 
-// Works the open case start to finish with the calls the scenario's own ground
-// truth says are right. Returns the scenario it worked.
+// Work a case end to end
 async function workCurrentCase() {
   const scenario = currentScenario();
   const truth = scenario.truth;
@@ -122,13 +115,13 @@ describe('the core loop on a real dealt case', () => {
     goTo('Alert queue');
     const scenario = await workCurrentCase();
 
-    // The case closed, with a score, and the Debrief tab appeared.
+    // Closed, scored, Debrief shown
     expect(await screen.findByRole('tab', { name: /^Debrief/ })).toBeTruthy();
     expect(within(screen.getByRole('banner')).getByText('1 closed')).toBeTruthy();
     expect(within(screen.getByRole('banner')).getByText('6 open')).toBeTruthy();
     expect(screen.getAllByText(/\/100/).length).toBeGreaterThan(0);
 
-    // The saved shift recorded the closed case with the calls that were made.
+    // Saved shift has the closed case
     const saved = JSON.parse(window.localStorage.getItem(SHIFT_KEY));
     const result = saved.cases[scenario.id].result;
     expect(result.submission.classification).toBe(scenario.truth.classification);
@@ -157,7 +150,7 @@ describe('the core loop on a real dealt case', () => {
     fireEvent.change(screen.getByLabelText('Search query'), {
       target: { value: `index=${search.match.index} ${(search.match.terms || []).join(' ')}` },
     });
-    // The time range is left at the console's 15-minute default on purpose.
+    // Default 15m range
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     expect(await screen.findByText(/widen the time picker/i)).toBeTruthy();
   });
@@ -191,7 +184,7 @@ describe('the shift report', () => {
     await screen.findByRole('tab', { name: /^Debrief/ });
 
     fireEvent.click(screen.getByRole('button', { name: /^End shift/ }));
-    // Escalated and unfinished cases stop for a handoff review first.
+    // Handoff review first
     const review = await screen.findByRole('dialog', { name: /Review handoff/ });
     fireEvent.click(within(review).getByRole('button', { name: /end shift/i }));
     const report = await screen.findByRole('dialog', { name: 'Shift report' });
@@ -225,12 +218,12 @@ describe('the dashboard', () => {
     render(<SOCAnalystSim />);
     goTo('Dashboard');
 
-    // The clock is fixed at 10:00, so the last bar is 10AM and it is called out.
+    // Current hour marked
     const chart = screen.getByRole('img', { name: /last bar is the current hour/ });
     const labels = [...chart.querySelectorAll('text')].map((t) => t.textContent.trim());
     expect(labels.slice(-2)).toEqual(['10AM', 'NOW']);
 
-    // The live tail's level badges use the severity palette, not a one-off tone.
+    // Severity badges
     const badges = screen.getAllByText(/^(low|medium)$/);
     expect(badges.length).toBeGreaterThan(0);
     for (const badge of badges) expect(badge.style.color).toContain(`--sev-${badge.textContent}`);
@@ -238,7 +231,7 @@ describe('the dashboard', () => {
 });
 
 describe('Red Ops', () => {
-  // Opens the first operation and returns its data, found by the crew on screen.
+  // Open the first operation
   function startFirstOperation() {
     goTo('Red Ops');
     fireEvent.click(screen.getAllByRole('button', { name: /Start operation/ })[0]);
@@ -264,7 +257,7 @@ describe('Red Ops', () => {
       advance();
     }
 
-    // The debrief offers the other side of the same incident, and the run is on record.
+    // Defend link and record
     expect(await screen.findByRole('button', { name: /Defend this incident now/ })).toBeTruthy();
     const saved = JSON.parse(window.localStorage.getItem(RED_PROGRESS_KEY));
     expect(saved.history).toHaveLength(1);
@@ -278,7 +271,7 @@ describe('Red Ops', () => {
     for (const stage of ops.stages) {
       await playMove([...stage.choices].sort((a, b) => a.stealth - b.stealth)[0]);
       expect(await screen.findByText('Caught')).toBeTruthy();
-      // The ladder always lists Burned as a level; the callout only appears once it happens.
+      // Burned level
       const burned = screen.queryByText(/Three of your moves were caught/);
       advance();
       if (burned) break;
@@ -295,7 +288,7 @@ describe('Fast Triage', () => {
     goTo('Fast triage');
     fireEvent.click(screen.getByRole('button', { name: /Start run/ }));
 
-    // Every card takes one answer; the first disposition is enough to get through them all.
+    // Answer every card
     for (let i = 0; i < RUN_SIZE; i += 1) {
       expect(await screen.findByText(`Alert ${i + 1} of ${RUN_SIZE}`)).toBeTruthy();
       fireEvent.click(screen.getAllByRole('button', { name: /^1 / })[0]);

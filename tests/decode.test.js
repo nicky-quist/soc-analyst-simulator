@@ -1,6 +1,4 @@
-// The decoder is how the analyst turns the -EncodedCommand blob into the C2
-// address the rest of scenario 4 depends on, so it has to handle the UTF-16LE
-// encoding PowerShell actually uses.
+// Base64 decoding
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

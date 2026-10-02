@@ -1,5 +1,4 @@
-// Shared style objects and formatters. Kept out of the component modules so
-// fast refresh can treat those as component-only files.
+// Shared styles and formatters
 
 import { C, FONT, MONO } from '../theme.js';
 

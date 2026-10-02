@@ -1,6 +1,4 @@
-// The hand you are dealt is the whole shift, so the deal has to be two things
-// at once: different every time, and never a bad shift. These assertions pin
-// down both — variety across seeds, and the mix quotas on every single hand.
+// Deal: variety and mix quotas
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -69,8 +67,7 @@ test('shifts differ from each other but never mid-shift', () => {
 });
 
 test('a just-dealt hand is deprioritized next time, without being excluded', () => {
-  // Chain deals the way the app does: each hand's ids become the next deal's
-  // "recent" set, same as previousHandIds carried shift to shift.
+  // Chain deals like the app
   const startedAt = Date.UTC(2026, 2, 3, 9, 0);
   const rounds = 40;
   let recent = new Set();
@@ -82,8 +79,7 @@ test('a just-dealt hand is deprioritized next time, without being excluded', () 
     const weightedHand = dealShift(startedAt, variant, SCENARIOS, null, recent).map((s) => s.id);
     const unweightedHand = dealShift(startedAt, variant).map((s) => s.id);
 
-    // Correctness must survive the bias: still a full, quota-satisfying hand
-    // even once "recent" covers most of a 13-scenario library.
+    // Still a full, valid hand
     assert.equal(weightedHand.length, HAND_SIZE);
     assert.equal(new Set(weightedHand).size, HAND_SIZE);
 
@@ -109,7 +105,7 @@ test('every scenario in the library gets dealt eventually', () => {
   assert.equal(seen.size, SCENARIOS.length, `never dealt: ${SCENARIOS.filter((s) => !seen.has(s.id)).map((s) => s.id).join(', ')}`);
 });
 
-// --- the analyst's own SLA figure -------------------------------------------
+// ── SLA ──
 
 const NOW = Date.UTC(2026, 7, 21, 12, 0);
 const scenarioOf = (slaMinutes) => ({ id: `s${slaMinutes}`, alert: { slaMinutes } });

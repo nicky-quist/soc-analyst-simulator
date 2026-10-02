@@ -1,20 +1,9 @@
-// A container-escape alert that is an engineer doing exactly what the incident
-// process told them to do. The runtime sensor sees a privileged pod with the
-// host's process namespace and the node's filesystem mounted on a production
-// node, which is precisely what an escape looks like, and it rates it HIGH.
-// It is also precisely what `kubectl debug node/` produces when a site
-// reliability engineer needs to look at a process on the host. The skill is
-// telling the two apart by what the session did, who started it, and whether
-// anyone approved it, and then leaving it alone: every response that feels
-// safe here takes down the customer workload the engineer is trying to fix.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: k8s break-glass debug
 
 export default {
   id: 'k8s-break-glass-debug',
   difficulty: 2,
-  // Cosmetic only. The engineer's handle is a pure label; the node, the
-  // incident and request numbers, the image and the timings never move.
+  // Variables
   variables: {
     engineer: { value: 'lmorales', pool: 'human-username' },
   },
@@ -170,7 +159,7 @@ export default {
   truth: {
     classification: 'false_positive',
     severity: 'LOW',
-    // What the detection would map to; nothing here escaped a container.
+    // Technique mapping
     mitreTechnique: 'T1611',
     mitreTactic: 'Privilege Escalation',
     escalation: 'close_false_positive',

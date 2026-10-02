@@ -1,17 +1,4 @@
-// Fast Triage alert pool: the volume side of Tier-1 work.
-//
-// The seven-case shift trains depth (find the evidence, contain, write it up).
-// This trains the other half of the job: most alerts a human sees get about
-// ninety seconds, and the skill is reading the two lines that decide it. Each
-// card carries only what a SIEM alert row would — no searching, no pivots —
-// plus the ground truth and the reasoning shown in the review afterward.
-//
-//   disposition — 'close' | 'tier2' | 'ir'. Same three outcomes the full cases use.
-//   trap        — 'overstated' (reads scary, is benign) or 'understated' (reads
-//                 routine, is real), or null. The deal guarantees a few of each,
-//                 because those are the two ways triage goes wrong.
-//   tell        — the detail in `facts` that decides it, quoted in the review.
-//   theme       — what the review groups mistakes by.
+// Fast triage alert pool
 
 export const DISPOSITIONS = [
   { value: 'close', label: 'Close', hint: 'benign, expected, or a false positive' },
@@ -22,7 +9,7 @@ export const DISPOSITIONS = [
 const A = (id, o) => ({ id, trap: null, ...o });
 
 export const FAST_ALERTS = [
-  // ── Close: benign, expected, or false positive ──────────────────────────
+  // ── Close ──
   A('ft-01', {
     disposition: 'close', trap: 'overstated', theme: 'authorized scanning', severity: 'HIGH',
     source: 'IDS', rule: 'ET SCAN Nmap SYN scan detected',
@@ -120,7 +107,7 @@ export const FAST_ALERTS = [
     tell: 'The host is retired and powered off, so the finding is a stale record.',
   }),
 
-  // ── Tier 2: real or unclear, needs a deeper look ────────────────────────
+  // ── Tier 2 ──
   A('ft-17', {
     disposition: 'tier2', trap: 'understated', theme: 'quiet persistence', severity: 'LOW',
     source: 'EDR', rule: 'New scheduled task created',
@@ -194,7 +181,7 @@ export const FAST_ALERTS = [
     tell: 'A database with no ticket, open to the internet. Needs an owner and likely a fix, though nothing shows abuse yet.',
   }),
 
-  // ── Page IR: confirmed-bad, act tonight ─────────────────────────────────
+  // ── Page IR ──
   A('ft-29', {
     disposition: 'ir', trap: 'understated', theme: 'web shell', severity: 'MEDIUM',
     source: 'EDR', rule: 'Suspicious child process',

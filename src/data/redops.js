@@ -1,18 +1,4 @@
-// Red Ops: the same incident, played from the attacker's side, as a chain of
-// choices — never freeform code or a real payload, the same discipline the
-// Respond tab already holds to. Only scenarios with a rich enough real
-// narrative get one; this isn't a generator, it's a second lens on content
-// that already exists.
-//
-// Each stage's `tactic` is a label from estate.js's TACTIC_COVERAGE, so the
-// debrief can say "Coastal Trust Bank catches this tactic N% of the time"
-// using the real number the Dashboard already shows — engine/redops.js reads
-// it live rather than this file duplicating it.
-//
-// `canonical: true` marks the choice that matches what actually happened in
-// that scenario's real story (its rawLog/searches/walkthrough) — the debrief
-// points it out either way, because "what really happened" is itself a
-// finding, not just a spoiler.
+// Red Ops operations
 
 export const RED_OPS = {
   'malicious-powershell-precursor': {

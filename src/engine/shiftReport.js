@@ -1,10 +1,4 @@
-// The end-of-shift report card: one page that says how the shift actually went.
-// Pure functions. Hand them the same records the console already keeps and get
-// back a plain object the report view renders, prints, and copies.
-//
-// It grades nothing new. Every number here is something the case grader, the
-// progress engine or the handoff builder already computed; this only gathers
-// them for one shift and puts them side by side.
+// Shift report builder
 
 import { caseStatus, shiftCompliance } from './case.js';
 import { buildShiftHandoff } from './handoff.js';
@@ -55,8 +49,7 @@ function caseRow(scenario, caseFile) {
   };
 }
 
-// This shift's own rate on each skill, from the cases closed in it. A skill the
-// closed cases never tested is 'n/a', which is not the same as missing it.
+// Skill rates this shift
 function shiftSkills(results) {
   return SKILLS.map((skill) => {
     const outcomes = results.map((r) => skill.test(r.score)).filter((v) => v !== null && v !== undefined);
@@ -72,9 +65,7 @@ function shiftSkills(results) {
   });
 }
 
-// scenarios: the queue as dealt. cases: shift.cases. header: { label, window }.
-// nextFocus: planFocus() for the next shift, or null. standing: the leaderboard
-// ranks at this moment, or null. now: passed in so the result is reproducible.
+// Build the report
 export function buildShiftReport({ scenarios, cases, header, nextFocus = null, standing = null, now = Date.now() }) {
   const rows = scenarios.map((s) => caseRow(s, cases[s.id]));
   const closed = rows.filter((r) => r.status === 'closed');
@@ -111,8 +102,7 @@ export function buildShiftReport({ scenarios, cases, header, nextFocus = null, s
     handoff: buildShiftHandoff(scenarios, cases).map((n) => ({
       ref: n.ref, label: n.label, status: n.status, escalatedTo: n.escalatedTo, stillNeeded: n.stillNeeded.length,
     })),
-    // The team lead reads only the cases that were closed, so when some are still
-    // open the note says so instead of praising a shift that is mostly untouched.
+    // Team lead note
     teamLead: summary ? {
       from: summary.persona.from,
       role: summary.persona.role,
@@ -125,7 +115,7 @@ export function buildShiftReport({ scenarios, cases, header, nextFocus = null, s
   };
 }
 
-// The four ranks, as the report stores them: { blue: { label, rank, of }, ... }.
+// Leaderboard standing
 export function standingFromBoards(boards) {
   const pick = (rows, label) => {
     const you = rows.find((r) => r.isYou);

@@ -1,15 +1,9 @@
-// Consent phishing: no password stolen, no malware, nothing for the endpoint
-// tools to see. A user clicked "Accept" on a Microsoft-hosted consent screen
-// and an application now holds a token to read their mail — which survives a
-// password reset, because a password was never involved.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: OAuth consent phishing
 
 export default {
   id: 'oauth-consent-grant',
   difficulty: 3,
-  // Username isn't tagged: mlowery, the second person who consented, is a
-  // decoy this scenario needs to stay distinct from rpatterson.
+  // Variables (username fixed)
   variables: {
     domain: { value: 'statements-ctb.app', pool: 'suspicious-domain' },
     tokenIp: { value: '45.61.187.92', pool: 'ipv4-external' },

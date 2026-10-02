@@ -1,9 +1,4 @@
-// The alert you cannot close either way. DNS query volume that looks like
-// tunnelling, coming from a signed binary with a plausible reason to talk —
-// and no approval record, no vendor documentation, and no way to read the
-// payload. The graded skill is writing an honest "I do not know yet".
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: suspected DNS tunnel
 
 export default {
   id: 'dns-tunnel-suspected',

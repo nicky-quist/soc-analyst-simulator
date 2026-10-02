@@ -1,23 +1,4 @@
-// Scenario registry.
-//
-// Each scenario models one alert arriving in a Tier-1 queue at the fictional
-// Coastal Trust Bank, and carries everything the console needs to behave like a
-// real one:
-//
-//   alert     — the detection metadata a SIEM would hand you, including the
-//               severity the tool reported, which is yours to confirm or overturn.
-//   datasets  — the indexes that exist. Search anything else and you get an error.
-//   searches  — what a query returns. The analyst has to type the indicator
-//               correctly, pick the right index, and widen the time range past
-//               the console's 15-minute default. Nothing here is clickable.
-//   intel     — what the threat feeds hold. Anything not listed returns "no
-//               records", which is not the same thing as "clean".
-//   actions   — the response actions available, and what each one really does.
-//               Some of them cause damage; that is the point.
-//   truth     — ground truth for grading, including which searches and lookups
-//               a competent investigation has to include.
-//   difficulty — 1 clear-cut, 2 needs a pivot, 3 genuinely ambiguous. The deal
-//               uses it to make sure a shift is not all one register.
+// Scenario registry
 
 import sshBruteSuccess from './ssh-brute-success.js';
 import vulnScanFalsePositive from './vuln-scan-false-positive.js';
@@ -40,17 +21,12 @@ import githubActionTagHijack from './github-action-tag-hijack.js';
 import k8sBreakGlassDebug from './k8s-break-glass-debug.js';
 import warroomRansomwareDetonation from './warroom-ransomware-detonation.js';
 
-// The security org chart, drawn only as deep as it's actually relevant to a
-// Tier-1 shift — no HR, no marketing, nobody you'd never hear from. Each role
-// carries who it reports to (for the Team tab's tree) and a one-line blurb of
-// what it actually does in this sim, not a job-description fiction.
+// Security org chart
 export const COMPANY = {
   name: 'Coastal Trust Bank',
   soc: 'SEA SOC',
   analyst: {
-    // Title is a fallback for before any career history exists — everywhere
-    // this actually renders, it's overridden by engine/progress.js's
-    // careerStatus(), because the rank is earned, not handed out on page load.
+    // Fallback title (real one is the earned rank)
     name: 'You', title: 'Trainee', reportsTo: 'tier2',
     blurb: 'Works the queue: investigates, enriches, responds, writes the report.',
   },
@@ -80,8 +56,7 @@ export const COMPANY = {
   },
 };
 
-// The library, not the queue. A shift deals seven of these — see
-// ../../engine/deal.js — so the order here is just the order they were written.
+// Scenario library
 export const SCENARIOS = [
   sshBruteSuccess,
   vulnScanFalsePositive,
@@ -104,10 +79,7 @@ export const SCENARIOS = [
   k8sBreakGlassDebug,
 ];
 
-// War Room follow-ons — deliberately not part of SCENARIOS/the deal pool.
-// These never get dealt; engine/warroom.js injects one into a live shift when
-// its trigger case closes with a response bad enough to earn it. Keyed by the
-// scenario id that can trigger it.
+// War Room follow-ons (never dealt)
 export const WAR_ROOM_SCENARIOS = {
   [powershellPrecursor.id]: warroomRansomwareDetonation,
 };

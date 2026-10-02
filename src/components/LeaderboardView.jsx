@@ -1,7 +1,4 @@
-// Four separate leaderboards, Blue, Red, Fast Triage and Secrets, each ranking you against
-// the fictional SEA SOC roster. It is you against the sim's own people: the
-// standings are fixed, so a board looks the same every time and you climb it by
-// playing. Nothing here is shared or uploaded.
+// Leaderboards
 
 import { useMemo, useState } from 'react';
 import { EGGS } from '../data/easterEggs.js';

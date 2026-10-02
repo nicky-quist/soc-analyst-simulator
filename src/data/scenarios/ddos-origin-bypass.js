@@ -1,18 +1,9 @@
-// An availability incident, the first in the library: an HTTP flood against
-// online banking where the DDoS scrubbing provider is doing its job on the
-// front doors and a forgotten DNS record is letting the same flood hit an
-// origin directly. Tests whether an L1 reads "mitigated" as a fact about the
-// whole estate or only about the hosts the mitigation covers, and whether the
-// instinct to block traffic (an IP, a country, the origin itself) survives
-// contact with a botnet of forty thousand addresses.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: DDoS origin bypass
 
 export default {
   id: 'ddos-origin-bypass',
   difficulty: 2,
-  // Cosmetic only. The top talker is a pure label; the traffic volumes, the
-  // 41,000-source count and the backend health the rubric reasons about never move.
+  // Variables
   variables: {
     topTalker: { value: '89.248.167.131', pool: 'ipv4-external' },
   },

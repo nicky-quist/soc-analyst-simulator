@@ -1,8 +1,4 @@
-// Tests for the grading engine. Run with `npm test` (Node's built-in test
-// runner — no test framework dependency needed).
-//
-// The grading is the part of this project that has to be trustworthy: if the
-// rubric silently stops matching, the sim quietly teaches the wrong lesson.
+// Blue team scoring
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,8 +18,7 @@ import { findTechnique } from '../src/data/techniques.js';
 
 const byId = Object.fromEntries(SCENARIOS.map((s) => [s.id, s]));
 
-// A textbook-perfect report for each scenario, written the way an analyst would
-// actually write it — not a keyword dump.
+// Model reports
 const IDEAL = {
   'ssh-brute-success': {
     summary:

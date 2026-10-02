@@ -1,9 +1,4 @@
-// Four separate leaderboards, Blue, Red, Fast Triage and Secrets, each ranking you against
-// the fictional SEA SOC roster. Pure functions: hand them the same records the
-// rest of the console keeps and get back sorted, ranked rows.
-//
-// Ranking is standard competition ranking: rows that tie share a rank, and the
-// next rank skips (1, 2, 2, 4). Among tied rows you are listed first.
+// Leaderboards
 
 import { ROSTER, LIVE_URL } from '../data/leaderboard.js';
 import {
@@ -22,7 +17,7 @@ const COMPARE = {
   secrets: (a, b) => desc(a.count, b.count),
 };
 
-// The rule each board sorts by, in words, so the page can state it.
+// Sort rule per board
 export const RULES = {
   blue: 'Ranked by career rank, then case types cleared at 80%+, then average best score.',
   red: 'Ranked by Red Ops rank, then operations cleared, then ghost runs, then best completed score.',
@@ -41,10 +36,9 @@ export function rankEntries(entries, compare) {
   });
 }
 
-// ── your standing, from the same engines that show it elsewhere ─────────────
+// ── your standing ──
 
-// runs: the saved Fast Triage runs ({ score, grade, avgSeconds, ... }). Your
-// standing is your best run, and the pace of that same run.
+// Fast triage standing
 export function fastStanding(runs) {
   if (!runs.length) return { best: null, grade: null, avgSeconds: null, runs: 0 };
   const top = runs.reduce((a, b) => (b.score > a.score || (b.score === a.score && (b.avgSeconds ?? Infinity) < (a.avgSeconds ?? Infinity)) ? b : a));
@@ -73,16 +67,16 @@ export function redStanding(redProgress, operationIds) {
   };
 }
 
-// ── the four boards ────────────────────────────────────────────────────────
+// ── boards ──
 
-// The same grade bands Fast Triage itself uses, so a roster score reads like yours.
+// Fast triage grade bands
 function gradeOf(score) {
   return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 55 ? 'D' : 'F';
 }
 
 function rosterBlue(person, total) {
   const { rankIndex, avg } = person.blue;
-  // Senior means every case type is cleared; below it, clamp to keep it true as the library grows.
+  // Clamp cleared count
   const cleared = rankIndex === 2 ? total : Math.min(person.blue.cleared, total - (rankIndex === 1 ? 1 : 0));
   return { rankIndex, rankLabel: CAREER_RANKS[rankIndex].label, cleared, avg };
 }

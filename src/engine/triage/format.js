@@ -1,5 +1,4 @@
-// Extracted from SOCTriageTool.jsx so the rule engine can be tested
-// independently of React. Pure functions, no DOM, no network.
+// Triage formatting
 
 /** Log formats the engine can recognize. */
 export const FORMATS = [
@@ -26,22 +25,13 @@ export function detectFormat(t) {
   return "Free-form Narrative";
 }
 
-/** Standard Zeek conn.log column order, used when the capture has no #fields header. */
+/** Default Zeek conn.log columns */
 export const ZEEK_CONN_FIELDS = [
   'ts', 'uid', 'id.orig_h', 'id.orig_p', 'id.resp_h', 'id.resp_p',
   'proto', 'service', 'duration', 'orig_bytes', 'resp_bytes', 'conn_state'
 ];
 
-/**
- * Parse Zeek conn.log text into row objects keyed by column name.
- *
- * Reads the `#fields` header when present and falls back to the standard
- * conn.log column order otherwise. Zeek writes unset numeric fields as `-`,
- * which becomes null rather than NaN.
- *
- * @param {string} text raw conn.log content
- * @returns {Array<Object>} one object per data row
- */
+/** Parse Zeek conn.log rows */
 export function parseZeek(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const header = lines.find(l => /^#fields\b/.test(l));

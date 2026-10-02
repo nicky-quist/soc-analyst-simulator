@@ -1,6 +1,4 @@
-// The console's side rail: the logo, the sections in their groups, and the
-// theme and end-shift buttons. The sections come from app/nav.js so the rail, the
-// #hash routing and the tests that pin the order all read one list.
+// Side rail
 
 import { NAV_GROUPS } from '../app/nav.js';
 import { C } from '../theme.js';

@@ -1,6 +1,4 @@
-// The console's stylesheet: layout, the rail, focus rings, responsive breakpoints,
-// reduced motion and the print layout for the shift report. Kept as one string
-// because the theme variables and the layout rules are edited together.
+// Console stylesheet
 
 import { THEME_CSS } from '../theme.js';
 
@@ -72,7 +70,7 @@ export const APP_CSS = `
     .app-rail { width: 48px; }
     .rail-nav-btn { width: 38px; height: 38px; }
   }
-  /* Tab strips wrap on phones so no tab is hidden behind a sideways scroll. */
+  /* Tab strips wrap on phones */
   @media (max-width: 640px) {
     .sim-tabs { flex-wrap: wrap !important; overflow-x: visible !important; }
   }
@@ -80,7 +78,7 @@ export const APP_CSS = `
   @media (pointer: coarse) {
     main button, [role="tab"], .report-overlay button { min-height: 40px; }
   }
-  /* Six report metrics: one row on a wide screen, two rows of three on a page or a tablet, two columns on a phone. */
+  /* Report metrics grid */
   .report-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
   @media (max-width: 820px) { .report-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 420px) { .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

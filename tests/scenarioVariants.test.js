@@ -1,7 +1,4 @@
-// The pilot: a scenario's attacker IP / hostname / service account can be
-// re-rolled per shift without breaking the thing that actually matters —
-// that a player who does the right searches and lookups still gets credited
-// for it, regardless of which pool value they landed on.
+// Scenario variables
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,8 +10,7 @@ const awsKeyLeak = SCENARIOS.find((s) => s.id === 'aws-key-leak');
 const sshBrute = SCENARIOS.find((s) => s.id === 'ssh-brute-success');
 
 test('a scenario with no variables passes through untouched', () => {
-  // Every scenario in the library is tagged at this point, so the no-op path
-  // is exercised with a synthetic stand-in rather than a real library entry.
+  // Synthetic untagged scenario
   const untouched = { id: 'untagged-fixture', rawLog: 'nothing to substitute here' };
   assert.equal(instantiateScenario(untouched, 'any-seed'), untouched);
 });
@@ -40,7 +36,7 @@ test('aws-key-leak stays internally consistent under every re-roll', () => {
     const s = instantiateScenario(awsKeyLeak, seed);
     const json = JSON.stringify(s);
 
-    // The default value must not survive anywhere if it got replaced.
+    // Old default fully replaced
     if (s.variables.sourceIp.value !== '45.83.42.19') {
       assert.ok(!json.includes('45.83.42.19'), `stale default IP leaked through for seed ${seed}`);
     }
@@ -48,14 +44,12 @@ test('aws-key-leak stays internally consistent under every re-roll', () => {
       assert.ok(!json.includes('svc-etl-loader'), `stale default principal leaked through for seed ${seed}`);
     }
 
-    // Required intel must name a key that actually exists in the intel table.
+    // Required intel exists
     for (const key of s.truth.requiredIntel) {
       assert.ok(key in s.intel, `requiredIntel "${key}" has no matching intel record (seed ${seed})`);
     }
 
-    // The required searches' ids and match terms must still line up with the
-    // scenario's own current IP — a search a correct analyst runs has to
-    // still find what it's supposed to find.
+    // Required searches still match
     const ipSearch = s.searches.find((sr) => sr.id === 's6-cloudtrail-ip');
     const currentIp = Object.entries(s.intel)[0][0];
     assert.deepEqual(ipSearch.match.terms, [currentIp]);
@@ -92,12 +86,10 @@ test('ssh-brute-success stays internally consistent under every re-roll', () => 
     const authIpSearch = s.searches.find((sr) => sr.id === 's1-auth-ip');
     assert.deepEqual(authIpSearch.match.terms, [currentIp]);
 
-    // The current hostname's own decoy neighbors (db-prod-01/02, app-prod-07)
-    // must never be touched — they're a different fact, not this scenario's
-    // variable, and the contrast between them is the point of that search.
+    // Decoy hosts untouched
     assert.ok(json.includes('db-prod-01') && json.includes('db-prod-02') && json.includes('app-prod-07'));
 
-    // The rubric keyword list must track the current hostname, not the default.
+    // Rubric tracks the hostname
     const hostnamePoint = s.truth.requiredReportPoints.find((p) => p.point.includes('low-value target'));
     const currentHostname = s.alert.entities.find((e) => e.label === 'Host').value;
     assert.ok(
@@ -112,13 +104,7 @@ test('ssh-brute-success stays internally consistent under every re-roll', () => 
   }
 });
 
-// Extended pass: every scenario in the library now declares `variables`.
-// Rather than hand-writing a bespoke test per scenario (as above, kept for
-// the two pilots because they check field-specific things — e.g. that the
-// hostname search's own match.terms track the re-rolled value), this loops
-// the whole library and checks the invariants that apply universally:
-// nothing structural moves, required intel always resolves, and a default
-// that changed doesn't survive anywhere in the instantiated object.
+// Every scenario: universal invariants
 test('every tagged scenario in the library stays internally consistent across many seeds', () => {
   const tagged = SCENARIOS.filter((s) => s.variables);
   assert.equal(tagged.length, SCENARIOS.length, 'expected every scenario in the library to be tagged');
@@ -141,12 +127,12 @@ test('every tagged scenario in the library stays internally consistent across ma
       assert.deepEqual(s.searches.map((sr) => sr.id), scenario.searches.map((sr) => sr.id), label);
       assert.deepEqual(s.actions.map((a) => a.id), scenario.actions.map((a) => a.id), label);
 
-      // Required intel must always name a key that actually exists.
+      // Required intel exists
       for (const key of s.truth.requiredIntel) {
         assert.ok(key in s.intel, `${label}: requiredIntel "${key}" missing from intel table`);
       }
 
-      // No search's match terms were emptied or corrupted by a substitution.
+      // Match terms intact
       for (const sr of s.searches) {
         assert.ok(
           sr.match.terms.every((t) => typeof t === 'string' && t.length > 0),
@@ -154,9 +140,7 @@ test('every tagged scenario in the library stays internally consistent across ma
         );
       }
 
-      // A default that actually changed this seed must not survive anywhere
-      // in the instantiated object — deepSubstitute's own `variables` field
-      // gets walked too, so it already reflects the resolved value here.
+      // Old default fully replaced
       const json = JSON.stringify(s);
       for (const [key, meta] of Object.entries(scenario.variables)) {
         const resolved = s.variables[key].value;

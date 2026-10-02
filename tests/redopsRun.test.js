@@ -1,5 +1,4 @@
-// The interactive Red Ops operation: catches are a comparison, not a roll, the
-// SOC's alertness compounds, and finishing has to pay more than quitting.
+// Live Red Ops run
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

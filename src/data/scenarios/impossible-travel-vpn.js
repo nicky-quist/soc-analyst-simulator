@@ -1,17 +1,9 @@
-// A HIGH-severity impossible-travel alert that is an artifact of our own
-// network. The detection is working exactly as designed and the conclusion it
-// invites is wrong — and the cost of "just revoking sessions to be safe" is
-// sixty-one branch staff locked out at ten in the morning.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: impossible travel (VPN)
 
 export default {
   id: 'impossible-travel-vpn',
   difficulty: 1,
-  // The Frankfurt IP isn't tagged: its own /26 range is spelled out in the
-  // asset record ("194.36.108.0/26"), and keeping that CIDR in sync with a
-  // swapped IP isn't worth the risk for one scenario. Username carries none
-  // of that coupling.
+  // Variables (Frankfurt IP fixed)
   variables: {
     username: { value: 'jbaptiste', pool: 'human-username' },
   },

@@ -1,7 +1,4 @@
-// The shift's saved state and the navigation list, pulled out of the big
-// component so they can be tested without a browser. These pin the behavior the
-// console depends on across a reload: what a saved shift restores, what it
-// drops, when a stale shift resets, and which sections exist and in what order.
+// Shift storage and navigation
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +29,7 @@ function withBrowser(fn, hash = '') {
 const NOW = Date.now();
 const hand = (startedAt, deal = 0) => dealShift(startedAt, deal);
 
-// ── navigation ──────────────────────────────────────────────────────────────
+// ── navigation ──
 
 test('every section appears exactly once, in four groups, in the order the rail draws them', () => {
   assert.equal(NAV_GROUPS.length, 4);
@@ -56,7 +53,7 @@ test('the URL hash names a section, and anything else is not one', () => {
   withBrowser(() => assert.equal(viewFromHash(), null), '#not-a-view');
 });
 
-// ── the saved shift ─────────────────────────────────────────────────────────
+// ── saved shift ──
 
 test('with nothing saved, the shift starts empty', () => {
   withBrowser(() => assert.deepEqual(loadShift(), EMPTY_SHIFT));
@@ -142,7 +139,7 @@ test('opening a shift stamps it and starts the clock on the first alert in the h
   assert.ok(opened.cases[first].startedAt > 0);
 });
 
-// ── progress ────────────────────────────────────────────────────────────────
+// ── progress ──
 
 test('progress round-trips, including the rank checkpoint that must survive a reload', () => {
   withBrowser(() => {

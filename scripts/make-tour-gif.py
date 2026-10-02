@@ -19,7 +19,7 @@ CAPTION_H = 48
 HOLD_MS = 2200
 COLORS = 128
 
-# Order matters: this is the story, not the order the files were captured.
+# Story order
 STORY = [
     ('dashboard', 'The shift at a glance'),
     ('case-overview', 'Work a real queue: seven alerts, SLA clocks running'),

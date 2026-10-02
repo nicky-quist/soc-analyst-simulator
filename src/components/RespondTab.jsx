@@ -9,8 +9,7 @@ const VERDICT_STYLE = {
   harmful: { tone: TONE.concerned, label: 'Caused harm' },
 };
 
-// Deterministic shuffle so the damaging options aren't always at the bottom of
-// the list — if the traps sit in a predictable position they stop being traps.
+// Seeded shuffle of actions
 function stableOrder(scenarioId, actions) {
   const weight = (id) => {
     let hash = 0;

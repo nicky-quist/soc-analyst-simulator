@@ -2,10 +2,7 @@ import { C, MONO } from '../theme.js';
 import { formatDuration } from '../ui/helpers.js';
 import { IconAlertOctagon, IconCircleSlash, IconDot, IconFileCheck, IconSearch, IconSwap, IconTarget, IconZap } from '../ui/icons.jsx';
 
-// Case notes, the way a case-management tool keeps them: every action you took,
-// in order, with the clock running. It is the audit trail an incident handoff
-// is built from — and reading your own back is usually how you notice you spent
-// eleven minutes searching before you contained anything.
+// Case notes timeline
 const KIND_STYLE = {
   search: { icon: IconSearch, color: C.primaryStrong },
   empty: { icon: IconCircleSlash, color: C.textMuted },

@@ -1,6 +1,4 @@
-// A small hand-rolled icon set so the console reads like a real security
-// product's chrome rather than emoji standing in for icons. Every icon is a
-// plain stroked SVG on a 24x24 grid — no icon library dependency, offline-safe.
+// Icons
 
 function Svg({ size = 16, strokeWidth = 2, children, style, ...rest }) {
   return (
@@ -204,9 +202,7 @@ export const IconSparkles = (p) => (
   </Svg>
 );
 
-// Light/dark toggle: the left half is a solid moon-side disc with a couple of
-// stars, the right half a sun with rays, so it reads as "both" and doesn't
-// flip between two icons as the theme changes.
+// Theme toggle
 export const IconThemeHalf = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="4.6" />
@@ -217,7 +213,7 @@ export const IconThemeHalf = (p) => (
   </Svg>
 );
 
-// Fast triage: a stopwatch, because the whole point of the mode is the clock.
+// Fast triage
 export const IconStopwatch = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="13.5" r="7" />
@@ -227,7 +223,7 @@ export const IconStopwatch = (p) => (
   </Svg>
 );
 
-// Red Ops: crosshairs, the attacker's view of the same estate.
+// Red Ops
 export const IconCrosshair = (p) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="6.5" />
@@ -236,7 +232,7 @@ export const IconCrosshair = (p) => (
   </Svg>
 );
 
-// Alert triage: a clipboard with a pulse line, a first-pass read of one alert.
+// Alert triage
 export const IconClipboardPulse = (p) => (
   <Svg {...p}>
     <rect x="5" y="4.5" width="14" height="17" rx="2" />
@@ -245,7 +241,7 @@ export const IconClipboardPulse = (p) => (
   </Svg>
 );
 
-// End shift: out through the door, because that is what it is: a handoff.
+// End shift
 export const IconLogOut = (p) => (
   <Svg {...p}>
     <path d="M9.5 4H6a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 6 20h3.5" />
@@ -254,7 +250,7 @@ export const IconLogOut = (p) => (
   </Svg>
 );
 
-// Leaderboard: a trophy cup with handles and a base.
+// Leaderboard
 export const IconTrophy = (p) => (
   <Svg {...p}>
     <path d="M7.5 4h9v5.5a4.5 4.5 0 0 1-9 0V4z" />

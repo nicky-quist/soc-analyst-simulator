@@ -1,6 +1,4 @@
-// The dashboard is the one place in the sim that shows numbers nobody
-// investigates, which makes it the easiest place for a nonsense figure to sit
-// unnoticed. These assertions keep the estate data internally coherent.
+// Estate data coherence
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,9 +17,7 @@ test('the alert pipeline narrows at every stage', () => {
   assert.equal(stages[stages.length - 1].value, HAND_SIZE, 'the funnel must end at the real queue size');
 });
 
-// Seeded data has to hold every invariant the frozen arrays used to hold, for
-// every seed — a generator that is plausible on average is still a generator
-// that will eventually render a day with no critical alerts or a 104% SLA.
+// Invariants for every seed
 const SEEDS = Array.from({ length: 400 }, (_, i) => Date.UTC(2026, 0, 1) + i * 7 * 3600_000);
 
 test('hourly volume covers a full day and is dominated by low severity', () => {
@@ -60,12 +56,7 @@ test('the same shift always renders the same numbers', () => {
   assert.deepEqual(buildHourlyVolume(seed), buildHourlyVolume(seed + 20 * 60_000), 'a shift must not re-roll mid-shift');
 });
 
-// This is the bug a real analyst actually caught: the alert pipeline funnel
-// and the per-source detection table sit on the same dashboard, and used to
-// quote independently authored numbers that didn't agree — 1,179 auto-closed
-// in the funnel against 1,133 implied by summing the per-source table. The
-// funnel now derives its middle two stages from DETECTION_SOURCES, and this
-// pins that down so the two panels can't drift apart again.
+// Funnel matches detection sources
 test('the alert pipeline funnel agrees with the per-source detection table', () => {
   const totalAlerts = DETECTION_SOURCES.reduce((sum, s) => sum + s.alerts, 0);
   const totalAutoClosed = DETECTION_SOURCES.reduce((sum, s) => sum + s.autoClosed, 0);

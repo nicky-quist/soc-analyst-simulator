@@ -1,16 +1,9 @@
-// A cloud credential leak: a service account key committed to a public repo,
-// then used from infrastructure nobody recognizes. Tests whether an L1 can work
-// an incident where there is no host to isolate and no malware to find.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: cloud key leak
 
 export default {
   id: 'aws-key-leak',
   difficulty: 3,
-  // Pilot: cosmetic identifiers only, never a narrative fact — see
-  // engine/scenarioVariants.js. Attacker IP and the compromised service
-  // account are pure labels here; the byte counts and record counts the
-  // rubric actually reasons about are untouched.
+  // Variables
   variables: {
     sourceIp: { value: '45.83.42.19', pool: 'ipv4-external' },
     principal: { value: 'svc-etl-loader', pool: 'service-account' },

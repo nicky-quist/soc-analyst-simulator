@@ -1,9 +1,4 @@
-// Fast Triage: twenty alert cards against a clock, no searching, no feedback
-// until the end. The full shift trains depth; this trains the volume side of
-// the job, where the skill is reading the two facts that decide an alert.
-//
-// A run lives in component state only. Refreshing mid-run abandons it, the same
-// as walking away from a real queue, and only finished runs are kept.
+// Fast triage
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DISPOSITIONS } from '../data/fasttriage.js';
@@ -268,7 +263,7 @@ export default function FastTriageView() {
   const [runs, setRuns] = useState(loadRuns);
 
   function start() {
-    // Date.now() plus a random word: two runs in the same millisecond still differ.
+    // Unique run id
     const seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
     setAlerts(dealRun(seed));
     setResult(null);

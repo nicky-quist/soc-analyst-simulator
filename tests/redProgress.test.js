@@ -1,5 +1,4 @@
-// Red Ops career: breadth at a standard, finishing counts, and a rank once
-// earned is a checkpoint that a reset never takes back.
+// Red team career
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -64,7 +63,7 @@ test('Operator asks for OPERATOR_CLEARED different operations, and replaying one
 });
 
 test('the Operator rung asks for about the same share of the content as the analyst Tier 1', () => {
-  // Blue asks for 10 of the library; Red should ask for a similar fraction of its operations.
+  // Similar fraction to Blue
   const blueShare = 10 / SCENARIOS.length;
   const redShare = OPERATOR_CLEARED / IDS.length;
   assert.ok(Math.abs(blueShare - redShare) <= 0.1, `blue ${blueShare.toFixed(2)} vs red ${redShare.toFixed(2)}`);
@@ -105,7 +104,7 @@ test('Senior needs every operation, ghost runs on two operations, and a clean re
   }));
   assert.equal(redStatus(noGhost.history, IDS).rankIndex, 1, 'operator, not senior, without a ghost run');
 
-  // A ghost run on a single operation is not enough, and repeating it does not add a second.
+  // One ghosted operation isn't enough
   const oneGhost = progressWith(IDS.map((id, i) => {
     const r = record(id, quietest);
     return i === 0 ? r : { ...r, ghost: false, caught: 1 };
@@ -134,7 +133,7 @@ test('too many recent burns hold Senior back even with everything else met', () 
   assert.equal(failing.met, false);
   assert.equal(RECENT_RUNS, 6);
 
-  // Recovering with clean runs pushes the burns out of the window again.
+  // Clean runs recover
   const recovered = progressWith([...clean, ...burns, ...Array.from({ length: RECENT_RUNS }, () => record(IDS[1], quietest))]);
   assert.equal(redStatus(recovered.history, IDS).rankIndex, 2);
 });
@@ -173,7 +172,7 @@ test('records carry what the career view needs', () => {
   assert.equal(r.at, 123);
 });
 
-// ── storage ─────────────────────────────────────────────────────────────────
+// ── storage ──
 
 function withFakeStorage(fn) {
   const data = new Map();

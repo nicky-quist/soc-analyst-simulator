@@ -1,19 +1,9 @@
-// A supply-chain compromise with no loud symptom. A third-party GitHub Action
-// that the bank's pipelines reference by tag was repointed at a malicious
-// commit, and it copied each runner's secrets to an outside host in a single
-// small POST. The alert is a low-severity "first-seen destination" from a CI
-// runner. The companion to crypto-mining-build-agent with the opposite lesson:
-// there the host was visibly infected and the credentials were the question;
-// here nothing looks infected at all and the credentials are already gone.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: GitHub Action tag hijack
 
 export default {
   id: 'github-action-tag-hijack',
   difficulty: 2,
-  // Cosmetic only: the exfil domain and the address the stolen key was used
-  // from are pure labels. The tag, the commits, the run and repository counts
-  // and the timings the rubric reasons about are untouched.
+  // Variables
   variables: {
     domain: { value: 'cdn-analytics-hub.net', pool: 'suspicious-domain' },
     sourceIp: { value: '91.240.118.6', pool: 'ipv4-external' },

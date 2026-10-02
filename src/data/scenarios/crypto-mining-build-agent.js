@@ -1,15 +1,9 @@
-// Mining traffic from a build server. The mining is the cheap part — the
-// expensive part is that the thing which started it arrived through the
-// dependency chain of a CI job that holds deployment credentials.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: crypto miner on a build agent
 
 export default {
   id: 'crypto-mining-build-agent',
   difficulty: 2,
-  // BUILD-AGENT-02 (the second infected host) is a decoy this scenario's
-  // whole point depends on staying distinct from BUILD-AGENT-04 — the pool
-  // below never includes "02" so a re-roll can't collide with it.
+  // Variables (never "02")
   variables: {
     hostname: { value: 'BUILD-AGENT-04', pool: 'hostname-buildagent' },
     domain: { value: 'hashvault-eu.com', pool: 'suspicious-domain' },

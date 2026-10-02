@@ -1,11 +1,4 @@
-// A small deterministic PRNG so the dashboard can vary between shifts without
-// flickering inside one. Everything estate-side is derived from a single seed
-// taken from the shift start, which means two renders of the same shift agree
-// (React strict mode, a theme toggle, a tab switch) while the next shift gets a
-// different week behind it.
-//
-// mulberry32 is the usual pick for this: one 32-bit state word, no dependencies,
-// and a distribution good enough for chart noise.
+// Seeded PRNG
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -27,8 +20,7 @@ export function hashString(text) {
   return h >>> 0;
 }
 
-// Seeds change once per calendar day *and* per shift block, so a night-shift
-// board does not inherit the day shift's week.
+// Seed per day and shift block
 export function shiftSeed(startedAt) {
   const d = new Date(startedAt);
   const block = Math.floor(d.getHours() / 8);

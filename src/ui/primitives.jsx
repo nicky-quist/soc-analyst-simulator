@@ -77,8 +77,7 @@ export function Button({ children, onClick, variant = 'secondary', disabled, sty
 }
 
 export function Field({ label, htmlFor, children, hint }) {
-  // A label is only a label if it points at its control. When a Field wraps a
-  // single control and nobody gave it an id, give it one and point the label there.
+  // Link label to control
   const autoId = useId();
   const only = Children.count(children) === 1 && isValidElement(children) ? children : null;
   const id = htmlFor || only?.props?.id || autoId;
@@ -96,8 +95,7 @@ export function Field({ label, htmlFor, children, hint }) {
 }
 
 export function Tabs({ tabs, active, onSelect }) {
-  // WAI-ARIA tabs: Left/Right (and Home/End) move between tabs, and only the
-  // active tab is in the tab order.
+  // Arrow-key tab navigation
   function onKeyDown(e) {
     const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
     if (!keys.includes(e.key)) return;
@@ -158,8 +156,7 @@ export function Tabs({ tabs, active, onSelect }) {
   );
 }
 
-// A results grid in the shape a SIEM prints one: monospace, dense, scrollable
-// sideways rather than wrapping into unreadable soup.
+// Results grid
 export function EventTable({ columns, rows }) {
   return (
     <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 6 }}>
@@ -242,9 +239,7 @@ export function Metric({ label, value, hint, tone }) {
   );
 }
 
-// A bare square icon button — the header/rail chrome (theme toggle, reset,
-// nav rail entries) uses this instead of Button so icons sit centered with no
-// label padding thrown off by a wrapping flex.
+// Icon button
 export function IconButton({ icon, active, tone, title, onClick, style, ...rest }) {
   return (
     <button

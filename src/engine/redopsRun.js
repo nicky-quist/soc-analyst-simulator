@@ -1,18 +1,4 @@
-// The interactive Red Ops operation: a small state machine the view drives one
-// decision at a time, so the attacker watches the SOC react instead of being
-// told at the end. Still no dice — whether a move is caught is a comparison
-// between how quiet it was and how much of that tactic this bank really
-// detects (the same coverage numbers the Dashboard shows).
-//
-//   caught    = effectiveStealth < DETECTION_FACTOR × that tactic's coverage %
-//   alertness = how many of your moves have been caught so far. Each level
-//               makes every later move louder (PENALTY_PER_LEVEL); the third
-//               burns the operation.
-//   go dark   = once per run, lie low for a day: the SOC loses a level of
-//               alertness, at a flat cost to the score for the dwell time.
-//
-// Kept apart from engine/redops.js so the original one-shot scorer and its
-// tests stay exactly as they were.
+// Live Red Ops run
 
 import { tacticDetectionPct } from './redops.js';
 
@@ -63,7 +49,7 @@ export function goDark(run) {
   };
 }
 
-// Plays one stage. Returns the next run, or the same run if nothing applies.
+// Play a stage
 export function playStage(run, ops, choiceId) {
   if (run.status !== 'active') return run;
   const stage = ops.stages[currentStageIndex(run)];
@@ -104,11 +90,7 @@ export function abortRun(run) {
   return run.status === 'active' ? { ...run, status: 'aborted' } : run;
 }
 
-// Same fields the debrief and the Red-vs-Blue comparison already read
-// (evasionScore, breakdown, matchesCanonical), plus how the run ended. The score
-// is the average effective stealth of the stages you played, scaled by how far
-// you got, minus a flat cost per day spent lying low: finishing matters, and so
-// does not getting caught on the way.
+// Score a run
 export function scoreRun(ops, run) {
   const total = ops.stages.length;
   const played = run.picks.length;

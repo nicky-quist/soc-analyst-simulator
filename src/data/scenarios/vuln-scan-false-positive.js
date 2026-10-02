@@ -1,6 +1,4 @@
-// A true detection of authorized behavior — the false positive that costs a team its credibility if you act on it.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: vuln scan false positive
 
 export default {
   id: 'vuln-scan-false-positive',

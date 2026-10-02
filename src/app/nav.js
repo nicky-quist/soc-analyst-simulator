@@ -1,7 +1,4 @@
-// The console's sections, in rail order and in the groups the rail draws them
-// in: the shift itself, practice, where you stand, and reference. One list drives
-// the rail, the #hash routing and the tests that pin the order, so they cannot
-// drift apart. Icons live with the rail, which is the only place that draws them.
+// Console sections, in rail order
 
 export const NAV_GROUPS = [
   [
@@ -23,6 +20,5 @@ export const NAV_GROUPS = [
   ],
 ];
 
-// Each also answers to a URL hash (#triage and so on), so a link can open
-// straight onto a tab.
+// Valid #hash views
 export const VIEWS = NAV_GROUPS.flat().map((v) => v.id);

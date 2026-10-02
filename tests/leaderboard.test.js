@@ -1,6 +1,4 @@
-// The three leaderboards: a well-formed roster, ranking that handles ties, your
-// standing read from the same engines that show it elsewhere, and every board
-// beatable by a perfect player but never by a new one.
+// Leaderboards
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -141,7 +139,7 @@ test('the secrets board follows the found list and Reset everything does not tou
   const found = EGGS.slice(0, 7).map((e) => e.id);
   const row = you(boardsFor({ found }).secrets);
   assert.equal(row.count, 7);
-  // The found list is not an input to any reset, so a reset leaves the count.
+  // Resets keep the found count
   const afterReset = you(boardsFor({ found, progress: emptyProgress(), redProgress: emptyRedProgress() }).secrets);
   assert.equal(afterReset.count, 7);
 });
@@ -158,7 +156,7 @@ test('the copied standing names all three boards and the live link', () => {
   assert.match(text, /https:\/\/nicky-quist\.github\.io\/soc-analyst-simulator\//);
 });
 
-// ── the roster reads the way the org chart does ─────────────────────────────
+// ── roster order ──
 
 const order = (rows) => rows.filter((r) => !r.isYou).map((r) => r.id);
 
@@ -207,7 +205,7 @@ test('the Tier 2 analyst outranks the team lead on the judgment boards', () => {
   }
 });
 
-// ── Fast Triage board ───────────────────────────────────────────────────────
+// ── Fast triage board ──
 
 test('your Fast Triage standing is your best run and the pace of that run', () => {
   assert.deepEqual(fastStanding([]), { best: null, grade: null, avgSeconds: null, runs: 0 });

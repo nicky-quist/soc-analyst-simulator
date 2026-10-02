@@ -1,8 +1,4 @@
-// Who's online, derived from real shift state — not decoration. This project
-// just tore out one fake chart (a synthetic 7-day SLA week) specifically
-// because invented numbers teach an analyst to stop trusting the real ones;
-// presence dots get the same rule. Every status here is read from data the
-// console already computes, not a random roll on page load.
+// Team presence from shift state
 
 import { generateDetectionEngResponse } from './personas.js';
 

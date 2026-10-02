@@ -1,5 +1,4 @@
-// The console's header: which SOC and shift this is, the live counts for the
-// shift so far, and who you are on each side (your Blue and Red ranks).
+// Console header
 
 import { COMPANY } from '../data/scenarios/index.js';
 import { C, TONE } from '../theme.js';
@@ -9,8 +8,7 @@ import { IconUser } from '../ui/icons.jsx';
 export default function AppHeader({ blueRank, redRank, shiftWindow, openCount, closedCount, avgScore, slaBreaches }) {
   return (
     <>
-      {/* Accent bar: the one piece of chrome that says "this is a console",
-          now that the shield and the nav both live in the rail. */}
+      {/* Accent bar */}
       <div style={{ height: 3, background: `linear-gradient(90deg, ${C.primary} 0%, ${C.info} 60%, transparent 100%)` }} />
       <header style={{
         borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center',

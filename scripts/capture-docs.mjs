@@ -1,14 +1,4 @@
-// Regenerates the README's screenshots and the tour clip from the real app.
-//
-//   npm run dev                                  (serves http://localhost:5173/)
-//   npm install --no-save playwright-core        (a one-off; not a project dependency)
-//   node scripts/capture-docs.mjs && python scripts/make-tour-gif.py
-//
-// It drives the console in Microsoft Edge (already on Windows, so nothing
-// big to download) with a fixed clock, so the dealt hand and every screenshot come
-// out the same each time. It works one case the way a person would (search,
-// respond, report) and then visits each part of the console, saving stills to
-// docs/img and the frames the clip is built from to docs/img/frames.
+// Docs screenshots (npm run dev, then node scripts/capture-docs.mjs)
 
 import { mkdirSync, rmSync } from 'node:fs';
 import { chromium } from 'playwright-core';
@@ -28,7 +18,7 @@ mkdirSync(FRAMES, { recursive: true });
 const browser = await chromium.launch({ executablePath: EDGE, headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 760 }, deviceScaleFactor: 1, colorScheme: 'light' });
 const page = await context.newPage();
-// A fixed morning, so the same hand is dealt every time. The clock keeps running.
+// Fixed clock
 await page.clock.install({ time: new Date(2026, 8, 29, 10, 0, 0) });
 await page.clock.resume();
 
@@ -61,7 +51,7 @@ const scenario = instantiateScenario(SCENARIOS.find((s) => s.alert.ref === ref),
 console.log(`working ${scenario.id}`);
 await shot('case-overview', { still: false });
 
-// 3. Investigate: a search that needs the time range widened, and its result.
+// 3. Investigate
 await openTab('Investigate');
 const key = scenario.truth.requiredSearches[0];
 const search = scenario.searches.find((s) => s.id === key || s.satisfies === key);
@@ -73,7 +63,7 @@ await page.getByText('Reading the result').first().scrollIntoViewIfNeeded();
 await page.evaluate(() => window.scrollBy(0, 40));
 await shot('investigate');
 
-// 4. Respond: a harmful action first, to show what the console says back.
+// 4. Respond
 await openTab('Respond');
 const harmful = scenario.actions.find((a) => a.verdict === 'harmful' && a.consequence);
 const takeAction = async (action) => {

@@ -1,10 +1,4 @@
-// The secrets. Each one is a small in-voice reward for doing something a curious
-// person might try: never a grade, never a hint that changes an answer, and
-// never anything that touches history, ranks or the "assisted" flag.
-//
-// `kind: 'toast'` shows a dismissible note; `kind: 'overlay'` opens a card that
-// can be replayed. The console never says how to find any of them: Settings
-// lists the ones you have found and shows "???" for the rest.
+// Secrets
 
 export const EGGS = [
   {

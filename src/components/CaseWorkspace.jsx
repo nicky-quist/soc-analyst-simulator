@@ -1,7 +1,4 @@
-// The alert queue view: the queue on the left, the open case in the middle (its
-// header, the tabs, and whichever tab is showing), and the case notes on the
-// right. It owns no state. Everything it shows comes in as props and every action
-// goes back out through a handler, so the shift logic stays in one place.
+// Alert queue workspace
 
 import { SCENARIOS } from '../data/scenarios/index.js';
 import { caseStatus, slaState } from '../engine/case.js';

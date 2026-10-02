@@ -1,5 +1,4 @@
-// Red Ops: a chain of choices scored deterministically, never a dice roll —
-// same discipline as every other grade in this project.
+// Red Ops scoring
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

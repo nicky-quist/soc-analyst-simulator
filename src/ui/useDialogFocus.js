@@ -1,15 +1,10 @@
-// Keyboard behavior every modal dialog needs, in one place so the console's
-// dialogs agree: focus moves in when it opens, Tab stays inside it, Escape
-// closes it, and focus goes back to whatever had it before.
+// Dialog focus handling
 
 import { useEffect, useRef } from 'react';
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-// dialogRef: the dialog's root element. initialRef: the control to focus first
-// (falls back to the first focusable one). onClose: called on Escape. Callers
-// often pass a fresh function every render, so it is read through a ref: the
-// dialog must set up its focus once when it opens, not again on every render.
+// Focus trap
 export function useDialogFocus(dialogRef, onClose, initialRef) {
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; });

@@ -1,9 +1,4 @@
-// The people who react to your work. Rule-based rather than scripted per
-// scenario, so the persona logic generalizes when scenarios are added: the CISO
-// responds to the shape of what you did (harm caused, escalation direction,
-// investigation coverage, severity distance), and the CEO only appears when
-// something actually reached Incident Response, asking the business questions
-// executives really ask instead of technical ones.
+// Persona reactions
 
 import { COMPANY } from '../data/scenarios/index.js';
 import { isResolvedCorrectly, underEscalated, overEscalated, SEVERITY_ORDER } from './scoring.js';
@@ -29,9 +24,7 @@ function irLead(tone, message) {
   return { from: COMPANY.irLead.name, role: COMPANY.irLead.title, tone, message };
 }
 
-// Announces a War Room escalation the moment it's injected into the queue —
-// the IR Lead's voice, since this is exactly the handoff they own, and it's
-// the moment the shift needs to feel different from an ordinary queue item.
+// War Room announcement
 export function generateWarRoomAlert(sourceScenario) {
   return irLead(
     'concerned',
@@ -39,11 +32,7 @@ export function generateWarRoomAlert(sourceScenario) {
   );
 }
 
-// Tier 2 helping mid-investigation, not after the fact. Pure wrapper around
-// mentor.js's deterministic nudge — kept here so every persona voice in the
-// sim comes from one file. Returns the target key alongside the persona
-// message so the caller can track how many times this exact gap has been
-// asked about and escalate the next one.
+// Tier 2 nudge
 export function generateTier2Nudge(scenario, caseFile) {
   const { key, message } = nextNudge(scenario, caseFile);
   return { key, persona: tier2('coaching', message) };
@@ -53,7 +42,7 @@ export function generateCisoResponse(scenario, submission, score) {
   const escalateTarget = scenario.truth.escalation === 'escalate_ir' ? 'Incident Response' : 'Tier 2';
   const { investigation, response } = score;
 
-  // Damage first. Everything else is a matter of degree; this one created work.
+  // Harm first
   if (response.harmful.length) {
     const worst = response.harmful[0];
     return ciso(
@@ -125,7 +114,7 @@ export function generateCeoResponse(scenario, submission) {
   return { from: ceo.name, role: ceo.title, tone: 'business', message };
 }
 
-// End-of-shift review, generated once every alert in the queue is resolved.
+// End-of-shift review
 export function generateShiftSummary(results) {
   const total = results.length;
   if (!total) return null;
@@ -163,17 +152,12 @@ export function generateShiftSummary(results) {
     harmfulActions,
     assisted,
     investigationCoverage,
-    // A shift lead reviewing tonight's whole queue, not the CISO reacting to
-    // every case — the CISO's voice stays reserved for the per-case debrief.
+    // Shift lead voice
     persona: teamLead(tone, message),
   };
 }
 
-// Fires once there's enough history to say something real: across every case
-// where the detection tool's reported severity was off by two steps or more
-// from the truth, did the analyst actually catch it? This is the payoff for
-// data progress.js already tracks (targetedBoost's severity-gap logic) but
-// never spoke back to the analyst as a person before now.
+// Severity-gap feedback
 const SEVERITY_GAP_MIN_SAMPLE = 4;
 
 export function generateDetectionEngResponse(history, library) {

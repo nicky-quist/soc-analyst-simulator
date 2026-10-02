@@ -1,10 +1,4 @@
-// Threat-intel enrichment, the way an analyst actually uses it: you paste an
-// indicator you pulled out of the evidence yourself. There is no list to click.
-//
-// Getting it wrong is part of the exercise — a mistyped octet returns "no
-// records", which reads exactly like a clean verdict if you aren't paying
-// attention, and enriching an internal RFC1918 address against an external feed
-// is the mistake that teaches what threat intel is and isn't for.
+// Threat intel lookup
 
 import { refang } from './query.js';
 
@@ -29,8 +23,7 @@ export function classifyIndicator(rawValue) {
     return { type: 'hash', algorithm: HASHES[value.length], value: value.toLowerCase() };
   }
 
-  // No TLD is all digits, so "185.220.101" is a truncated address rather than a
-  // hostname — the kind of thing that happens when a copy grabs three octets.
+  // Truncated IP, not a hostname
   if (DOMAIN.test(value)) {
     const tld = value.split('.').pop();
     if (/^\d+$/.test(tld)) {

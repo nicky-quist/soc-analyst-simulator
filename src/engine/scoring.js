@@ -1,17 +1,4 @@
-// Grades a closed case against the scenario's ground truth. Deterministic and
-// offline — no third-party API calls, matching this project family's existing
-// "no external dependency to run" design (the Triage engine works the same way).
-//
-// A case is graded on four things, because a real shift is judged on four
-// things: the calls you made (classification, escalation, severity, ATT&CK
-// mapping), what you wrote down, what you did about it, and how you got there.
-//
-// The rubric keywords live with each scenario (data/scenarios/index.js), not in a
-// lookup table keyed by the rubric text, so adding or rewording a report point
-// can't silently drop it from the grade. Matching is word-boundary based, not
-// raw substring: "hr" must be the word "HR", not the "hr" inside "through". A
-// trailing "*" marks a stem, so "isolat*" credits isolate / isolated /
-// isolation.
+// Blue team scoring
 
 export const SCORE_WEIGHTS = {
   classification: 20,
@@ -31,10 +18,7 @@ const ESCALATION_RANK = {
   escalate_ir: 2,
 };
 
-// A "none" keyword only counts as a violation when it's asserted, not when it's
-// hedged or negated. "we should not block the scanner" and "potential data
-// theft" are both correct analyst writing; "the employee stole data" is the
-// thing the rubric is actually looking for.
+// Asserted vs hedged keywords
 const HEDGE_BEFORE =
   /\b(no|not|never|n't|avoid|avoiding|without|rather|instead|potential|potentially|possible|possibly|suspected|suspect|apparent|apparently|alleged|allegedly|may|might|could|appears|appear|appeared|indicates|indicating|consistent|risk|prevent|preventing|investigate|investigating|whether|if|unconfirmed|unproven|pending)\b[\s\S]{0,40}$/i;
 
@@ -57,8 +41,7 @@ function matchesAny(text, keywords) {
   return keywords.some((k) => findKeyword(text, k) !== null);
 }
 
-// Only the clause the keyword sits in can hedge it — a hedge two sentences
-// earlier says nothing about this statement.
+// Hedges apply within the clause
 function clauseBefore(text, index) {
   const before = text.slice(0, index);
   const cut = Math.max(
@@ -90,8 +73,7 @@ function normalizeTechnique(value) {
   return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
 }
 
-// "T1110.001" credits T1110 and T1110.001; "T1110" against a truth of
-// T1110.001 credits the parent technique too.
+// ATT&CK parent/sub-technique credit
 export function gradeTechnique(submitted, truth) {
   const a = normalizeTechnique(submitted);
   const b = normalizeTechnique(truth).split('(')[0];
@@ -99,8 +81,7 @@ export function gradeTechnique(submitted, truth) {
   return a === b || a.startsWith(`${b}.`) || b.startsWith(`${a}.`);
 }
 
-// Exact severity earns full credit; one step off earns half — an analyst who
-// calls a CRITICAL "HIGH" made a smaller mistake than one who called it LOW.
+// Severity credit
 export function gradeSeverity(submitted, truth) {
   const a = SEVERITY_ORDER.indexOf(submitted);
   const b = SEVERITY_ORDER.indexOf(truth);
@@ -111,8 +92,7 @@ export function gradeSeverity(submitted, truth) {
   return { correct: false, credit: 0, distance };
 }
 
-// One search can stand in for another when both answer the same question, so
-// coverage is keyed on what a search *establishes*, not on its id.
+// Search coverage key
 export function searchKey(search) {
   return search.satisfies || search.id;
 }
@@ -122,9 +102,7 @@ function searchLabel(scenario, key) {
   return match ? match.label : key;
 }
 
-// Did the analyst actually investigate before deciding? Kept separate from the
-// report grade on purpose: reaching the right answer without checking the
-// evidence is a process failure even when the outcome is correct.
+// Investigation grade
 export function evaluateInvestigation(scenario, caseFile = {}) {
   const truth = scenario.truth;
   const searchesRun = caseFile.searchesRun || [];
@@ -149,10 +127,7 @@ export function evaluateInvestigation(scenario, caseFile = {}) {
   };
 }
 
-// What the analyst actually did, and what it cost. Harmful actions are the
-// sharpest edge in the sim: they are the only thing that can fail an otherwise
-// correct case outright, because in a real SOC they are the only thing that
-// creates a second incident.
+// Response grade
 export function evaluateResponse(scenario, caseFile = {}) {
   const taken = caseFile.actionsTaken || [];
   const actions = scenario.actions || [];
@@ -226,10 +201,7 @@ export function scoreCase(scenario, submission, caseFile = {}) {
   };
 }
 
-// The verdict is about outcome and harm: the right call, to the right place, at
-// a severity that isn't wildly off, a report complete enough to hand over, and
-// nothing broken along the way. Investigation coverage is reported separately —
-// process is graded, but it isn't the verdict.
+// Verdict
 export function isResolvedCorrectly(score) {
   return (
     score.classificationCorrect &&

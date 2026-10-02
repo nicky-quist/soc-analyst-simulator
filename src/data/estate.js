@@ -1,18 +1,4 @@
-// Estate-wide numbers for the shift dashboard.
-//
-// Your queue is seven alerts. A real SOC's dashboard exists to show you the
-// other 99% you are not looking at: what the pipeline swallowed before it
-// reached a human, which sources are producing noise, and whether the team is
-// keeping up. The funnel numbers below are the shape most banks actually see —
-// millions of events, a four-figure alert count, and a two-figure number of
-// things a person ever reads.
-//
-// Anything that describes *this* shift — the header, the 24h volume chart, the
-// week of SLA compliance behind it — is built from the shift's seed rather than
-// frozen into the file. Frozen numbers read as a screenshot: the same Tuesday
-// slips below target every time you open the console, which teaches you to stop
-// looking at the chart. Seeded numbers hold still for the length of a shift and
-// are a different week the next time you sit down.
+// Estate dashboard data
 
 import { between, mulberry32, pick, shiftSeed } from '../engine/random.js';
 
@@ -20,8 +6,7 @@ const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'F
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
-// Two shifts can start in the same 8-hour block — reset the board and you get
-// another one — so the deal counter is folded in as well.
+// Shift seed
 function seedFor(startedAt, variant = 0, salt = 0) {
   return (shiftSeed(startedAt) ^ Math.imul(variant + 1, 0x9e3779b1) ^ salt) >>> 0;
 }
@@ -42,8 +27,7 @@ function shiftBlock(hour) {
   return SHIFT_BLOCKS[0];
 }
 
-// The header a console shows you when you badge in: today's date, the block you
-// are sitting in, and who to wake up if this turns into an incident.
+// Shift header
 export function buildShift(startedAt = Date.now(), variant = 0) {
   const rand = mulberry32(seedFor(startedAt, variant));
   const date = new Date(startedAt);
@@ -55,13 +39,7 @@ export function buildShift(startedAt = Date.now(), variant = 0) {
   };
 }
 
-// Per-source detection volume and how much of it automation closed before a
-// human saw it. This is the source of truth AUTOMATION_FUNNEL agrees with
-// below: sum(autoClosed) is what "auto-triaged or suppressed" means, and
-// sum(alerts - autoClosed) is what "routed to an analyst" means. Two panels on
-// the same dashboard quoting numbers that silently drift apart is worse than
-// either panel alone, so the funnel derives its middle two stages from this
-// list instead of carrying its own, separately authored pair.
+// Detection sources
 export const DETECTION_SOURCES = [
   { source: 'Suricata IDS', alerts: 412, autoClosed: 381 },
   { source: 'CrowdStrike EDR', alerts: 268, autoClosed: 231 },
@@ -82,10 +60,7 @@ export const AUTOMATION_FUNNEL = [
   { stage: 'Routed to an analyst', value: TOTAL_ALERTS - TOTAL_AUTO_CLOSED, note: 'across three shifts' },
 ];
 
-// The shape of a banking day in alert volume: quiet overnight, a ramp when the
-// branch network logs on, a mid-morning peak, a lunch dip, a second afternoon
-// bump. Indexed by hour of day — the chart rotates this so it ends on the hour
-// you are actually sitting in.
+// Hourly volume shape
 const HOURLY_BASELINE = [
   { hour: '00', critical: 0, high: 2, medium: 6, low: 19 },
   { hour: '01', critical: 0, high: 1, medium: 4, low: 14 },
@@ -115,9 +90,7 @@ const HOURLY_BASELINE = [
 
 export const SLA_TARGET = 90;
 
-// Last 24 hours of alert volume, rotated so the final bar is the current hour
-// and jittered off the baseline. One hour of the shift gets a burst, because a
-// flat day is the one shape a SOC never has.
+// 24h alert volume
 export function buildHourlyVolume(startedAt = Date.now(), variant = 0) {
   const rand = mulberry32(seedFor(startedAt, variant, 0x1f5));
   const endHour = new Date(startedAt).getHours();
@@ -138,8 +111,7 @@ export function buildHourlyVolume(startedAt = Date.now(), variant = 0) {
     };
   });
 
-  // The burst lands in the back half of the window — recent enough that it is
-  // plausibly related to what is sitting in your queue right now.
+  // Burst in the back half
   const burst = hours[between(rand, 14, 22)];
   burst.critical += between(rand, 1, 2);
   burst.high += between(rand, 3, 6);
@@ -158,8 +130,7 @@ export const TOP_ENTITIES = [
   { entity: 'vulnscan-01', type: 'host', alerts: 5, risk: 'LOW' },
 ];
 
-// Detection coverage by ATT&CK tactic — the view that tells a SOC where it is
-// blind, and the reason case tools insist on a technique mapping per incident.
+// ATT&CK coverage by tactic
 export const TACTIC_COVERAGE = [
   { tactic: 'Initial Access', pct: 84 },
   { tactic: 'Execution', pct: 91 },
@@ -174,8 +145,7 @@ export const TACTIC_COVERAGE = [
   { tactic: 'Impact', pct: 81 },
 ];
 
-// The live tail every console has running somewhere: mostly nothing, which is
-// the point — it is what "normal" looks like underneath your seven alerts.
+// Estate feed
 export const ESTATE_FEED = [
   { source: 'Suricata', text: 'ET POLICY outbound TLS to newly-registered domain — 10.20.7.44', level: 'low' },
   { source: 'Defender', text: 'Sign-in from unfamiliar browser — hstern@coastaltrustbank.com', level: 'low' },

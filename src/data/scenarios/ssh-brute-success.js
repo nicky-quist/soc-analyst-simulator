@@ -1,14 +1,9 @@
-// Brute force that succeeded, against a root account on a production database.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: successful SSH brute force
 
 export default {
   id: 'ssh-brute-success',
   difficulty: 1,
-  // Pilot: cosmetic identifiers only, never a narrative fact — see
-  // engine/scenarioVariants.js. The attacking IP and which prod host got hit
-  // are pure labels; "root," the exposure gap, and the exfiltration read are
-  // the actual incident and stay fixed.
+  // Variables
   variables: {
     sourceIp: { value: '185.220.101.45', pool: 'ipv4-external' },
     hostname: { value: 'db-prod-03', pool: 'hostname-server' },

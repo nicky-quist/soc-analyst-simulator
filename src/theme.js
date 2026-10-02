@@ -1,18 +1,4 @@
-// Theming is done with CSS custom properties rather than a JS theme object, so
-// a single `data-theme` attribute on the root repaints the whole console and
-// inline styles stay theme-agnostic. Light is the default: this is a training
-// console people read for an hour at a time, not a wall display.
-//
-// Three severity ramps, not one. They all run critical -> high -> medium -> low
-// (red -> orange -> yellow -> green) so a glance reads the same way everywhere,
-// but they are tuned for three different jobs and must not be collapsed back
-// into one set:
-//   --band-*   thick gauge arcs. Vivid and fully saturated; this is the ramp
-//              the shift-performance dials are built on. Leave it alone.
-//   --chart-*  large solid fills (stacked bars, donut). Softer, because a
-//              600px block of gauge-red is a wall of noise, not a chart.
-//   --sev-*    badge text on a tinted chip. Needs text contrast, so these run
-//              darker than either fill ramp.
+// Theme: CSS variables, three severity ramps (band, chart, sev)
 
 export const THEME_CSS = `
 :root, [data-theme="light"] {
@@ -153,7 +139,7 @@ export function severityTone(severity) {
   return { fg: `var(--sev-${key})`, bg: `var(--sev-${key}-bg)`, border: `var(--sev-${key})` };
 }
 
-// Badge foregrounds. Text on a tint, so these are the darkest of the three ramps.
+// Badge text colors
 export const SEVERITY_COLORS = {
   critical: 'var(--sev-critical)',
   high: 'var(--sev-high)',
@@ -162,7 +148,7 @@ export const SEVERITY_COLORS = {
   informational: 'var(--sev-informational)',
 };
 
-// Gauge and meter arcs. The vivid red/orange/yellow/green ramp.
+// Gauge arcs
 export const BAND_COLORS = {
   critical: 'var(--band-critical)',
   high: 'var(--band-high)',
@@ -170,7 +156,7 @@ export const BAND_COLORS = {
   low: 'var(--band-low)',
 };
 
-// Large solid fills: stacked bars and the donut. Same hue order, softer.
+// Chart fills
 export const CHART_COLORS = {
   critical: 'var(--chart-critical)',
   high: 'var(--chart-high)',

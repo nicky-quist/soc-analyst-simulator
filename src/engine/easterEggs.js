@@ -1,12 +1,8 @@
-// Easter egg engine: pure matchers, a burst counter, the Konami tracker, and a
-// tiny event bus so any part of the console can announce a find without
-// threading props through it. Nothing here touches grading or history.
+// Secrets engine
 
-// ── matchers ────────────────────────────────────────────────────────────────
+// ── matchers ──
 
-// A search the way an analyst would type it: `index=auth 10.0.0.1`. Matches on
-// what was typed, never on what the console returns, so a real search for a
-// scenario indicator can never trip one.
+// Search secrets
 export function matchSearch(text) {
   const q = String(text || '');
   if (/(^|\s)sudo(\s|$)/i.test(q)) return 'sudoers';
@@ -29,8 +25,7 @@ export function matchReport(form) {
   return /it\s*was\s*dns|it['’]?s\s*always\s*dns/i.test(text) ? 'dns-report' : null;
 }
 
-// Text the base64 decoder produced. Only ever matches what the analyst chose to
-// decode themselves, so no scenario blob can trip these.
+// Decode secrets
 export function matchDecode(text) {
   const t = String(text || '');
   if (/hire\s+me/i.test(t)) return 'hire-me';
@@ -46,7 +41,7 @@ export function matchNightOwl(date = new Date()) {
 
 export const QUICK_CLOSE_MS = 90_000;
 
-// A correct close in under ninety seconds. Announces only; grading is untouched.
+// Quick close
 export function matchQuickClose(elapsedMs, resolvedCorrectly) {
   return resolvedCorrectly && Number.isFinite(elapsedMs) && elapsedMs < QUICK_CLOSE_MS ? 'speed-demon' : null;
 }
@@ -56,8 +51,7 @@ export function matchDeadEven(redOps, scenarioId, blueScore) {
   return redOps && redOps.scenarioId === scenarioId && redOps.evasionScore === blueScore ? 'dead-even' : null;
 }
 
-// result: scoreRun() from engine/fasttriage.js. Paging IR on every alert is the
-// tell for 'wolf'; a perfect score is 'flawless'; an untouched queue is 'nap'.
+// Fast triage secrets
 export function matchFastTriage(result) {
   if (!result || !result.rows.length) return null;
   if (result.skipped === result.total) return 'nap';
@@ -66,9 +60,7 @@ export function matchFastTriage(result) {
   return null;
 }
 
-// result: scoreRun() from engine/redopsRun.js. Three catches is the minimum to
-// burn an operation, so a burn in exactly three moves is the fastest possible.
-// Aborting before a single move is stage fright.
+// Red Ops run secrets
 export function matchRedRun(result) {
   if (!result) return null;
   if (result.outcome === 'burned' && result.breakdown.length === 3) return 'fastest-burn';
@@ -76,21 +68,21 @@ export function matchRedRun(result) {
   return null;
 }
 
-// history: the Red Ops record. Every operation with at least one ghost run.
+// Ghost on every operation
 export function matchGhostwire(history, operationIds) {
   if (!operationIds.length) return null;
   const ghosted = new Set(history.filter((r) => r.ghost).map((r) => r.operationId));
   return operationIds.every((id) => ghosted.has(id)) ? 'ghostwire' : null;
 }
 
-// ── input patterns ──────────────────────────────────────────────────────────
+// ── input patterns ──
 
 export const KONAMI = [
   'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
   'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a',
 ];
 
-// Feed it each key; it returns true the moment the sequence completes, then resets.
+// Konami code
 export function createKonami() {
   let index = 0;
   return function push(key) {
@@ -105,8 +97,7 @@ export function createKonami() {
   };
 }
 
-// True when `count` events land within `windowMs`. Used for "flip the theme ten
-// times fast" and "click the logo five times". Resets after it fires.
+// Burst counter
 export function createBurst(count, windowMs) {
   let times = [];
   return function push(now = Date.now()) {
@@ -119,7 +110,7 @@ export function createBurst(count, windowMs) {
   };
 }
 
-// ── event bus ───────────────────────────────────────────────────────────────
+// ── event bus ──
 
 const listeners = new Set();
 
@@ -128,8 +119,7 @@ export function subscribe(fn) {
   return () => listeners.delete(fn);
 }
 
-// Announce a find (`announce('sudoers')`) or a reset of the found list
-// (`announce(null, 'reset')`). Unknown ids are ignored by the host.
+// Announce a find or reset
 export function announce(id, type = 'found') {
   for (const fn of [...listeners]) fn({ id, type });
 }

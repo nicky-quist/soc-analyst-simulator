@@ -1,10 +1,4 @@
-// Play the incident from the attacker's side, as a live operation: a chain of
-// choices — never freeform code, the same discipline as the Respond tab — where
-// the SOC reacts after every move. Each move is revealed the moment you commit
-// it (caught or slipped past, and why), the SOC's alertness climbs and makes
-// your later moves louder, and you can lie low once to shake it off or abort
-// and bank what you have. At the end you get an evasion score and a button to
-// go defend the same incident as the analyst.
+// Red Ops
 
 import { useState } from 'react';
 import { SCENARIOS } from '../data/scenarios/index.js';
@@ -26,8 +20,7 @@ const AVAILABLE = Object.keys(RED_OPS)
 
 const LEVEL_TONE = [TONE.positive, TONE.coaching, TONE.concerned, TONE.concerned];
 
-// The attacker-side career: rank, what the next promotion needs, and the record
-// behind it. A rank is a checkpoint, so it is shown even before any run.
+// Red team career
 function RedCareer({ status }) {
   const { stats } = status;
   return (
@@ -114,8 +107,7 @@ function ScenarioPicker({ onPick, status }) {
   );
 }
 
-// The SOC's alertness as a four-step ladder, so the consequence of a caught
-// move is something you can see and not a number in a debrief.
+// SOC alertness ladder
 function AlertnessLadder({ level }) {
   return (
     <div role="group" aria-label={`SOC alertness: ${ALERTNESS_LABELS[level]}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -140,8 +132,7 @@ function AlertnessLadder({ level }) {
   );
 }
 
-// Effective stealth against the line the SOC's detection draws: left of the
-// marker is caught, right of it slips past.
+// Stealth vs detection meter
 function StealthMeter({ pick }) {
   const pct = (n) => `${Math.max(0, Math.min(100, n))}%`;
   return (
@@ -191,11 +182,7 @@ function SocConsole({ log }) {
   );
 }
 
-// The hands-on step, unlocked only after the canonical move. This is a
-// SIMULATION: nothing typed here runs. The typed command is matched against the
-// stage's authored `expect` tokens, and a match prints authored telemetry plus
-// the "what the SOC logs" line. The lesson is defensive — see the shape, then
-// see the trail it leaves.
+// Hands-on console (simulated)
 function HandsOnConsole({ handsOn }) {
   const [input, setInput] = useState('');
   const [result, setResult] = useState(null);
@@ -256,7 +243,7 @@ function HandsOnConsole({ handsOn }) {
 function Operation({ scenario, ops, onFinish }) {
   const [run, setRun] = useState(startRun);
   const [selected, setSelected] = useState(null);
-  // 'choose' while picking a move; 'reveal' right after committing one.
+  // Stage phase: choose or reveal
   const [phase, setPhase] = useState('choose');
 
   const index = phase === 'reveal' ? currentStageIndex(run) - 1 : currentStageIndex(run);

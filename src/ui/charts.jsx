@@ -1,15 +1,10 @@
 import { C, MONO } from '../theme.js';
 
-// Hand-rolled SVG charts rather than a charting dependency: the whole project
-// runs offline with no third-party calls, and these are four shapes, not a
-// library's worth. Everything scales through viewBox so the cards stay
-// responsive, and every color comes from a theme token so light mode works.
+// SVG charts
 
 import { BAND_COLORS, CHART_COLORS } from '../theme.js';
 
-// "18" -> "6 PM": the hourly volume chart's x-axis is a zero-padded 24-hour
-// string (see buildHourlyVolume), which reads like a raw timestamp rather
-// than a time of day unless it's converted for display.
+// Hour label
 function formatHour12(hourStr) {
   const hour = Number(hourStr);
   if (Number.isNaN(hour)) return hourStr;
@@ -18,9 +13,7 @@ function formatHour12(hourStr) {
   return `${twelve}${period}`;
 }
 
-// currentIndex marks the bar for the present moment: its time on the axis like
-// every other label, emphasized, with a "Now" tag beneath, so the chart reads as
-// a full day ending at the hour you are in.
+// Stacked bars
 export function StackedBars({ data, keys, height = 150, xKey = 'hour', currentIndex = null }) {
   const width = 720;
   const padBottom = currentIndex === null ? 18 : 30;
@@ -72,8 +65,7 @@ export function Donut({ segments, size = 140, centerLabel, centerSub }) {
   const radius = size / 2 - 12;
   const circumference = 2 * Math.PI * radius;
 
-  // Arc lengths and their running start offsets, computed up front so the JSX
-  // below stays a pure map with nothing accumulating during render.
+  // Arc offsets
   const arcs = segments.reduce((acc, segment) => {
     const length = (segment.value / total) * circumference;
     const start = acc.length ? acc[acc.length - 1].start + acc[acc.length - 1].length : 0;
@@ -108,10 +100,7 @@ export function Donut({ segments, size = 140, centerLabel, centerSub }) {
   );
 }
 
-// Points may carry a null pct, meaning "not measured yet" — today, before the
-// analyst has closed anything. A pending point is drawn as a hollow marker on
-// the target line with a dashed connector, rather than being plotted at zero or
-// quietly dropped: the gap is the honest rendering of a shift in progress.
+// Sparkline
 export function Sparkline({ points, height = 60, threshold, ariaLabel = 'SLA compliance trend' }) {
   const width = 260;
   const known = points.filter((p) => p.pct != null);
@@ -158,8 +147,7 @@ function polarPoint(cx, cy, r, angleDeg) {
   return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
 }
 
-// Sweeping from 180deg (left) down to 0deg (right) traces the top half of the
-// circle clockwise on screen, so sweep-flag is always 1 here.
+// Arc path
 function arcPath(cx, cy, r, startAngle, endAngle) {
   const start = polarPoint(cx, cy, r, startAngle);
   const end = polarPoint(cx, cy, r, endAngle);
@@ -167,12 +155,7 @@ function arcPath(cx, cy, r, startAngle, endAngle) {
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
 }
 
-// A speedometer-style gauge — the shape every SIEM vendor dashboard (XSIAM,
-// Sentinel, Splunk ES) reaches for when a KPI has a "good end" and a "bad end".
-// Bands default to the vivid red/orange/yellow/green --band-* ramp. It shares
-// its hue order with severity badges and the bar chart, so a glance at the
-// needle reads the same way, but it stays fully saturated: these are thin arcs
-// that have to carry meaning at a glance, not large fills.
+// Gauge
 export function Gauge({ value, max = 100, unit = '', bands, size = 148, label }) {
   const W = 200, H = 150, cx = W / 2, cy = 100, r = 74, strokeWidth = 15;
   const clamped = Math.max(0, Math.min(max, value));

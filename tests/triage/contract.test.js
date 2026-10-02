@@ -1,9 +1,4 @@
-// Invariants that must hold for every input the engine will ever see.
-//
-// The tool's claim is that "every verdict traces back to a specific pattern
-// match" and that it is deterministic and offline. These tests hold the engine
-// to that claim across all fixtures plus adversarial input, rather than
-// checking one verdict at a time.
+// Engine invariants
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -105,8 +100,7 @@ describe('robustness', () => {
 
 describe('offline guarantee', () => {
   test('analysis performs no network call', async () => {
-    // The tool's core promise is that nothing leaves the tab. If a future edit
-    // introduces an API call, this fails rather than silently shipping data.
+    // No network calls
     const originalFetch = globalThis.fetch;
     let called = false;
     globalThis.fetch = () => { called = true; return Promise.resolve(); };

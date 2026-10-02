@@ -1,7 +1,4 @@
-// Optional AI debrief coach: a second, LLM-generated lens on a closed case,
-// alongside (never instead of) the deterministic CISO debrief in personas.js.
-// Off by default. Talks to a local Ollama instance unless the analyst opts
-// into a cloud key themselves.
+// Optional AI debrief coach
 
 import { useEffect, useRef, useState } from 'react';
 import { C, TONE } from '../theme.js';

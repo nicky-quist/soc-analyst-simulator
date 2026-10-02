@@ -1,8 +1,4 @@
-// A detection that already succeeded. Tests escalation calibration: the file
-// was blocked here, so this is not an IR page — but it ran unblocked on two
-// other machines, so it is not a closure either. Tier 2 exists for exactly this.
-//
-// See ./index.js for the shape every scenario follows.
+// Scenario: EDR quarantine
 
 export default {
   id: 'edr-quarantine-dual-use',

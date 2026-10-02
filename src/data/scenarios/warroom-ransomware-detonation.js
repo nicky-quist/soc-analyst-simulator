@@ -1,12 +1,4 @@
-// War Room follow-on: what happens when "malicious-powershell-precursor"
-// doesn't get contained in time. Not part of SCENARIOS/the deal pool — see
-// engine/warroom.js for how it gets triggered and injected into a live shift.
-//
-// The premise only has to be broadly true, not branch on exactly which action
-// was missed: the C2 channel stayed live and/or the campaign wasn't hunted
-// down, so twenty-one minutes later the same actor is encrypting the finance
-// file share. Same host, same C2 address, same mailboxes named in the
-// original alert — this is a continuation, not a new story.
+// War Room: ransomware detonation
 
 export default {
   id: 'warroom-ransomware-detonation',

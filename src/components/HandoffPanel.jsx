@@ -1,6 +1,4 @@
-// What you'd actually hand off, always current — not gated behind closing
-// every alert in the queue, because a real handoff happens whenever Tier 1
-// leaves, finished or not.
+// Live handoff notes
 
 import { useState } from 'react';
 import { C, TONE } from '../theme.js';
@@ -17,8 +15,7 @@ function CopyButton({ text, label = 'Copy' }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard unavailable (permissions, insecure context) — the text is
-      // still on screen to select by hand.
+      // Clipboard unavailable
     }
   }
   return <Button variant="ghost" onClick={copy}>{copied ? 'Copied' : label}</Button>;

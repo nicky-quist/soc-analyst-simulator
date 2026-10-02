@@ -1,9 +1,4 @@
-// Sample alerts and the input format guide for the Triage tab.
-//
-// Carried over from the standalone soc-triage-tool. The guide has been
-// corrected where it promised more than the engine does: Zeek support is
-// conn.log only, SIEM exports are read as free-form text, and the Windows
-// example now uses the User: field the engine actually reads.
+// Triage samples and format guide
 
 export const SAMPLE_ALERTS = [
   {

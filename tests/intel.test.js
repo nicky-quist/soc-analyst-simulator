@@ -1,6 +1,4 @@
-// Threat-intel enrichment takes typed input, so it has to handle what analysts
-// actually paste — defanged indicators, hashes, look-alike domains — and it has
-// to refuse to imply "clean" when it means "no data".
+// Threat intel lookup
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
