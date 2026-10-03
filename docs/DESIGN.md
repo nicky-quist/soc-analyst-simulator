@@ -69,7 +69,7 @@ src/
     triage/          the Triage tab's rule engine: format detection, analysis, input validation
   components/        AppRail, AppHeader, CaseWorkspace, the dashboard, one module per case tab, and each view
   ui/                primitives, SVG charts, icons, the dialog focus hook
-tests/               374 tests across 22 files, run by Node's built-in runner (triage/ holds the Triage engine's)
+tests/               386 tests across 22 files, run by Node's built-in runner (triage/ holds the Triage engine's)
 tests-ui/            14 smoke tests that drive the console in jsdom
 scripts/             regenerates the README's screenshots and tour clip from the real app
 ```

@@ -45,14 +45,14 @@ It also works on a phone (checked at 375px wide and on a short landscape screen)
 
 ## By the numbers
 
-19 scenarios · 35 searchable data sources · 90 searches over 350 events · 141 response actions · 6 Red Ops operations · 36 Fast Triage cards · 20 hidden secrets · 388 automated tests
+19 scenarios · 35 searchable data sources · 90 searches over 350 events · 141 response actions · 6 Red Ops operations · 36 Fast Triage cards · 20 hidden secrets · 400 automated tests
 
 ## Run it
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm run test:all     # 374 engine tests (Node) and 14 UI smoke tests (jsdom)
+npm run test:all     # 386 engine tests (Node) and 14 UI smoke tests (jsdom)
 ```
 
 React 19 and Vite, no backend, and no runtime dependencies beyond React. Everything stays in your browser. CI runs lint, both test suites, the build and the deploy on every push.
