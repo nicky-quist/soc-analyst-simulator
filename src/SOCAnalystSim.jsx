@@ -16,6 +16,8 @@ import { generateShiftSummary } from './engine/personas.js';
 import { warRoomTriggered, followOnFor, withWarRoom } from './engine/warroom.js';
 import { clearFastTriageRuns, loadFastTriageRuns } from './engine/fasttriageStore.js';
 import { loadFound } from './engine/easterEggsStore.js';
+import { standingPayload } from './engine/online.js';
+import { pushStandingQuietly } from './lib/onlineApi.js';
 import { buildBoards } from './engine/leaderboard.js';
 import { buildShiftReport, standingFromBoards } from './engine/shiftReport.js';
 import { clearLastReport, loadLastReport, saveLastReport } from './engine/shiftReportStore.js';
@@ -501,6 +503,17 @@ export default function SOCAnalystSim() {
     () => queue.map((s) => shift.cases[s.id]?.result).filter(Boolean),
     [queue, shift.cases]
   );
+
+  // Keep a signed-in player's online standing current. A no-op when signed out.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      pushStandingQuietly(standingPayload({
+        progress, redProgress, found: loadFound(), fastRuns: loadFastTriageRuns(),
+        library: SCENARIOS, operationIds: RED_OP_IDS,
+      }));
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [progress, redProgress, shift.view]);
 
   const redRank = useMemo(
     () => redStatus(redProgress.history, RED_OP_IDS, redProgress.checkpointRankIndex),

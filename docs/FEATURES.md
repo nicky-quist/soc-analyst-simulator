@@ -125,7 +125,7 @@ A run deals 20 alert cards from a pool of 36 and gives you 12 minutes. Each card
 
 ## Leaderboard
 
-Four separate boards, each ranking you against the fictional SEA SOC roster (the people the console already puts in front of you, like the Team Lead, the IR Lead and the CISO). Their standings are fixed, so a board looks the same every time and you climb it by playing. It is you against the sim's own people: nothing is uploaded or shared.
+Four separate boards, each ranking you against the fictional SEA SOC roster (the people the console already puts in front of you, like the Team Lead, the IR Lead and the CISO). Their standings are fixed, so a board looks the same every time and you climb it by playing. It is you against the sim's own people, and the roster never leaves your browser. A separate **Online** mode ranks real players; see below.
 
 | Board | Ranked by |
 |---|---|

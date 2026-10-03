@@ -7,8 +7,11 @@ import { SCENARIOS } from '../data/scenarios/index.js';
 import { loadFound } from '../engine/easterEggsStore.js';
 import { loadFastTriageRuns } from '../engine/fasttriageStore.js';
 import { RULES, buildBoards, standingText } from '../engine/leaderboard.js';
+import { standingPayload, buildOnlineBoards } from '../engine/online.js';
+import { useOnline } from '../lib/useOnline.js';
+import OnlineAccount from './OnlineAccount.jsx';
 import { C, MONO, TONE } from '../theme.js';
-import { Badge, Button, Card, Tabs } from '../ui/primitives.jsx';
+import { Badge, Button, Callout, Card, Tabs } from '../ui/primitives.jsx';
 import { IconTrophy } from '../ui/icons.jsx';
 
 const RANK_TONE = [TONE.neutral, TONE.business, TONE.positive];
@@ -83,13 +86,25 @@ const TABS = [
   { id: 'secrets', label: 'Secrets' },
 ];
 
+const MODES = [
+  { id: 'roster', label: 'SEA SOC roster' },
+  { id: 'online', label: 'Online' },
+];
+const SCOPES = [
+  { id: 'everyone', label: 'Everyone' },
+  { id: 'club', label: 'Club' },
+];
+
 export default function LeaderboardView({ progress, redProgress }) {
+  const [mode, setMode] = useState('roster');
+  const [scope, setScope] = useState('everyone');
   const [board, setBoard] = useState('blue');
   const [copied, setCopied] = useState(false);
   const [found] = useState(loadFound);
   const [fastRuns] = useState(loadFastTriageRuns);
+  const online = mode === 'online';
 
-  const boards = useMemo(() => buildBoards({
+  const rosterBoards = useMemo(() => buildBoards({
     progress,
     redProgress,
     found,
@@ -99,13 +114,21 @@ export default function LeaderboardView({ progress, redProgress }) {
     fastRuns,
   }), [progress, redProgress, found, fastRuns]);
 
+  const payload = useMemo(() => standingPayload({
+    progress, redProgress, found, fastRuns, library: SCENARIOS, operationIds: Object.keys(RED_OPS),
+  }), [progress, redProgress, found, fastRuns]);
+
+  const live = useOnline({ active: online, clubOnly: scope === 'club', payload });
+  const onlineBoards = useMemo(() => buildOnlineBoards(live.rows), [live.rows]);
+  const boards = online ? { ...onlineBoards, totals: rosterBoards.totals } : rosterBoards;
+
   const rows = boards[board];
   const you = rows.find((r) => r.isYou);
   const size = rows.length;
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(standingText(boards));
+      await navigator.clipboard.writeText(standingText(rosterBoards));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -117,12 +140,33 @@ export default function LeaderboardView({ progress, redProgress }) {
     <div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 6 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Leaderboard</h1>
-        <span style={{ fontSize: 12.5, color: C.textSecondary }}>you against the SEA SOC roster</span>
+        <span style={{ fontSize: 12.5, color: C.textSecondary }}>
+          {online ? 'you against real players' : 'you against the SEA SOC roster'}
+        </span>
       </div>
-      <p style={{ fontSize: 12.5, color: C.textMuted, margin: '0 0 16px', lineHeight: 1.55, maxWidth: 760 }}>
-        Four separate boards. The people on them are fictional and their standings are fixed, so you climb by playing,
-        and nothing here is uploaded or shared. Ties share a rank, and you are listed first among them.
+      <p style={{ fontSize: 12.5, color: C.textMuted, margin: '0 0 12px', lineHeight: 1.55, maxWidth: 760 }}>
+        {online
+          ? 'Four separate boards of real players. Your standing is uploaded when you sign in and keeps itself up to date as you play. Only your display name and standings are shared. Ties share a rank.'
+          : 'Four separate boards. The people on them are fictional and their standings are fixed, so you climb by playing. This roster never leaves your browser. Ties share a rank, and you are listed first among them.'}
       </p>
+
+      <div style={{ marginBottom: 14 }}>
+        <Tabs tabs={MODES} active={mode} onSelect={setMode} />
+      </div>
+
+      {online && (
+        <div style={{ marginBottom: 16 }}>
+          <OnlineAccount session={live.session} profile={live.profile} onSaved={live.refresh} />
+          {live.error && (
+            <Callout tone={TONE.concerned} style={{ marginTop: 10 }}>
+              Couldn't reach the online board: {live.error}
+            </Callout>
+          )}
+          <div style={{ marginTop: 12 }}>
+            <Tabs tabs={SCOPES} active={scope} onSelect={setScope} />
+          </div>
+        </div>
+      )}
 
       <Tabs tabs={TABS} active={board} onSelect={setBoard} />
 
@@ -130,12 +174,17 @@ export default function LeaderboardView({ progress, redProgress }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: C.primaryStrong, display: 'flex' }}><IconTrophy size={18} /></span>
-            <strong style={{ fontSize: 14, color: C.text }}>You are #{you.rank} of {size}</strong>
+            <strong style={{ fontSize: 14, color: C.text }}>
+              {you ? `You are #${you.rank} of ${size}` : online ? 'Sign in and pick a name to join this board' : ''}
+            </strong>
           </div>
-          <Button variant="secondary" onClick={copy}>{copied ? 'Copied' : 'Copy my standing'}</Button>
+          {!online && <Button variant="secondary" onClick={copy}>{copied ? 'Copied' : 'Copy my standing'}</Button>}
         </div>
         <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>{RULES[board]}</div>
 
+        {online && !rows.length && (
+          <div style={{ fontSize: 13, color: C.textMuted, padding: '8px 4px' }}>No players on this board yet.</div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {rows.map((entry) => (
             <Row key={entry.id} entry={entry}>

@@ -10,7 +10,7 @@ const desc = (a, b) => (b ?? -1) - (a ?? -1);
 // Smaller is better; no value sorts last.
 const asc = (a, b) => (a ?? Infinity) === (b ?? Infinity) ? 0 : (a ?? Infinity) < (b ?? Infinity) ? -1 : 1;
 
-const COMPARE = {
+export const COMPARE = {
   blue: (a, b) => desc(a.rankIndex, b.rankIndex) || desc(a.cleared, b.cleared) || desc(a.avg, b.avg),
   red: (a, b) => desc(a.rankIndex, b.rankIndex) || desc(a.cleared, b.cleared) || desc(a.ghosts, b.ghosts) || desc(a.best, b.best),
   fast: (a, b) => desc(a.best, b.best) || asc(a.avgSeconds, b.avgSeconds),
@@ -70,7 +70,7 @@ export function redStanding(redProgress, operationIds) {
 // ── boards ──
 
 // Fast triage grade bands
-function gradeOf(score) {
+export function gradeOf(score) {
   return score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 55 ? 'D' : 'F';
 }
 
