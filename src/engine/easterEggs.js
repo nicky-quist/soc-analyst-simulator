@@ -1,5 +1,7 @@
 // Secrets engine
 
+import { EGG_BY_ID } from '../data/easterEggs.js';
+
 // ── matchers ──
 
 // Search secrets
@@ -9,6 +11,15 @@ export function matchSearch(text) {
   if (/rm\s+-rf\s+\//i.test(q) || /drop\s+table/i.test(q)) return 'rm-rf';
   if (/index\s*=\s*coffee\b/i.test(q)) return 'coffee';
   return null;
+}
+
+// What the results panel shows for a secret search, in place of a plain empty
+// result. Shown every time, not only on the first find, so the joke is never
+// lost to a toast that was missed.
+export function secretSearchResult(query) {
+  const egg = EGG_BY_ID[matchSearch(query)];
+  if (!egg) return null;
+  return { status: 'secret', title: egg.title, detail: egg.message, hint: 'Secret found. Check the Secrets board for the rest.' };
 }
 
 const PUBLIC_DNS = new Set(['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1', '9.9.9.9']);

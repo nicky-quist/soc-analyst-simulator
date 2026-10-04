@@ -38,7 +38,7 @@ function ResultCard({ entry }) {
     );
   }
 
-  const tone = result.status === 'error' ? TONE.concerned : TONE.coaching;
+  const tone = result.status === 'error' ? TONE.concerned : result.status === 'secret' ? TONE.primary : TONE.coaching;
   return (
     <Card style={{ padding: 16, marginBottom: 12 }}>
       {header}

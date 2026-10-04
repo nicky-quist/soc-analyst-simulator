@@ -23,7 +23,7 @@ import { buildShiftReport, standingFromBoards } from './engine/shiftReport.js';
 import { clearLastReport, loadLastReport, saveLastReport } from './engine/shiftReportStore.js';
 import {
   announce, createBurst, matchDeadEven, matchDecode, matchGhostwire, matchIntel, matchNightOwl,
-  matchQuickClose, matchReport, matchSearch,
+  matchQuickClose, matchReport, matchSearch, secretSearchResult,
 } from './engine/easterEggs.js';
 import { advanceRedCheckpoint, buildRedRecord, recordRedRun, redStatus, resetRedProgress } from './engine/redProgress.js';
 import { loadRedProgress, saveRedProgress } from './engine/redProgressStore.js';
@@ -180,7 +180,9 @@ export default function SOCAnalystSim() {
 
   function handleSearch(query, range) {
     announceEgg(matchSearch(query) || matchNightOwl());
-    const searchResult = runQuery(scenario, query, range);
+    const queried = runQuery(scenario, query, range);
+    // A secret search that matched no real data gets its joke as the result.
+    const searchResult = queried.status === 'ok' ? queried : (secretSearchResult(query) ?? queried);
     const matched = searchResult.status === 'ok'
       ? scenario.searches.find((s) => s.id === searchResult.searchId)
       : null;

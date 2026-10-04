@@ -10,7 +10,7 @@ import { FAST_ALERTS } from '../src/data/fasttriage.js';
 import {
   KONAMI, QUICK_CLOSE_MS, announce, createBurst, createKonami, matchDeadEven, matchDecode,
   matchFastTriage, matchGhostwire, matchIntel, matchNightOwl, matchQuickClose, matchRedRun,
-  matchReport, matchSearch, subscribe,
+  matchReport, matchSearch, secretSearchResult, subscribe,
 } from '../src/engine/easterEggs.js';
 import { EGGS_KEY, clearFound, loadFound, saveFound, unlock } from '../src/engine/easterEggsStore.js';
 import { dealRun, scoreRun as scoreFast } from '../src/engine/fasttriage.js';
@@ -219,4 +219,15 @@ test('hints nudge without handing over the exact input', async () => {
   for (const [id, pattern] of Object.entries(spoilers)) {
     assert.ok(!pattern.test(EGG_HINTS[id]), `${id} hint gives the answer away`);
   }
+});
+
+test('a secret search gets its joke as the result, every time, and ordinary searches get nothing', () => {
+  const r = secretSearchResult('sudo');
+  assert.equal(r.status, 'secret');
+  assert.equal(r.title, EGG_BY_ID.sudoers.title);
+  assert.equal(r.detail, EGG_BY_ID.sudoers.message);
+  assert.deepEqual(secretSearchResult('sudo'), r, 'the same reply on a repeat search');
+  assert.equal(secretSearchResult('index=coffee').title, EGG_BY_ID.coffee.title);
+  assert.equal(secretSearchResult('rm -rf /').title, EGG_BY_ID['rm-rf'].title);
+  assert.equal(secretSearchResult('index=auth 185.220.101.45'), null);
 });
