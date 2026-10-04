@@ -27,7 +27,8 @@ export function consumeSignInReturn() {
   try {
     const pending = window.localStorage.getItem(PENDING_KEY) === '1';
     const params = new URLSearchParams(window.location.search);
-    const returned = pending && (params.has('code') || params.has('error'));
+    // A Supabase-shaped error counts even without the flag, so a failure is never silent.
+    const returned = (pending && (params.has('code') || params.has('error'))) || params.has('error_code');
     if (pending) window.localStorage.removeItem(PENDING_KEY);
     return returned;
   } catch {
