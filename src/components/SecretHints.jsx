@@ -1,11 +1,11 @@
-// Hints for the Secrets board: found secrets reveal their title, the rest stay
+// The list inside Settings > Secrets, the one place secrets are managed: found secrets reveal their title, the rest stay
 // hidden behind a nudge you open on purpose.
 
 import { useState } from 'react';
 import { EGGS, EGG_HINTS } from '../data/easterEggs.js';
 import { C, MONO, TONE } from '../theme.js';
-import { Badge, Button, Card } from '../ui/primitives.jsx';
-import { IconCheck, IconSparkles } from '../ui/icons.jsx';
+import { Badge, Button } from '../ui/primitives.jsx';
+import { IconCheck } from '../ui/icons.jsx';
 
 export default function SecretHints({ found }) {
   const [open, setOpen] = useState(() => new Set());
@@ -22,14 +22,19 @@ export default function SecretHints({ found }) {
   }
 
   return (
-    <Card style={{ padding: 16, marginTop: 16 }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-        <span style={{ color: C.primaryStrong, display: 'flex' }}><IconSparkles size={16} /></span>
-        <strong style={{ fontSize: 14, color: C.text }}>Secret hints</strong>
+    <div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+        <strong style={{ fontSize: 13, color: C.text }}>{EGGS.length - missing.length} of {EGGS.length} found</strong>
         <Badge label={missing.length ? `${missing.length} left to find` : 'All found'} tone={missing.length ? TONE.neutral : TONE.positive} />
       </div>
-      <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12, lineHeight: 1.5 }}>
-        Each hint points at the right part of the console without giving the answer away. Open one only if you are stuck.
+      <div
+        role="presentation"
+        style={{ height: 6, borderRadius: 3, background: C.surfaceAlt, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 12 }}
+      >
+        <div style={{ width: `${(foundSet.size / EGGS.length) * 100}%`, height: '100%', background: C.primary }} />
+      </div>
+      <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 8, lineHeight: 1.5 }}>
+        Found secrets show their name. Each one you haven't found has a hint that points at the right part of the console without giving the answer away. Open one only if you are stuck.
       </div>
 
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -67,6 +72,6 @@ export default function SecretHints({ found }) {
           );
         })}
       </ul>
-    </Card>
+    </div>
   );
 }

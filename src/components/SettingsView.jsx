@@ -2,13 +2,27 @@
 
 import { useState } from 'react';
 import { C, TONE } from '../theme.js';
-import { Badge, Button, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
+import { Button, Callout, Card } from '../ui/primitives.jsx';
 import { IconSparkles } from '../ui/icons.jsx';
-import { EGGS } from '../data/easterEggs.js';
 import { announce } from '../engine/easterEggs.js';
 import { clearFound, loadFound } from '../engine/easterEggsStore.js';
 import { loadAiSettings, PROVIDERS, saveAiSettings } from '../engine/ai/provider.js';
 import { SettingsPanel } from './AiCoach.jsx';
+import SecretHints from './SecretHints.jsx';
+
+// One section: icon + title + what it is, then its controls
+function Section({ icon, title, description, children }) {
+  return (
+    <Card style={{ padding: 18, marginBottom: 16, maxWidth: 820 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ color: C.primaryStrong, display: 'flex' }}>{icon}</span>
+        <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: C.text }}>{title}</h2>
+      </div>
+      <p style={{ fontSize: 12.5, color: C.textSecondary, margin: '0 0 14px', lineHeight: 1.55, maxWidth: 700 }}>{description}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{children}</div>
+    </Card>
+  );
+}
 
 // Found secrets
 function Secrets() {
@@ -23,27 +37,16 @@ function Secrets() {
   }
 
   return (
-    <div style={{ marginTop: 28 }}>
-      <SectionLabel icon={<IconSparkles size={13} />}>Secrets</SectionLabel>
-      <p style={{ fontSize: 12.5, color: C.textSecondary, margin: '0 0 12px', lineHeight: 1.55, maxWidth: 700 }}>
-        There are things hidden in this console. Found {found.length} of {EGGS.length}. They never affect a grade, a rank or
-        your history, and Reset everything leaves them alone.
-      </p>
-      <Card style={{ padding: 14, marginBottom: 12 }}>
-        {EGGS.map((egg) => {
-          const isFound = found.includes(egg.id);
-          return (
-            <div key={egg.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '5px 0', fontSize: 12.5, flexWrap: 'wrap' }}>
-              <Badge label={isFound ? 'Found' : '???'} tone={isFound ? TONE.positive : TONE.neutral} />
-              <span style={{ color: isFound ? C.text : C.textMuted, fontWeight: isFound ? 600 : 400 }}>
-                {isFound ? egg.title : 'Not found yet'}
-              </span>
-            </div>
-          );
-        })}
-      </Card>
+    <Section
+      icon={<IconSparkles size={16} />}
+      title="Secrets"
+      description="There are things hidden in this console. They never affect a grade, a rank or your history, and Reset everything leaves them alone."
+    >
+      <SecretHints found={found} />
       {!confirming ? (
-        <Button variant="ghost" onClick={() => setConfirming(true)} disabled={!found.length}>Forget found secrets</Button>
+        <div>
+          <Button variant="ghost" onClick={() => setConfirming(true)} disabled={!found.length}>Forget found secrets</Button>
+        </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: C.textSecondary }}>Forget all {found.length} you have found?</span>
@@ -51,7 +54,7 @@ function Secrets() {
           <Button variant="ghost" onClick={() => setConfirming(false)}>Cancel</Button>
         </div>
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -72,26 +75,25 @@ export default function SettingsView() {
         Saved to this browser only. Changes apply the next time you open a case's Debrief tab.
       </p>
 
-      <SectionLabel icon={<IconSparkles size={13} />}>AI Coach</SectionLabel>
-      <p style={{ fontSize: 12.5, color: C.textSecondary, margin: '0 0 12px', lineHeight: 1.55, maxWidth: 700 }}>
-        An optional second, LLM-generated debrief on a closed case, alongside (never instead of) the deterministic
-        CISO and CEO responses. Off by default, and nothing leaves your machine unless you turn on the cloud option
-        yourself.
-      </p>
+      <Section
+        icon={<IconSparkles size={16} />}
+        title="AI Coach"
+        description="An optional second, LLM-generated debrief on a closed case, alongside (never instead of) the deterministic CISO and CEO responses. Off by default, and nothing leaves your machine unless you turn on the cloud option yourself."
+      >
+        <SettingsPanel settings={settings} onChange={updateSettings} />
 
-      <SettingsPanel settings={settings} onChange={updateSettings} />
-
-      {settings.provider === PROVIDERS.OFF ? (
-        <Callout tone={TONE.neutral}>
-          AI Coach is off. Turn it on above — a local Ollama model is recommended, since nothing leaves your machine.
-          Once it's on, close any case and look for it on the Debrief tab.
-        </Callout>
-      ) : (
-        <Callout tone={TONE.positive}>
-          AI Coach is on ({settings.provider === PROVIDERS.OLLAMA ? 'local Ollama' : 'cloud, bring your own key'}).
-          Close a case and open its Debrief tab to get a debrief from it.
-        </Callout>
-      )}
+        {settings.provider === PROVIDERS.OFF ? (
+          <Callout tone={TONE.neutral}>
+            AI Coach is off. Turn it on above — a local Ollama model is recommended, since nothing leaves your machine.
+            Once it's on, close any case and look for it on the Debrief tab.
+          </Callout>
+        ) : (
+          <Callout tone={TONE.positive}>
+            AI Coach is on ({settings.provider === PROVIDERS.OLLAMA ? 'local Ollama' : 'cloud, bring your own key'}).
+            Close a case and open its Debrief tab to get a debrief from it.
+          </Callout>
+        )}
+      </Section>
 
       <Secrets />
     </div>

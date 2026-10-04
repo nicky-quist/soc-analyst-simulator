@@ -25,24 +25,26 @@ export default function OverviewTab({ scenario, showWalkthrough, caseFile, close
 
   return (
     <div>
-      {!closed && (
-        <Card style={{ padding: 16, marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: nudge ? 12 : 0 }}>
-            <SectionLabel icon={<IconUsers size={13} />} style={{ marginBottom: 0 }}>Ask a coworker</SectionLabel>
-            <Button variant="ghost" onClick={askTier2}>Ask Tier 2 for a nudge</Button>
-          </div>
+      {(!closed || showWalkthrough) && (
+        <Card tone={showWalkthrough ? TONE.primary : undefined} style={{ padding: 18, marginBottom: 20 }}>
+          <SectionLabel icon={<IconUsers size={13} />}>Hints</SectionLabel>
+          {!closed && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: nudge || showWalkthrough ? 12 : 0 }}>
+              <span style={{ fontSize: 13, color: C.textSecondary }}>Stuck? Ask a coworker for a nudge.</span>
+              <Button variant="ghost" onClick={askTier2}>Ask Tier 2 for a nudge</Button>
+            </div>
+          )}
           {nudge && <PersonaMessage persona={nudge} />}
-        </Card>
-      )}
-
-      {showWalkthrough && (
-        <Card tone={TONE.primary} style={{ padding: 20, marginBottom: 20 }}>
-          <SectionLabel>Walkthrough — how a senior analyst works this alert</SectionLabel>
-          <ol style={{ margin: 0, paddingLeft: 20 }}>
-            {scenario.walkthrough.map((step, i) => (
-              <li key={i} style={{ fontSize: 13.5, color: C.text, lineHeight: 1.7, marginBottom: 10 }}>{step}</li>
-            ))}
-          </ol>
+          {showWalkthrough && (
+            <div style={{ marginTop: nudge ? 16 : 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text, marginBottom: 8 }}>Walkthrough — how a senior analyst works this alert</div>
+              <ol style={{ margin: 0, paddingLeft: 20 }}>
+                {scenario.walkthrough.map((step, i) => (
+                  <li key={i} style={{ fontSize: 13.5, color: C.text, lineHeight: 1.7, marginBottom: 10 }}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          )}
         </Card>
       )}
 
@@ -74,11 +76,6 @@ export default function OverviewTab({ scenario, showWalkthrough, caseFile, close
             {scenario.rawLog}
           </pre>
         </div>
-        {scenario.decodable && (
-          <div style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 12, lineHeight: 1.6 }}>
-            {scenario.decodable.hint}
-          </div>
-        )}
       </Card>
     </div>
   );

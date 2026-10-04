@@ -114,7 +114,7 @@ export function Tabs({ tabs, active, onSelect }) {
       role="tablist"
       className="sim-tabs"
       onKeyDown={onKeyDown}
-      style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}`, overflowX: 'auto', padding: '0 2px' }}
+      style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}`, overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', padding: '0 2px' }}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === active;

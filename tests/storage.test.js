@@ -35,8 +35,8 @@ test('every section appears exactly once, in four groups, in the order the rail 
   assert.equal(NAV_GROUPS.length, 4);
   assert.equal(new Set(VIEWS).size, VIEWS.length);
   assert.deepEqual(VIEWS, [
-    'dashboard', 'queue',
-    'triage', 'fasttriage', 'redops',
+    'dashboard', 'queue', 'triage',
+    'fasttriage', 'redops',
     'progress', 'leaderboard',
     'team', 'settings',
   ]);

@@ -4,9 +4,9 @@ export const NAV_GROUPS = [
   [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'queue', label: 'Alert queue' },
+    { id: 'triage', label: 'Alert triage' },
   ],
   [
-    { id: 'triage', label: 'Alert triage' },
     { id: 'fasttriage', label: 'Fast triage' },
     { id: 'redops', label: 'Red Ops' },
   ],

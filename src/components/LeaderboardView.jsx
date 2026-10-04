@@ -10,7 +10,6 @@ import { RULES, buildBoards, standingText } from '../engine/leaderboard.js';
 import { mergeBoards, standingPayload } from '../engine/online.js';
 import { useOnline } from '../lib/useOnline.js';
 import OnlineAccount from './OnlineAccount.jsx';
-import SecretHints from './SecretHints.jsx';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Callout, Card, Tabs } from '../ui/primitives.jsx';
 import { IconTrophy } from '../ui/icons.jsx';
@@ -92,7 +91,7 @@ const SCOPES = [
   { id: 'club', label: 'Club only' },
 ];
 
-export default function LeaderboardView({ progress, redProgress }) {
+export default function LeaderboardView({ progress, redProgress, onOpenSettings }) {
   const [scope, setScope] = useState('everyone');
   const [board, setBoard] = useState('blue');
   const [copied, setCopied] = useState(false);
@@ -213,7 +212,12 @@ export default function LeaderboardView({ progress, redProgress }) {
         </div>
       </Card>
 
-      {board === 'secrets' && <SecretHints found={found} />}
+      {board === 'secrets' && (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: C.textMuted }}>
+          Hints and the option to forget what you've found are in{' '}
+          <Button variant="ghost" onClick={onOpenSettings} style={{ padding: '2px 6px', fontSize: 12.5 }}>Settings</Button>.
+        </div>
+      )}
     </div>
   );
 }

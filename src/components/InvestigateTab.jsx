@@ -125,9 +125,14 @@ export default function InvestigateTab({ scenario, caseFile, onSearch, onDecode,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <SectionLabel style={{ marginBottom: 0 }}>Decoder</SectionLabel>
           <Button variant="ghost" onClick={() => setShowDecoder((v) => !v)} aria-expanded={showDecoder}>
-            {showDecoder ? 'Hide' : 'Open'}
+            {showDecoder ? 'Hide decoder' : 'Open decoder'}
           </Button>
         </div>
+        {scenario.decodable && (
+          <div style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 10, lineHeight: 1.6 }}>
+            {scenario.decodable.hint}
+          </div>
+        )}
         {showDecoder && (
           <div style={{ marginTop: 14 }}>
             <textarea
