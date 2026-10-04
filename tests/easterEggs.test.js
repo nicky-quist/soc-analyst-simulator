@@ -203,3 +203,20 @@ test('only the Settings button forgets finds, and Reset everything never does', 
     assert.ok(!data.has(EGGS_KEY));
   });
 });
+
+test('every secret has a hint, and no hint is left without a secret', async () => {
+  const { EGG_HINTS } = await import('../src/data/easterEggs.js');
+  assert.deepEqual(Object.keys(EGG_HINTS).sort(), EGGS.map((e) => e.id).sort());
+  for (const [id, hint] of Object.entries(EGG_HINTS)) {
+    assert.ok(hint.length > 20, `${id} needs a real hint`);
+  }
+});
+
+test('hints nudge without handing over the exact input', async () => {
+  const { EGG_HINTS } = await import('../src/data/easterEggs.js');
+  // Literal answers that would make a hint a spoiler.
+  const spoilers = { sudoers: /sudo\b/i, 'rm-rf': /rm\s+-rf|drop table/i, coffee: /index\s*=/i, localhost: /127\.0\.0\.1/, 'public-dns': /8\.8\.8\.8|1\.1\.1\.1/, 'hello-world': /hello,? world/i, 'hire-me': /hire me/i };
+  for (const [id, pattern] of Object.entries(spoilers)) {
+    assert.ok(!pattern.test(EGG_HINTS[id]), `${id} hint gives the answer away`);
+  }
+});

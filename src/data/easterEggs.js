@@ -97,3 +97,28 @@ export const EGGS = [
 export const EGG_BY_ID = Object.fromEntries(EGGS.map((e) => [e.id, e]));
 
 export const REPO_URL = 'https://github.com/nicky-quist/soc-analyst-simulator';
+
+// One nudge per secret. Deliberately vague: enough to point you at the right
+// corner of the console without saying exactly what to type or press.
+export const EGG_HINTS = {
+  sudoers: 'The search bar is not a terminal, but it knows who has root. Ask for power you do not have.',
+  'rm-rf': 'Some commands should never go anywhere near production. The search bar has opinions about the worst of them.',
+  coffee: 'Not every data source is in the SIEM. Go looking for one in the break room.',
+  localhost: 'In Intel, look up the one address that is always home.',
+  'public-dns': 'In Intel, look up the resolver everybody has typed into their network settings at least once.',
+  'dns-report': 'In a report, blame the usual suspect. Everyone does eventually.',
+  konami: 'An old cheat code from before most of the club was born. Arrow keys first, then two letters.',
+  flashbang: 'Flip the lights. Quickly, over and over. Someone on the night shift is watching.',
+  credits: 'The shield in the corner is more than a logo. Click it like you mean it.',
+  wolf: 'In Fast Triage, escalate everything. Every single alert.',
+  'fastest-burn': 'In Red Ops, get caught as quickly as you possibly can.',
+  ghostwire: 'Be a ghost on every Red Ops operation: complete them all without being seen once.',
+  'hello-world': 'In the Decoder, paste the first thing every program ever says.',
+  'hire-me': 'In the Decoder, tell the author what you are hoping for.',
+  'night-owl': 'Work the queue when the rest of the building is dark.',
+  'speed-demon': 'Be right and be quick: a correct close with hardly any time on the clock.',
+  nap: 'In Fast Triage, do nothing at all and let every clock run out.',
+  flawless: 'In Fast Triage, do not miss a single call.',
+  'dead-even': 'Attack an incident in Red Ops, then defend that same incident and match your own score exactly.',
+  'stage-fright': 'Start a Red Ops operation, then walk away before making a move.',
+};
