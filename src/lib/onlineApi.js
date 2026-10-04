@@ -11,7 +11,6 @@ function redirectUrl() {
 // Set just before leaving for the provider, so a later ?code= in the URL is
 // known to be ours and not some unrelated query string.
 const PENDING_KEY = 'soc-analyst-sim:online:pending';
-export const MODE_KEY = 'soc-analyst-sim:leaderboard-mode';
 
 function markPending() {
   try {

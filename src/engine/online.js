@@ -1,5 +1,5 @@
 // Online leaderboard: turns your local standing into the payload the server
-// stores, and server rows back into entries the existing boards can render.
+// stores, and merges real players into the same boards as the SEA SOC roster.
 // Pure, so it is testable without a network.
 
 import {
@@ -41,43 +41,66 @@ const num = (v) => (v === null || v === undefined ? null : Number(v));
 
 function base(row) {
   return {
-    id: row.display_name,
+    // Prefixed so a player named like a roster id can never share a React key.
+    id: `online:${row.display_name}`,
     name: row.display_name,
     role: row.club_member ? 'Club member' : 'Player',
     isYou: !!row.is_me,
   };
 }
 
-// rows: get_standings() output. Ranked with the same comparators as the
-// roster boards, so the two views can never disagree about what "better" means.
+// get_standings() rows as unranked entries, one list per board.
+export function onlineEntries(rows) {
+  return {
+    blue: rows.map((r) => ({
+      ...base(r),
+      rankIndex: r.blue_rank,
+      rankLabel: CAREER_RANKS[r.blue_rank]?.label ?? CAREER_RANKS[0].label,
+      cleared: r.blue_cleared,
+      avg: num(r.blue_avg),
+    })),
+    red: rows.map((r) => ({
+      ...base(r),
+      rankIndex: r.red_rank,
+      rankLabel: RED_RANKS[r.red_rank]?.label ?? RED_RANKS[0].label,
+      cleared: r.red_cleared,
+      ghosts: r.red_ghosts,
+      best: num(r.red_best),
+    })),
+    // Players who have never run Fast Triage are left off its board.
+    fast: rows.filter((r) => r.fast_best !== null).map((r) => ({
+      ...base(r),
+      best: r.fast_best,
+      grade: gradeOf(r.fast_best),
+      avgSeconds: num(r.fast_avg_seconds),
+      runs: r.fast_runs,
+    })),
+    secrets: rows.map((r) => ({ ...base(r), count: r.secrets })),
+  };
+}
+
+// Real players only, ranked with the same comparators as the roster boards.
 export function buildOnlineBoards(rows) {
-  const blue = rankEntries(rows.map((r) => ({
-    ...base(r),
-    rankIndex: r.blue_rank,
-    rankLabel: CAREER_RANKS[r.blue_rank]?.label ?? CAREER_RANKS[0].label,
-    cleared: r.blue_cleared,
-    avg: num(r.blue_avg),
-  })), COMPARE.blue);
+  const entries = onlineEntries(rows);
+  return Object.fromEntries(Object.entries(entries).map(([key, list]) => [key, rankEntries(list, COMPARE[key])]));
+}
 
-  const red = rankEntries(rows.map((r) => ({
-    ...base(r),
-    rankIndex: r.red_rank,
-    rankLabel: RED_RANKS[r.red_rank]?.label ?? RED_RANKS[0].label,
-    cleared: r.red_cleared,
-    ghosts: r.red_ghosts,
-    best: num(r.red_best),
-  })), COMPARE.red);
-
-  // Players who have never run Fast Triage are left off its board.
-  const fast = rankEntries(rows.filter((r) => r.fast_best !== null).map((r) => ({
-    ...base(r),
-    best: r.fast_best,
-    grade: gradeOf(r.fast_best),
-    avgSeconds: num(r.fast_avg_seconds),
-    runs: r.fast_runs,
-  })), COMPARE.fast);
-
-  const secrets = rankEntries(rows.map((r) => ({ ...base(r), count: r.secrets })), COMPARE.secrets);
-
-  return { blue, red, fast, secrets };
+// One board per category holding everyone: the fictional roster, real players,
+// and you once. Your own row always comes from your local standing, which is
+// at least as current as what the server has, so the uploaded copy of you is
+// dropped rather than listed twice.
+//
+// clubOnly shows club members alone: the roster is left out, and you appear
+// only if you have joined the club.
+export function mergeBoards({ roster, rows, clubOnly = false, youName = null, youIsClub = false }) {
+  const online = onlineEntries(rows.filter((r) => !r.is_me));
+  const merged = {};
+  for (const key of Object.keys(online)) {
+    const fictional = clubOnly ? [] : roster[key].filter((e) => !e.isYou);
+    const mine = roster[key]
+      .filter((e) => e.isYou && (!clubOnly || youIsClub))
+      .map((e) => (youName ? { ...e, name: youName } : e));
+    merged[key] = rankEntries([...fictional, ...online[key], ...mine], COMPARE[key]);
+  }
+  return { ...merged, totals: roster.totals };
 }

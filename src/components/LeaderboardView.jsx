@@ -7,11 +7,9 @@ import { SCENARIOS } from '../data/scenarios/index.js';
 import { loadFound } from '../engine/easterEggsStore.js';
 import { loadFastTriageRuns } from '../engine/fasttriageStore.js';
 import { RULES, buildBoards, standingText } from '../engine/leaderboard.js';
-import { standingPayload, buildOnlineBoards } from '../engine/online.js';
+import { mergeBoards, standingPayload } from '../engine/online.js';
 import { useOnline } from '../lib/useOnline.js';
 import OnlineAccount from './OnlineAccount.jsx';
-import { MODE_KEY } from '../lib/onlineApi.js';
-import { readStored, writeStored } from '../engine/localStore.js';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Callout, Card, Tabs } from '../ui/primitives.jsx';
 import { IconTrophy } from '../ui/icons.jsx';
@@ -88,27 +86,17 @@ const TABS = [
   { id: 'secrets', label: 'Secrets' },
 ];
 
-const MODES = [
-  { id: 'roster', label: 'SEA SOC roster' },
-  { id: 'online', label: 'Online' },
-];
 const SCOPES = [
   { id: 'everyone', label: 'Everyone' },
-  { id: 'club', label: 'Club' },
+  { id: 'club', label: 'Club only' },
 ];
 
 export default function LeaderboardView({ progress, redProgress }) {
-  const [mode, setModeState] = useState(() => readStored(MODE_KEY, 'roster', (v) => (v === 'online' ? 'online' : 'roster')));
-  const setMode = (next) => {
-    setModeState(next);
-    writeStored(MODE_KEY, next);
-  };
   const [scope, setScope] = useState('everyone');
   const [board, setBoard] = useState('blue');
   const [copied, setCopied] = useState(false);
   const [found] = useState(loadFound);
   const [fastRuns] = useState(loadFastTriageRuns);
-  const online = mode === 'online';
 
   const rosterBoards = useMemo(() => buildBoards({
     progress,
@@ -124,9 +112,15 @@ export default function LeaderboardView({ progress, redProgress }) {
     progress, redProgress, found, fastRuns, library: SCENARIOS, operationIds: Object.keys(RED_OPS),
   }), [progress, redProgress, found, fastRuns]);
 
-  const live = useOnline({ active: online, clubOnly: scope === 'club', payload });
-  const onlineBoards = useMemo(() => buildOnlineBoards(live.rows), [live.rows]);
-  const boards = online ? { ...onlineBoards, totals: rosterBoards.totals } : rosterBoards;
+  const clubOnly = scope === 'club';
+  const live = useOnline({ active: true, clubOnly, payload });
+  const boards = useMemo(() => mergeBoards({
+    roster: rosterBoards,
+    rows: live.rows,
+    clubOnly,
+    youName: live.profile?.display_name ?? null,
+    youIsClub: !!live.profile?.club_member,
+  }), [rosterBoards, live.rows, live.profile, clubOnly]);
 
   const rows = boards[board];
   const you = rows.find((r) => r.isYou);
@@ -134,7 +128,7 @@ export default function LeaderboardView({ progress, redProgress }) {
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(standingText(rosterBoards));
+      await navigator.clipboard.writeText(standingText(boards));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -146,33 +140,25 @@ export default function LeaderboardView({ progress, redProgress }) {
     <div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 6 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Leaderboard</h1>
-        <span style={{ fontSize: 12.5, color: C.textSecondary }}>
-          {online ? 'you against real players' : 'you against the SEA SOC roster'}
-        </span>
+        <span style={{ fontSize: 12.5, color: C.textSecondary }}>you against the SEA SOC roster and real players</span>
       </div>
-      <p style={{ fontSize: 12.5, color: C.textMuted, margin: '0 0 12px', lineHeight: 1.55, maxWidth: 760 }}>
-        {online
-          ? 'Four separate boards of real players. Your standing is uploaded when you sign in and keeps itself up to date as you play. Only your display name and standings are shared. Ties share a rank.'
-          : 'Four separate boards. The people on them are fictional and their standings are fixed, so you climb by playing. This roster never leaves your browser. Ties share a rank, and you are listed first among them.'}
+      <p style={{ fontSize: 12.5, color: C.textMuted, margin: '0 0 14px', lineHeight: 1.55, maxWidth: 760 }}>
+        Four boards, one list. The SEA SOC roster is fictional and fixed; the real players are other people signed in
+        with GitHub. Sign in and your standing is shared and keeps itself up to date as you play, under a display name
+        you choose. Ties share a rank, and you are listed first among them.
       </p>
 
-      <div style={{ marginBottom: 14 }}>
-        <Tabs tabs={MODES} active={mode} onSelect={setMode} />
-      </div>
-
-      {online && (
-        <div style={{ marginBottom: 16 }}>
-          <OnlineAccount session={live.session} profile={live.profile} onSaved={live.refresh} />
-          {live.error && (
-            <Callout tone={TONE.concerned} style={{ marginTop: 10 }}>
-              Couldn't reach the online board: {live.error}
-            </Callout>
-          )}
-          <div style={{ marginTop: 12 }}>
-            <Tabs tabs={SCOPES} active={scope} onSelect={setScope} />
-          </div>
+      <div style={{ marginBottom: 16 }}>
+        <OnlineAccount session={live.session} profile={live.profile} onSaved={live.refresh} />
+        {live.error && (
+          <Callout tone={TONE.coaching} style={{ marginTop: 10 }}>
+            Couldn't reach the online players, so only the roster is shown: {live.error}
+          </Callout>
+        )}
+        <div style={{ marginTop: 12 }}>
+          <Tabs tabs={SCOPES} active={scope} onSelect={setScope} />
         </div>
-      )}
+      </div>
 
       <Tabs tabs={TABS} active={board} onSelect={setBoard} />
 
@@ -181,15 +167,15 @@ export default function LeaderboardView({ progress, redProgress }) {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: C.primaryStrong, display: 'flex' }}><IconTrophy size={18} /></span>
             <strong style={{ fontSize: 14, color: C.text }}>
-              {you ? `You are #${you.rank} of ${size}` : online ? 'Sign in and pick a name to join this board' : ''}
+              {you ? `You are #${you.rank} of ${size}` : 'Join the club to appear on this board'}
             </strong>
           </div>
-          {!online && <Button variant="secondary" onClick={copy}>{copied ? 'Copied' : 'Copy my standing'}</Button>}
+          {you && <Button variant="secondary" onClick={copy}>{copied ? 'Copied' : 'Copy my standing'}</Button>}
         </div>
         <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>{RULES[board]}</div>
 
-        {online && !rows.length && (
-          <div style={{ fontSize: 13, color: C.textMuted, padding: '8px 4px' }}>No players on this board yet.</div>
+        {!rows.length && (
+          <div style={{ fontSize: 13, color: C.textMuted, padding: '8px 4px' }}>No one is on this board yet.</div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {rows.map((entry) => (
