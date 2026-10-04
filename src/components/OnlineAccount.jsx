@@ -54,6 +54,9 @@ function SignIn() {
         <Button disabled={busy} onClick={() => run(() => signInWithProvider('google'))}>
           Continue with Google
         </Button>
+        <Button disabled={busy} onClick={() => run(() => signInWithProvider('discord'))}>
+          Continue with Discord
+        </Button>
       </div>
       <form onSubmit={(e) => {
         e.preventDefault();
