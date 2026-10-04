@@ -82,6 +82,14 @@ export async function signInWithEmail(email) {
   if (error) throw new Error(error.message);
 }
 
+// Finishes an email sign-in with the 6-digit code from the message. Unlike the
+// link, the code works from any device or browser.
+export async function verifyEmailCode(email, token) {
+  const sb = await getSupabase();
+  const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) throw new Error(error.message);
+}
+
 export async function signOut() {
   const sb = await getSupabase();
   await sb.auth.signOut();

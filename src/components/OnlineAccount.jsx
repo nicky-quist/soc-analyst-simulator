@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { C, FONT, TONE } from '../theme.js';
 import { Badge, Button, Callout, Card, Field } from '../ui/primitives.jsx';
 import {
-  joinClub, setDisplayName, signInReturnError, signInWithEmail, signInWithProvider, signOut,
+  joinClub, setDisplayName, signInReturnError, signInWithEmail, signInWithProvider, signOut, verifyEmailCode,
 } from '../lib/onlineApi.js';
 
 const inputStyle = {
@@ -38,8 +38,24 @@ function useAction() {
 
 function SignIn() {
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false);
   const [returnError] = useState(signInReturnError);
   const { busy, message, run } = useAction();
+
+  async function sendCode(e) {
+    e.preventDefault();
+    const ok = await run(async () => {
+      await signInWithEmail(email.trim());
+      return true;
+    }, 'Check your email. Enter the 6-digit code below, or open the link on this device.');
+    if (ok) setSent(true);
+  }
+
+  function verify(e) {
+    e.preventDefault();
+    run(() => verifyEmailCode(email.trim(), code.trim()));
+  }
 
   return (
     <Card style={{ padding: 16 }}>
@@ -51,25 +67,29 @@ function SignIn() {
         <Button variant="primary" disabled={busy} onClick={() => run(() => signInWithProvider('github'))}>
           Continue with GitHub
         </Button>
-        <Button disabled={busy} onClick={() => run(() => signInWithProvider('google'))}>
-          Continue with Google
-        </Button>
-        <Button disabled={busy} onClick={() => run(() => signInWithProvider('discord'))}>
-          Continue with Discord
-        </Button>
       </div>
-      <form onSubmit={(e) => {
-        e.preventDefault();
-        run(() => signInWithEmail(email.trim()), 'Check your email for a sign-in link.');
-      }}>
-        <Field label="Or get an email link" htmlFor="lb-email">
+      <form onSubmit={sendCode}>
+        <Field label="No GitHub account? Use your email" htmlFor="lb-email"
+          hint="We email you a 6-digit code. No password needed.">
           <div style={row}>
             <input id="lb-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com" style={inputStyle} />
-            <Button type="submit" disabled={busy || !email}>Send link</Button>
+            <Button type="submit" disabled={busy || !email}>{sent ? 'Resend code' : 'Send code'}</Button>
           </div>
         </Field>
       </form>
+      {sent && (
+        <form onSubmit={verify}>
+          <Field label="6-digit code" htmlFor="lb-otp">
+            <div style={row}>
+              <input id="lb-otp" inputMode="numeric" autoComplete="one-time-code" value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="123456" style={{ ...inputStyle, maxWidth: 160, letterSpacing: 2 }} />
+              <Button type="submit" variant="primary" disabled={busy || code.length < 6}>Sign in</Button>
+            </div>
+          </Field>
+        </form>
+      )}
       {returnError && <Callout tone={TONE.concerned}>Sign-in failed: {returnError}</Callout>}
       {message && <Callout tone={message.tone}>{message.text}</Callout>}
     </Card>
