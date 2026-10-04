@@ -101,9 +101,9 @@ export const REPO_URL = 'https://github.com/nicky-quist/soc-analyst-simulator';
 // One nudge per secret. Deliberately vague: enough to point you at the right
 // corner of the console without saying exactly what to type or press.
 export const EGG_HINTS = {
-  sudoers: 'The search bar is not a terminal, but it knows who has root. Ask for power you do not have.',
-  'rm-rf': 'Some commands should never go anywhere near production. The search bar has opinions about the worst of them.',
-  coffee: 'Not every data source is in the SIEM. Go looking for one in the break room.',
+  sudoers: 'In the Investigate tab of any case, the search box is not a terminal, but it knows who has root. Ask for power you do not have.',
+  'rm-rf': 'Some commands should never go anywhere near production. The Investigate search box has opinions about the worst of them.',
+  coffee: 'In the Investigate search, ask for a data source the SIEM has never onboarded. Try the break room.',
   localhost: 'In Intel, look up the one address that is always home.',
   'public-dns': 'In Intel, look up the resolver everybody has typed into their network settings at least once.',
   'dns-report': 'In a report, blame the usual suspect. Everyone does eventually.',
