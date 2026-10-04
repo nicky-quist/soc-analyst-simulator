@@ -8,6 +8,7 @@ import { C, MONO, TONE, severityTone } from '../theme.js';
 import { formatDuration } from '../ui/helpers.js';
 import { IconGraduationCap, IconSparkles } from '../ui/icons.jsx';
 import { Badge, Button, Card, PersonaMessage, SectionLabel, Tabs } from '../ui/primitives.jsx';
+import { useNow } from '../ui/useNow.js';
 import AlertQueue from './AlertQueue.jsx';
 import CaseTimeline from './CaseTimeline.jsx';
 import DebriefTab, { ShiftSummary } from './DebriefTab.jsx';
@@ -17,15 +18,26 @@ import OverviewTab from './OverviewTab.jsx';
 import ReportTab from './ReportTab.jsx';
 import RespondTab from './RespondTab.jsx';
 
+// The only part of the workspace that ticks every second
+function CaseClock({ scenario, caseFile }) {
+  const now = useNow();
+  const result = caseFile.result;
+  const elapsed = result ? result.score.elapsedMs : caseFile.startedAt ? now - caseFile.startedAt : 0;
+  const sla = slaState(scenario, caseFile, now);
+  return (
+    <span style={{ fontFamily: MONO, fontSize: 11.5, color: sla.breached ? C.danger : C.textMuted }}>
+      {formatDuration(elapsed)} {result ? 'to decision' : 'open'} · SLA {scenario.alert.slaMinutes}m
+    </span>
+  );
+}
+
 export default function CaseWorkspace({
-  queue, scenario, caseFile, cases, now, warRoom, shiftSummary, redOps, walkthrough, tab,
+  queue, scenario, caseFile, cases, warRoom, shiftSummary, redOps, walkthrough, tab,
   onSelectScenario, onEndShift, onSkipToDebrief, onToggleWalkthrough, onSetTab, onAskTier2,
   onSearch, onDecode, onLookup, onAct, onFormChange, onSubmit, onRetry,
 }) {
   const result = caseFile.result;
   const closed = !!result;
-  const elapsed = closed ? result.score.elapsedMs : caseFile.startedAt ? now - caseFile.startedAt : 0;
-  const sla = slaState(scenario, caseFile, now);
   const status = caseStatus(caseFile);
 
   const tabs = [
@@ -43,7 +55,6 @@ export default function CaseWorkspace({
       scenarios={queue}
       currentId={scenario.id}
       cases={cases}
-      now={now}
       onSelect={onSelectScenario}
     />
 
@@ -70,9 +81,8 @@ export default function CaseWorkspace({
               label={closed ? 'Closed' : status === 'in_progress' ? 'In progress' : 'New'}
               tone={closed ? TONE.neutral : status === 'in_progress' ? TONE.coaching : TONE.primary}
             />
-            <span style={{ fontFamily: MONO, fontSize: 11.5, color: sla.breached ? C.danger : C.textMuted }}>
-              {formatDuration(elapsed)} {closed ? 'to decision' : 'open'} · SLA {scenario.alert.slaMinutes}m
-            </span>
+            <CaseClock scenario={scenario} caseFile={caseFile} />
+
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.35 }}>{scenario.queueLabel}</h1>
           <div style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>{scenario.alert.rule}</div>

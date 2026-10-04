@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { APP_CSS } from './app/appCss.js';
 import {
   EMPTY_CASE, SHIFT_RESET_MS, dealtHand, focusFor, loadProgress, loadShift, nextShift, openShift, saveProgress,
@@ -29,30 +29,32 @@ import { advanceRedCheckpoint, buildRedRecord, recordRedRun, redStatus, resetRed
 import { loadRedProgress, saveRedProgress } from './engine/redProgressStore.js';
 import { withRedOpsTarget } from './engine/redops.js';
 import { instantiateScenario } from './engine/scenarioVariants.js';
-import { slaState } from './engine/case.js';
 import { decodeBase64 } from './engine/decode.js';
 import { buildShiftHandoff } from './engine/handoff.js';
 import { C, FONT } from './theme.js';
 import AppHeader from './components/AppHeader.jsx';
 import AppRail from './components/AppRail.jsx';
 import CaseWorkspace from './components/CaseWorkspace.jsx';
-import Dashboard from './components/Dashboard.jsx';
 import EggHost from './components/EggHost.jsx';
 import EndShiftModal from './components/EndShiftModal.jsx';
-import FastTriageView from './components/FastTriageView.jsx';
-import LeaderboardView from './components/LeaderboardView.jsx';
-import ProgressView from './components/ProgressView.jsx';
-import RedOpsView from './components/RedOpsView.jsx';
-import SettingsView from './components/SettingsView.jsx';
-import ShiftReportCard from './components/ShiftReportCard.jsx';
-import TeamTab from './components/TeamTab.jsx';
-import TriageView from './components/TriageView.jsx';
+
+// Views load on first visit, not with the queue
+const Dashboard = lazy(() => import('./components/Dashboard.jsx'));
+const FastTriageView = lazy(() => import('./components/FastTriageView.jsx'));
+const LeaderboardView = lazy(() => import('./components/LeaderboardView.jsx'));
+const ProgressView = lazy(() => import('./components/ProgressView.jsx'));
+const RedOpsView = lazy(() => import('./components/RedOpsView.jsx'));
+const SettingsView = lazy(() => import('./components/SettingsView.jsx'));
+const ShiftReportCard = lazy(() => import('./components/ShiftReportCard.jsx'));
+const TeamTab = lazy(() => import('./components/TeamTab.jsx'));
+const TriageView = lazy(() => import('./components/TriageView.jsx'));
 
 // Announce a secret if one matched
 function announceEgg(id) {
   if (id) announce(id);
 }
 
+const STALE_CHECK_MS = 30_000;
 const RED_OP_IDS = Object.keys(RED_OPS);
 
 function elapsedSince(startedAt) {
@@ -93,10 +95,10 @@ export default function SOCAnalystSim() {
   // Shift report card: showing now, last saved
   const [reportView, setReportView] = useState(null);
   const [lastReport, setLastReport] = useState(loadLastReport);
-  const [now, setNow] = useState(() => Date.now());
+  const [mountedAt] = useState(() => Date.now());
 
   // Shift header, shared with the dashboard
-  const seedAt = shift.shiftStartedAt || now;
+  const seedAt = shift.shiftStartedAt || mountedAt;
   const shiftHeader = useMemo(() => buildShift(seedAt, shift.deal), [seedAt, shift.deal]);
 
   // This shift's queue (seeded, stable across reloads)
@@ -116,47 +118,31 @@ export default function SOCAnalystSim() {
   const result = caseFile.result;
   const closed = !!result;
 
-  // Clock tick + stale-shift auto-reset
+  // Stale-shift auto-reset (returning prev keeps this from re-rendering)
   useEffect(() => {
     const id = setInterval(() => {
-      const nowTs = Date.now();
-      setNow(nowTs);
       setShift((prev) => {
-        if (!prev.shiftStartedAt || nowTs - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
+        if (!prev.shiftStartedAt || Date.now() - prev.shiftStartedAt <= SHIFT_RESET_MS) return prev;
         // Read progress from storage (stale closure)
-        const fresh = nextShift(prev, loadProgress(), dealtHand(prev).map((s) => s.id));
-        saveShift(fresh);
-        return fresh;
+        return nextShift(prev, loadProgress(), dealtHand(prev).map((s) => s.id));
       });
-    }, 1000);
+    }, STALE_CHECK_MS);
     return () => clearInterval(id);
   }, []);
+
+  // Persist once per change, outside the state updaters
+  useEffect(() => { saveShift(shift); }, [shift]);
+  useEffect(() => { saveProgress(progress); }, [progress]);
 
   // Theme on the document root
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', shift.theme);
   }, [shift.theme]);
 
-  function update(fn) {
-    setShift((prev) => {
-      const next = fn(prev);
-      saveShift(next);
-      return next;
-    });
-  }
-
   function updateCase(fn) {
-    update((prev) => {
+    setShift((prev) => {
       const current = prev.cases[scenario.id] || EMPTY_CASE;
       return { ...prev, cases: { ...prev.cases, [scenario.id]: fn(current) } };
-    });
-  }
-
-  function updateProgress(fn) {
-    setProgress((prev) => {
-      const next = fn(prev);
-      saveProgress(next);
-      return next;
     });
   }
 
@@ -272,18 +258,15 @@ export default function SOCAnalystSim() {
     });
     setProgress((prev) => {
       const next = recordCase(prev, record);
-      if (!next.recorded) return next.progress;
       // Ranks are checkpoints
-      const withCheckpoint = advanceCheckpoint(next.progress, SCENARIOS);
-      saveProgress(withCheckpoint);
-      return withCheckpoint;
+      return next.recorded ? advanceCheckpoint(next.progress, SCENARIOS) : next.progress;
     });
     updateCase((current) => closeCase(current, score));
 
     // Bad response triggers a War Room (once)
     if (!shift.warRoom && warRoomTriggered(scenario, score)) {
       const newWarRoom = { scenarioId: followOnFor(scenario).id, sourceId: scenario.id, triggeredAt: Date.now() };
-      update((prev) => ({ ...prev, warRoom: newWarRoom }));
+      setShift((prev) => ({ ...prev, warRoom: newWarRoom }));
       const reordered = withWarRoom(queue, newWarRoom);
       const newIndex = reordered.findIndex((s) => s.id === scenario.id);
       if (newIndex !== -1) setCurrentIndex(newIndex);
@@ -338,14 +321,14 @@ export default function SOCAnalystSim() {
 
   function selectScenario(index) {
     setCurrentIndex(index);
-    update((prev) => startClock({ ...prev, view: 'queue' }, queue[index].id));
+    setShift((prev) => startClock({ ...prev, view: 'queue' }, queue[index].id));
     setTab(shift.cases[queue[index].id]?.result ? 'debrief' : 'overview');
     setWalkthrough(false);
   }
 
   // Defend a Red Ops incident in the queue
   function handleDefendFromRedOps(scenarioId, redRun) {
-    update((prev) => startClock({
+    setShift((prev) => startClock({
       ...prev,
       view: 'queue',
       redOpsTarget: scenarioId,
@@ -377,9 +360,7 @@ export default function SOCAnalystSim() {
 
   // New shift
   function startNextShift(progressForFocus) {
-    const fresh = nextShift(shift, progressForFocus, queue.map((s) => s.id));
-    saveShift(fresh);
-    setShift(fresh);
+    setShift(nextShift(shift, progressForFocus, queue.map((s) => s.id)));
     setCurrentIndex(0);
     setTab('overview');
     setWalkthrough(false);
@@ -439,18 +420,17 @@ export default function SOCAnalystSim() {
 
   // Adaptive deal (applies next shift)
   function toggleAdaptive() {
-    updateProgress((prev) => ({ ...prev, adaptive: !prev.adaptive }));
+    setProgress((prev) => ({ ...prev, adaptive: !prev.adaptive }));
   }
 
   // Clear history (rank kept)
   function clearHistory() {
-    updateProgress(clearedProgress);
+    setProgress(clearedProgress);
   }
 
   // Reset everything (ranks kept)
   function handleFullReset() {
     const freshProgress = clearedProgress(progress);
-    saveProgress(freshProgress);
     setProgress(freshProgress);
     // Fast triage runs
     clearFastTriageRuns();
@@ -477,7 +457,7 @@ export default function SOCAnalystSim() {
   }
 
   function setView(view) {
-    update((prev) => ({ ...prev, view }));
+    setShift((prev) => ({ ...prev, view }));
   }
 
   // Tab -> URL hash
@@ -490,7 +470,7 @@ export default function SOCAnalystSim() {
   useEffect(() => {
     const onHashChange = () => {
       const view = viewFromHash();
-      if (view) update((prev) => (prev.view === view ? prev : { ...prev, view }));
+      if (view) setShift((prev) => (prev.view === view ? prev : { ...prev, view }));
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -498,7 +478,7 @@ export default function SOCAnalystSim() {
 
   function toggleTheme() {
     if (themeBurst()) announce('flashbang');
-    update((prev) => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
+    setShift((prev) => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
   }
 
   const closedCases = useMemo(
@@ -530,8 +510,7 @@ export default function SOCAnalystSim() {
   const avgScore = closedCases.length
     ? Math.round(closedCases.reduce((sum, r) => sum + r.score.overallScore, 0) / closedCases.length)
     : null;
-  const slaBreaches = queue.filter((s) => slaState(s, shift.cases[s.id], now).breached).length;
-  const shiftSummary = closedCases.length === queue.length
+    const shiftSummary = closedCases.length === queue.length
     ? generateShiftSummary(queue.map((s) => shift.cases[s.id].result))
     : null;
 
@@ -569,15 +548,16 @@ export default function SOCAnalystSim() {
         openCount={openCount}
         closedCount={closedCases.length}
         avgScore={avgScore}
-        slaBreaches={slaBreaches}
+        queue={queue}
+        cases={shift.cases}
       />
 
+      <Suspense fallback={null}>
       {shift.view === 'dashboard' && (
         <Page width={1440}>
           <Dashboard
             scenarios={queue}
             cases={shift.cases}
-            now={now}
             shiftStartedAt={shift.shiftStartedAt}
             deal={shift.deal}
             focus={shift.focus}
@@ -628,7 +608,7 @@ export default function SOCAnalystSim() {
 
       {shift.view === 'leaderboard' && (
         <Page width={900}>
-          <LeaderboardView progress={progress} redProgress={redProgress} />
+          <LeaderboardView progress={progress} redProgress={redProgress} onOpenSettings={() => setView('settings')} />
         </Page>
       )}
 
@@ -638,13 +618,14 @@ export default function SOCAnalystSim() {
         </Page>
       )}
 
+      </Suspense>
+
       {shift.view === 'queue' && (
         <CaseWorkspace
           queue={queue}
           scenario={scenario}
           caseFile={caseFile}
           cases={shift.cases}
-          now={now}
           warRoom={shift.warRoom}
           shiftSummary={shiftSummary}
           redOps={shift.redOps}
@@ -669,7 +650,9 @@ export default function SOCAnalystSim() {
       </div>
 
       {reportView && (
-        <ShiftReportCard report={reportView.report} mode={reportView.mode} onClose={() => setReportView(null)} />
+        <Suspense fallback={null}>
+          <ShiftReportCard report={reportView.report} mode={reportView.mode} onClose={() => setReportView(null)} />
+        </Suspense>
       )}
 
       <EggHost stats={{ blueRank: career.rank, redRank: redRank.rank, closed: closedCases.length }} />

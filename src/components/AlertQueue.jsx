@@ -1,6 +1,7 @@
 import { C, FONT, MONO, TONE, severityTone } from '../theme.js';
 import { isResolvedCorrectly } from '../engine/scoring.js';
 import { Badge } from '../ui/primitives.jsx';
+import { useNow } from '../ui/useNow.js';
 import { caseStatus, slaState } from '../engine/case.js';
 
 const STATUS = {
@@ -16,7 +17,8 @@ function shortSla(ms) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function AlertQueue({ scenarios, currentId, cases, now, onSelect }) {
+export default function AlertQueue({ scenarios, currentId, cases, onSelect }) {
+  const now = useNow();
   const closed = scenarios.filter((s) => cases[s.id]?.result).length;
 
   return (

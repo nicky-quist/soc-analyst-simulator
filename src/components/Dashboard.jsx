@@ -9,6 +9,7 @@ import { isResolvedCorrectly } from '../engine/scoring.js';
 import { slaComplianceTrend } from '../engine/progress.js';
 import { Badge, Button, Callout, Card, SectionLabel } from '../ui/primitives.jsx';
 import { formatDuration } from '../ui/helpers.js';
+import { useNow } from '../ui/useNow.js';
 import { Donut, Funnel, Gauge, MeterRow, Sparkline, StackedBars } from '../ui/charts.jsx';
 import {
   IconActivity, IconClock, IconFileCheck, IconFilter, IconInbox, IconListChecks, IconPieChart,
@@ -92,8 +93,19 @@ function Legend({ items }) {
   );
 }
 
-export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress, onFullReset, onPreviewReport }) {
+const FEED_TICK_MS = 4000;
+const FEED_BACKFILL_MS = 41_000;
+
+function feedEvent(feedStart, n) {
+  const length = ESTATE_FEED.length;
+  const at = n >= 0 ? feedStart + n * FEED_TICK_MS : feedStart + n * FEED_BACKFILL_MS;
+  return { ...ESTATE_FEED[((n % length) + length) % length], n, at };
+}
+
+export default function Dashboard({ scenarios, cases, shiftStartedAt, deal = 0, focus = null, onOpenAlert, progress, onFullReset, onPreviewReport }) {
+  const now = useNow();
   const [feedTick, setFeedTick] = useState(0);
+  const [feedStart] = useState(() => Date.now());
   const [confirmingReset, setConfirmingReset] = useState(false);
 
   // Seeded estate data
@@ -104,7 +116,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
   const slaHistory = useMemo(() => slaComplianceTrend(progress?.history || []), [progress]);
 
   useEffect(() => {
-    const id = setInterval(() => setFeedTick((t) => t + 1), 4000);
+    const id = setInterval(() => setFeedTick((t) => t + 1), FEED_TICK_MS);
     return () => clearInterval(id);
   }, []);
 
@@ -147,7 +159,8 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
   ];
   const overallSlaPct = slaHistory.length ? slaHistory[slaHistory.length - 1].pct : null;
 
-  const feed = Array.from({ length: 6 }, (_, i) => ESTATE_FEED[(feedTick + i) % ESTATE_FEED.length]);
+  // Newest event on top. Each event keeps the time it arrived, so stamps don't advance on their own.
+  const feed = Array.from({ length: 6 }, (_, i) => feedEvent(feedStart, feedTick - i));
 
   return (
     <div>
@@ -387,7 +400,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
         <Panel title="Estate activity" icon={<IconRadio size={13} />} hint="live tail" style={{ gridColumn: 'span 2' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6 }}>
             {feed.map((entry, i) => (
-              <div key={`${feedTick}-${i}`} style={{
+              <div key={entry.n} style={{
                 display: 'flex', gap: 10, alignItems: 'center', fontSize: 12,
                 opacity: 1 - i * 0.11, padding: '5px 8px', borderRadius: 4,
                 background: i === 0 ? C.surfaceAlt : 'transparent',
@@ -396,7 +409,7 @@ export default function Dashboard({ scenarios, cases, now, shiftStartedAt, deal 
                 <span style={{
                   fontFamily: MONO, fontSize: 11, color: C.textMuted, whiteSpace: 'nowrap',
                 }}>
-                  {new Date(now - i * 41_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  {new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
                 <span style={{ fontSize: 11, color: C.textSecondary, minWidth: 92 }}>{entry.source}</span>
                 <span style={{ color: C.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.text}</span>

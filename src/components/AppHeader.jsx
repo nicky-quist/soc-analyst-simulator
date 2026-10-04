@@ -2,10 +2,14 @@
 
 import { COMPANY } from '../data/scenarios/index.js';
 import { C, TONE } from '../theme.js';
+import { slaState } from '../engine/case.js';
 import { Badge } from '../ui/primitives.jsx';
+import { useNow } from '../ui/useNow.js';
 import { IconUser } from '../ui/icons.jsx';
 
-export default function AppHeader({ blueRank, redRank, shiftWindow, openCount, closedCount, avgScore, slaBreaches }) {
+export default function AppHeader({ blueRank, redRank, shiftWindow, openCount, closedCount, avgScore, queue, cases }) {
+  const now = useNow();
+  const slaBreaches = queue.filter((s) => slaState(s, cases[s.id], now).breached).length;
   return (
     <>
       {/* Accent bar */}

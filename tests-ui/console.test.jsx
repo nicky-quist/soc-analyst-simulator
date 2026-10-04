@@ -90,18 +90,21 @@ describe('the console shell', () => {
     expect(within(header).getByText('0 closed')).toBeTruthy();
   });
 
-  it('opens on the view named in the URL hash, and every section answers to its own hash', () => {
+  it('opens on the view named in the URL hash, and every section answers to its own hash', async () => {
     window.location.hash = '#leaderboard';
     render(<SOCAnalystSim />);
-    expect(screen.getByRole('heading', { name: 'Leaderboard', level: 1 })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Leaderboard', level: 1 })).toBeTruthy();
     for (const { id, label } of NAV_GROUPS.flat()) {
       goTo(label);
       expect(window.location.hash).toBe(`#${id}`);
     }
+    // Let the last lazy view settle before teardown
+    await screen.findByRole('main');
   });
 
-  it('has a skip link that moves focus to the main content without touching the hash', () => {
+  it('has a skip link that moves focus to the main content without touching the hash', async () => {
     render(<SOCAnalystSim />);
+    await screen.findByRole('main');
     const skip = screen.getByText('Skip to main content');
     fireEvent.click(skip);
     expect(document.activeElement.tagName).toBe('MAIN');
@@ -195,7 +198,7 @@ describe('the shift report', () => {
     // A fresh hand was dealt underneath.
     expect(within(screen.getByRole('banner')).getByText('0 closed')).toBeTruthy();
     goTo('Your progress');
-    fireEvent.click(screen.getByRole('button', { name: 'Open last shift report' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open last shift report' }));
     expect(within(await screen.findByRole('dialog', { name: 'Shift report' })).getByText('Last shift')).toBeTruthy();
   });
 });
@@ -232,9 +235,9 @@ describe('the dashboard', () => {
 
 describe('Red Ops', () => {
   // Open the first operation
-  function startFirstOperation() {
+  async function startFirstOperation() {
     goTo('Red Ops');
-    fireEvent.click(screen.getAllByRole('button', { name: /Start operation/ })[0]);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Start operation/ }))[0]);
     const ops = Object.values(RED_OPS).find((o) => screen.queryByText(o.crew));
     expect(ops, 'an operation opened').toBeTruthy();
     return ops;
@@ -249,7 +252,7 @@ describe('Red Ops', () => {
 
   it('plays an operation quietly to the end, scores it, and records the run toward a rank', async () => {
     render(<SOCAnalystSim />);
-    const ops = startFirstOperation();
+    const ops = await startFirstOperation();
 
     for (const stage of ops.stages) {
       await playMove([...stage.choices].sort((a, b) => b.stealth - a.stealth)[0]);
@@ -266,7 +269,7 @@ describe('Red Ops', () => {
 
   it('burns the operation when every move is loud', async () => {
     render(<SOCAnalystSim />);
-    const ops = startFirstOperation();
+    const ops = await startFirstOperation();
 
     for (const stage of ops.stages) {
       await playMove([...stage.choices].sort((a, b) => a.stealth - b.stealth)[0]);
@@ -286,7 +289,7 @@ describe('Fast Triage', () => {
   it('runs a full set of alerts to a graded review, and lets you go again', async () => {
     render(<SOCAnalystSim />);
     goTo('Fast triage');
-    fireEvent.click(screen.getByRole('button', { name: /Start run/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Start run/ }));
 
     // Answer every card
     for (let i = 0; i < RUN_SIZE; i += 1) {
