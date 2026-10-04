@@ -10,6 +10,8 @@ import { RULES, buildBoards, standingText } from '../engine/leaderboard.js';
 import { standingPayload, buildOnlineBoards } from '../engine/online.js';
 import { useOnline } from '../lib/useOnline.js';
 import OnlineAccount from './OnlineAccount.jsx';
+import { MODE_KEY } from '../lib/onlineApi.js';
+import { readStored, writeStored } from '../engine/localStore.js';
 import { C, MONO, TONE } from '../theme.js';
 import { Badge, Button, Callout, Card, Tabs } from '../ui/primitives.jsx';
 import { IconTrophy } from '../ui/icons.jsx';
@@ -96,7 +98,11 @@ const SCOPES = [
 ];
 
 export default function LeaderboardView({ progress, redProgress }) {
-  const [mode, setMode] = useState('roster');
+  const [mode, setModeState] = useState(() => readStored(MODE_KEY, 'roster', (v) => (v === 'online' ? 'online' : 'roster')));
+  const setMode = (next) => {
+    setModeState(next);
+    writeStored(MODE_KEY, next);
+  };
   const [scope, setScope] = useState('everyone');
   const [board, setBoard] = useState('blue');
   const [copied, setCopied] = useState(false);

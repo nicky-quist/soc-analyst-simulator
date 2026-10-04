@@ -8,6 +8,46 @@ function redirectUrl() {
   return window.location.origin + window.location.pathname;
 }
 
+// Set just before leaving for the provider, so a later ?code= in the URL is
+// known to be ours and not some unrelated query string.
+const PENDING_KEY = 'soc-analyst-sim:online:pending';
+export const MODE_KEY = 'soc-analyst-sim:leaderboard-mode';
+
+function markPending() {
+  try {
+    window.localStorage.setItem(PENDING_KEY, '1');
+  } catch {
+    // Storage unavailable: sign-in still works, it just won't auto-return.
+  }
+}
+
+// Called once at startup. True when the browser has just come back from a
+// sign-in redirect (success or failure).
+export function consumeSignInReturn() {
+  try {
+    const pending = window.localStorage.getItem(PENDING_KEY) === '1';
+    const params = new URLSearchParams(window.location.search);
+    const returned = pending && (params.has('code') || params.has('error'));
+    if (pending) window.localStorage.removeItem(PENDING_KEY);
+    return returned;
+  } catch {
+    return false;
+  }
+}
+
+// The provider's error text when a sign-in came back as a failure.
+export function signInReturnError() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('error')) return null;
+  return params.get('error_description') || params.get('error');
+}
+
+// Drop ?code=... from the address bar once the session is stored.
+export function cleanSignInUrl() {
+  if (!window.location.search) return;
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+}
+
 async function rpc(name, args) {
   const sb = await getSupabase();
   const { data, error } = await sb.rpc(name, args);
@@ -28,12 +68,14 @@ export async function onAuthChange(callback) {
 }
 
 export async function signInWithProvider(provider) {
+  markPending();
   const sb = await getSupabase();
   const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: redirectUrl() } });
   if (error) throw new Error(error.message);
 }
 
 export async function signInWithEmail(email) {
+  markPending();
   const sb = await getSupabase();
   const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectUrl() } });
   if (error) throw new Error(error.message);

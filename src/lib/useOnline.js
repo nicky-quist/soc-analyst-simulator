@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  fetchStandings, getMyProfile, getSession, onAuthChange, pushStanding,
+  cleanSignInUrl, fetchStandings, getMyProfile, getSession, onAuthChange, pushStanding,
 } from './onlineApi.js';
 
 const errText = (e) => {
@@ -29,13 +29,19 @@ export function useOnline({ active, clubOnly, payload }) {
     let off = () => {};
     let cancelled = false;
     getSession()
-      .then((s) => { if (!cancelled) setSession(s); })
+      .then((s) => {
+        if (s) cleanSignInUrl();
+        if (!cancelled) setSession(s);
+      })
       .catch((e) => {
         if (cancelled) return;
         setSession(null);
         setError(errText(e));
       });
-    onAuthChange((s) => setSession(s)).then((unsub) => { off = unsub; }).catch(() => {});
+    onAuthChange((s) => {
+      if (s) cleanSignInUrl();
+      setSession(s);
+    }).then((unsub) => { off = unsub; }).catch(() => {});
     return () => {
       cancelled = true;
       off();

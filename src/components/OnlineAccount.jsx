@@ -3,8 +3,10 @@
 
 import { useState } from 'react';
 import { C, FONT, TONE } from '../theme.js';
-import { Button, Callout, Card, Field } from '../ui/primitives.jsx';
-import { joinClub, setDisplayName, signInWithEmail, signInWithProvider, signOut } from '../lib/onlineApi.js';
+import { Badge, Button, Callout, Card, Field } from '../ui/primitives.jsx';
+import {
+  joinClub, setDisplayName, signInReturnError, signInWithEmail, signInWithProvider, signOut,
+} from '../lib/onlineApi.js';
 
 const inputStyle = {
   background: C.surface, color: C.text, border: `1px solid ${C.borderStrong}`, borderRadius: 6,
@@ -36,6 +38,7 @@ function useAction() {
 
 function SignIn() {
   const [email, setEmail] = useState('');
+  const [returnError] = useState(signInReturnError);
   const { busy, message, run } = useAction();
 
   return (
@@ -64,15 +67,17 @@ function SignIn() {
           </div>
         </Field>
       </form>
+      {returnError && <Callout tone={TONE.concerned}>Sign-in failed: {returnError}</Callout>}
       {message && <Callout tone={message.tone}>{message.text}</Callout>}
     </Card>
   );
 }
 
-function Profile({ profile, onSaved }) {
+function Profile({ session, profile, onSaved }) {
   const [name, setName] = useState(profile?.display_name ?? '');
   const [code, setCode] = useState('');
   const { busy, message, run } = useAction();
+  const provider = session?.user?.app_metadata?.provider ?? 'your account';
 
   async function saveName(e) {
     e.preventDefault();
@@ -94,6 +99,15 @@ function Profile({ profile, onSaved }) {
 
   return (
     <Card style={{ padding: 16 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+        <Badge label="Signed in" tone={TONE.positive} />
+        <span style={{ fontSize: 13, color: C.textSecondary }}>
+          {profile
+            ? <>as <strong style={{ color: C.text }}>{profile.display_name}</strong>{profile.club_member ? ' · club member' : ''}</>
+            : `with ${provider}. Choose a display name to appear on the board.`}
+        </span>
+        <Button variant="ghost" onClick={() => signOut()} style={{ marginLeft: 'auto' }}>Sign out</Button>
+      </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <form onSubmit={saveName} style={{ flex: '1 1 320px' }}>
           <Field label="Display name" htmlFor="lb-name"
@@ -107,7 +121,6 @@ function Profile({ profile, onSaved }) {
             </div>
           </Field>
         </form>
-        <Button variant="ghost" onClick={() => signOut()}>Sign out</Button>
       </div>
       {profile && !profile.club_member && (
         <form onSubmit={submitCode}>
@@ -129,5 +142,5 @@ export default function OnlineAccount({ session, profile, onSaved }) {
   if (session === undefined) return <p style={{ fontSize: 13, color: C.textMuted }}>Checking sign-in…</p>;
   if (!session) return <SignIn />;
   // Remounting on the saved name keeps the input in step with the server.
-  return <Profile key={profile?.display_name ?? 'new'} profile={profile} onSaved={onSaved} />;
+  return <Profile key={profile?.display_name ?? 'new'} session={session} profile={profile} onSaved={onSaved} />;
 }
