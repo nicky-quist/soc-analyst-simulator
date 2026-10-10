@@ -55,7 +55,7 @@ npm run dev          # http://localhost:5173
 npm run test:all     # 386 engine tests (Node) and 14 UI smoke tests (jsdom)
 ```
 
-React 19 and Vite, no backend, and no runtime dependencies beyond React. Everything stays in your browser. CI runs lint, both test suites, the build and the deploy on every push.
+React 19 and Vite. The console, grading and progress all run in your browser and work offline; the only network use is the optional Online leaderboard, which signs in with GitHub and stores standings in Supabase (its client loads only when you open that board). CI runs lint, both test suites, the build and the deploy on every push.
 
 ## Read more
 

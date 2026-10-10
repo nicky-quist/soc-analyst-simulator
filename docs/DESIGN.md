@@ -43,7 +43,7 @@ The focus is decided when a shift is dealt and stored with it. The queue is re-d
 
 ## Tech
 
-React 19 and Vite, no backend, and no runtime dependencies beyond React.
+React 19 and Vite. Everything runs in the browser except the optional Online leaderboard, which uses Supabase (GitHub sign-in, row-level security) and lazy-loads its client so offline play stays light.
 
 ```bash
 npm install
